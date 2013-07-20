@@ -1,0 +1,41 @@
+gunner_frames_fidget
++ ai_stand, 0, NULL
++ ai_stand, 0, gunner_idlesound
+
+gunner_frames_stand
++ ai_stand, 0, NULL
++ ai_stand, 0, gunner_fidget
+
+gunner_frames_walk
++ ai_walk, WALK_FRAME_OFS, NULL
+
+gunner_frames_run
++ ai_run, RUN_FRAME_OFS, NULL
+
+gunner_frames_runandshoot
++ ai_run, RUN_FRAME_OFS, NULL
+
+gunner_frames_painXXX
++ ai_move, PAIN_FRAME_OFS, NULL
+
+gunner_frames_death
++ ai_move, DEATH_FRAME_OFS, NULL
+
+gunner_frames_duck
++ ai_move, DUCK_FRAME_OFS, NULL
++ ai_move, DUCK_FRAME_OFS, gunner_duck_down
++ ai_move, DUCK_FRAME_OFS, gunner_duck_hold
++ ai_move, DUCK_FRAME_OFS, gunner_duck_up
+
+gunner_frames_attack_chain
++ ai_charge, 0, gunner_opengun
+
+gunner_frames_fire_chain
++ ai_charge, 0, GunnerFire
+
+gunner_frames_endfire_chain
++ ai_charge, 0, NULL
+
+gunner_frames_attack_grenade
++ ai_charge, 0, NULL
++ ai_charge, 0, GunnerGrenade
