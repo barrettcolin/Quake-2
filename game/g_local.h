@@ -1098,8 +1098,8 @@ struct edict_s
 	int			watertype;
 	int			waterlevel;
 
-	vec3_t		move_origin;
-	vec3_t		move_angles;
+	vec3_t		move_origin;    // used by turrets
+	vec3_t		move_angles;    // used by turrets
 
 	// move this to clientinfo?
 	int			light_level;
@@ -1109,7 +1109,7 @@ struct edict_s
 	gitem_t		*item;			// for bonus items
 
 	// common data blocks
-	moveinfo_t		moveinfo;
-	monsterinfo_t	monsterinfo;
+	moveinfo_t		moveinfo;   // used by movers: g_func, flyby ships etc.
+	monsterinfo_t	monsterinfo;// used by monsters
 };
 
