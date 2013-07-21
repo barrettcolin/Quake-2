@@ -445,6 +445,8 @@ typedef struct
 
 	int			power_armor_type;
 	int			power_armor_power;
+
+	int			enemy_range;
 } monsterinfo_t;
 
 

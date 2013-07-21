@@ -24,12 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 qboolean FindTarget (edict_t *self);
 extern cvar_t	*maxclients;
 
-qboolean ai_checkattack (edict_t *self, float dist);
-
-qboolean	enemy_vis;
-qboolean	enemy_infront;
-int			enemy_range;
-float		enemy_yaw;
+qboolean ai_checkattack (edict_t *self, float dist, qboolean *enemy_vis, float *enemy_yaw);
 
 //============================================================================
 
@@ -106,6 +101,8 @@ Distance is for slight position adjustments needed by the animations
 void ai_stand (edict_t *self, float dist)
 {
 	vec3_t	v;
+	qboolean enemy_vis;
+	float enemy_yaw;
 
 	if (dist)
 		M_walkmove (self, self->s.angles[YAW], dist);
@@ -122,7 +119,7 @@ void ai_stand (edict_t *self, float dist)
 				self->monsterinfo.run (self);
 			}
 			M_ChangeYaw (self);
-			ai_checkattack (self, 0);
+			ai_checkattack (self, 0, &enemy_vis, &enemy_yaw);
 		}
 		else
 			FindTarget (self);
@@ -626,7 +623,7 @@ qboolean M_CheckAttack (edict_t *self)
 	}
 	
 	// melee attack
-	if (enemy_range == RANGE_MELEE)
+	if (self->monsterinfo.enemy_range == RANGE_MELEE)
 	{
 		// don't always melee in easy mode
 		if (skill->value == 0 && (rand()&3) )
@@ -645,22 +642,22 @@ qboolean M_CheckAttack (edict_t *self)
 	if (level.time < self->monsterinfo.attack_finished)
 		return false;
 		
-	if (enemy_range == RANGE_FAR)
+	if (self->monsterinfo.enemy_range == RANGE_FAR)
 		return false;
 
 	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
 	{
 		chance = 0.4;
 	}
-	else if (enemy_range == RANGE_MELEE)
+	else if (self->monsterinfo.enemy_range == RANGE_MELEE)
 	{
 		chance = 0.2;
 	}
-	else if (enemy_range == RANGE_NEAR)
+	else if (self->monsterinfo.enemy_range == RANGE_NEAR)
 	{
 		chance = 0.1;
 	}
-	else if (enemy_range == RANGE_MID)
+	else if (self->monsterinfo.enemy_range == RANGE_MID)
 	{
 		chance = 0.02;
 	}
@@ -700,7 +697,7 @@ ai_run_melee
 Turn and close until within an angle to launch a melee attack
 =============
 */
-void ai_run_melee(edict_t *self)
+void ai_run_melee(edict_t *self, float enemy_yaw)
 {
 	self->ideal_yaw = enemy_yaw;
 	M_ChangeYaw (self);
@@ -720,7 +717,7 @@ ai_run_missile
 Turn in place until within an angle to launch a missile attack
 =============
 */
-void ai_run_missile(edict_t *self)
+void ai_run_missile(edict_t *self, float enemy_yaw)
 {
 	self->ideal_yaw = enemy_yaw;
 	M_ChangeYaw (self);
@@ -740,7 +737,7 @@ ai_run_slide
 Strafe sideways, but stay at aproximately the same range
 =============
 */
-void ai_run_slide(edict_t *self, float distance)
+void ai_run_slide(edict_t *self, float distance, float enemy_yaw)
 {
 	float	ofs;
 	
@@ -768,7 +765,7 @@ Decides if we're going to attack or do something else
 used by ai_run and ai_stand
 =============
 */
-qboolean ai_checkattack (edict_t *self, float dist)
+qboolean ai_checkattack (edict_t *self, float dist, qboolean *enemy_vis, float *enemy_yaw)
 {
 	vec3_t		temp;
 	qboolean	hesDeadJim;
@@ -800,7 +797,7 @@ qboolean ai_checkattack (edict_t *self, float dist)
 		}
 	}
 
-	enemy_vis = false;
+	*enemy_vis = false;
 
 // see if the enemy is dead
 	hesDeadJim = false;
@@ -863,7 +860,7 @@ qboolean ai_checkattack (edict_t *self, float dist)
 	self->show_hostile = level.time + 1;		// wake up other monsters
 
 // check knowledge of enemy
-	enemy_vis = visible(self, self->enemy);
+	*enemy_vis = visible(self, self->enemy);
 	if (enemy_vis)
 	{
 		self->monsterinfo.search_time = level.time + 5;
@@ -877,22 +874,22 @@ qboolean ai_checkattack (edict_t *self, float dist)
 //			return true;
 //	}
 
-	enemy_infront = infront(self, self->enemy);
-	enemy_range = range(self, self->enemy);
+	//enemy_infront = infront(self, self->enemy);
+	self->monsterinfo.enemy_range = range(self, self->enemy);
 	VectorSubtract (self->enemy->s.origin, self->s.origin, temp);
-	enemy_yaw = vectoyaw(temp);
+	*enemy_yaw = vectoyaw(temp);
 
 
 	// JDC self->ideal_yaw = enemy_yaw;
 
 	if (self->monsterinfo.attack_state == AS_MISSILE)
 	{
-		ai_run_missile (self);
+		ai_run_missile (self, *enemy_yaw);
 		return true;
 	}
 	if (self->monsterinfo.attack_state == AS_MELEE)
 	{
-		ai_run_melee (self);
+		ai_run_melee (self, *enemy_yaw);
 		return true;
 	}
 
@@ -923,6 +920,8 @@ void ai_run (edict_t *self, float dist)
 	vec3_t		v_forward, v_right;
 	float		left, center, right;
 	vec3_t		left_target, right_target;
+	qboolean	enemy_vis;
+	float		enemy_yaw;
 
 	// if we're going to a combat point, just proceed
 	if (self->monsterinfo.aiflags & AI_COMBAT_POINT)
@@ -947,12 +946,12 @@ void ai_run (edict_t *self, float dist)
 			return;
 	}
 
-	if (ai_checkattack (self, dist))
+	if (ai_checkattack (self, dist, &enemy_vis, &enemy_yaw))
 		return;
 
 	if (self->monsterinfo.attack_state == AS_SLIDING)
 	{
-		ai_run_slide (self, dist);
+		ai_run_slide (self, dist, enemy_yaw);
 		return;
 	}
 
