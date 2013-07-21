@@ -103,6 +103,94 @@ void monster_fire_bfg (edict_t *self, vec3_t start, vec3_t aimdir, int damage, i
 //
 // Monster utility functions
 //
+//=============================================================================
+qboolean M_CheckAttack (edict_t *self)
+{
+	vec3_t	spot1, spot2;
+	float	chance;
+	trace_t	tr;
+
+	if (self->enemy->health > 0)
+	{
+	// see if any entities are in the way of the shot
+		VectorCopy (self->s.origin, spot1);
+		spot1[2] += self->viewheight;
+		VectorCopy (self->enemy->s.origin, spot2);
+		spot2[2] += self->enemy->viewheight;
+
+		tr = gi.trace (spot1, NULL, NULL, spot2, self, CONTENTS_SOLID|CONTENTS_MONSTER|CONTENTS_SLIME|CONTENTS_LAVA|CONTENTS_WINDOW);
+
+		// do we have a clear shot?
+		if (tr.ent != self->enemy)
+			return false;
+	}
+	
+	// melee attack
+	if (self->monsterinfo.enemy_range == RANGE_MELEE)
+	{
+		// don't always melee in easy mode
+		if (skill->value == 0 && (rand()&3) )
+			return false;
+		if (self->monsterinfo.melee)
+			self->monsterinfo.attack_state = AS_MELEE;
+		else
+			self->monsterinfo.attack_state = AS_MISSILE;
+		return true;
+	}
+	
+// missile attack
+	if (!self->monsterinfo.attack)
+		return false;
+		
+	if (level.time < self->monsterinfo.attack_finished)
+		return false;
+		
+	if (self->monsterinfo.enemy_range == RANGE_FAR)
+		return false;
+
+	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+	{
+		chance = 0.4;
+	}
+	else if (self->monsterinfo.enemy_range == RANGE_MELEE)
+	{
+		chance = 0.2;
+	}
+	else if (self->monsterinfo.enemy_range == RANGE_NEAR)
+	{
+		chance = 0.1;
+	}
+	else if (self->monsterinfo.enemy_range == RANGE_MID)
+	{
+		chance = 0.02;
+	}
+	else
+	{
+		return false;
+	}
+
+	if (skill->value == 0)
+		chance *= 0.5;
+	else if (skill->value >= 2)
+		chance *= 2;
+
+	if (random () < chance)
+	{
+		self->monsterinfo.attack_state = AS_MISSILE;
+		self->monsterinfo.attack_finished = level.time + 2*random();
+		return true;
+	}
+
+	if (self->flags & FL_FLY)
+	{
+		if (random() < 0.3)
+			self->monsterinfo.attack_state = AS_SLIDING;
+		else
+			self->monsterinfo.attack_state = AS_STRAIGHT;
+	}
+
+	return false;
+}
 
 static void M_FliesOff (edict_t *self)
 {
