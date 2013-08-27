@@ -709,18 +709,19 @@ void BecomeExplosion1(edict_t *self);
 //
 void AI_SetSightClient (void);
 
+int range (edict_t *self, edict_t *other);
+qboolean visible (edict_t *self, edict_t *other);
+qboolean infront (edict_t *self, edict_t *other);
+
+qboolean FindTarget (edict_t *self);
+void FoundTarget (edict_t *self);
+
 void ai_stand (edict_t *self, float dist);
 void ai_move (edict_t *self, float dist);
 void ai_walk (edict_t *self, float dist);
 void ai_turn (edict_t *self, float dist);
 void ai_run (edict_t *self, float dist);
 void ai_charge (edict_t *self, float dist);
-int range (edict_t *self, edict_t *other);
-
-void FoundTarget (edict_t *self);
-qboolean infront (edict_t *self, edict_t *other);
-qboolean visible (edict_t *self, edict_t *other);
-qboolean FacingIdeal(edict_t *self);
 
 //
 // g_weapon.c

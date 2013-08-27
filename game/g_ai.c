@@ -26,364 +26,6 @@ extern cvar_t	*maxclients;
 
 qboolean ai_checkattack (edict_t *self, float dist, qboolean *enemy_vis, float *enemy_yaw);
 
-//============================================================================
-
-
-/*
-=================
-AI_SetSightClient
-
-Called once each frame to set level.sight_client to the
-player to be checked for in findtarget.
-
-If all clients are either dead or in notarget, sight_client
-will be null.
-
-In coop games, sight_client will cycle between the clients.
-=================
-*/
-void AI_SetSightClient (void)
-{
-	edict_t	*ent;
-	int		start, check;
-
-	if (level.sight_client == NULL)
-		start = 1;
-	else
-		start = level.sight_client - g_edicts;
-
-	check = start;
-	while (1)
-	{
-		check++;
-		if (check > game.maxclients)
-			check = 1;
-		ent = &g_edicts[check];
-		if (ent->inuse
-			&& ent->health > 0
-			&& !(ent->flags & FL_NOTARGET) )
-		{
-			level.sight_client = ent;
-			return;		// got one
-		}
-		if (check == start)
-		{
-			level.sight_client = NULL;
-			return;		// nobody to see
-		}
-	}
-}
-
-//============================================================================
-
-/*
-=============
-ai_move
-
-Move the specified distance at current facing.
-This replaces the QC functions: ai_forward, ai_back, ai_pain, and ai_painforward
-==============
-*/
-void ai_move (edict_t *self, float dist)
-{
-	M_walkmove (self, self->s.angles[YAW], dist);
-}
-
-
-/*
-=============
-ai_stand
-
-Used for standing around and looking for players
-Distance is for slight position adjustments needed by the animations
-==============
-*/
-void ai_stand (edict_t *self, float dist)
-{
-	vec3_t	v;
-	qboolean enemy_vis;
-	float enemy_yaw;
-
-	if (dist)
-		M_walkmove (self, self->s.angles[YAW], dist);
-
-	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
-	{
-		if (self->enemy)
-		{
-			VectorSubtract (self->enemy->s.origin, self->s.origin, v);
-			self->ideal_yaw = vectoyaw(v);
-			if (self->s.angles[YAW] != self->ideal_yaw && self->monsterinfo.aiflags & AI_TEMP_STAND_GROUND)
-			{
-				self->monsterinfo.aiflags &= ~(AI_STAND_GROUND | AI_TEMP_STAND_GROUND);
-				self->monsterinfo.run (self);
-			}
-			M_ChangeYaw (self);
-			ai_checkattack (self, 0, &enemy_vis, &enemy_yaw);
-		}
-		else
-			FindTarget (self);
-		return;
-	}
-
-	if (FindTarget (self))
-		return;
-	
-	if (level.time > self->monsterinfo.pausetime)
-	{
-		self->monsterinfo.walk (self);
-		return;
-	}
-
-	if (!(self->spawnflags & 1) && (self->monsterinfo.idle) && (level.time > self->monsterinfo.idle_time))
-	{
-		if (self->monsterinfo.idle_time)
-		{
-			self->monsterinfo.idle (self);
-			self->monsterinfo.idle_time = level.time + 15 + random() * 15;
-		}
-		else
-		{
-			self->monsterinfo.idle_time = level.time + random() * 15;
-		}
-	}
-}
-
-
-/*
-=============
-ai_walk
-
-The monster is walking it's beat
-=============
-*/
-void ai_walk (edict_t *self, float dist)
-{
-	M_MoveToGoal (self, dist);
-
-	// check for noticing a player
-	if (FindTarget (self))
-		return;
-
-	if ((self->monsterinfo.search) && (level.time > self->monsterinfo.idle_time))
-	{
-		if (self->monsterinfo.idle_time)
-		{
-			self->monsterinfo.search (self);
-			self->monsterinfo.idle_time = level.time + 15 + random() * 15;
-		}
-		else
-		{
-			self->monsterinfo.idle_time = level.time + random() * 15;
-		}
-	}
-}
-
-
-/*
-=============
-ai_charge
-
-Turns towards target and advances
-Use this call with a distnace of 0 to replace ai_face
-==============
-*/
-void ai_charge (edict_t *self, float dist)
-{
-	vec3_t	v;
-
-	VectorSubtract (self->enemy->s.origin, self->s.origin, v);
-	self->ideal_yaw = vectoyaw(v);
-	M_ChangeYaw (self);
-
-	if (dist)
-		M_walkmove (self, self->s.angles[YAW], dist);
-}
-
-
-/*
-=============
-ai_turn
-
-don't move, but turn towards ideal_yaw
-Distance is for slight position adjustments needed by the animations
-=============
-*/
-void ai_turn (edict_t *self, float dist)
-{
-	if (dist)
-		M_walkmove (self, self->s.angles[YAW], dist);
-
-	if (FindTarget (self))
-		return;
-	
-	M_ChangeYaw (self);
-}
-
-
-/*
-
-.enemy
-Will be world if not currently angry at anyone.
-
-.movetarget
-The next path spot to walk toward.  If .enemy, ignore .movetarget.
-When an enemy is killed, the monster will try to return to it's path.
-
-.hunt_time
-Set to time + something when the player is in sight, but movement straight for
-him is blocked.  This causes the monster to use wall following code for
-movement direction instead of sighting on the player.
-
-.ideal_yaw
-A yaw angle of the intended direction, which will be turned towards at up
-to 45 deg / state.  If the enemy is in view and hunt_time is not active,
-this will be the exact line towards the enemy.
-
-.pausetime
-A monster will leave it's stand state and head towards it's .movetarget when
-time > .pausetime.
-
-walkmove(angle, speed) primitive is all or nothing
-*/
-
-/*
-=============
-range
-
-returns the range catagorization of an entity reletive to self
-0	melee range, will become hostile even if back is turned
-1	visibility and infront, or visibility and show hostile
-2	infront and show hostile
-3	only triggered by damage
-=============
-*/
-int range (edict_t *self, edict_t *other)
-{
-	vec3_t	v;
-	float	len;
-
-	VectorSubtract (self->s.origin, other->s.origin, v);
-	len = VectorLength (v);
-	if (len < MELEE_DISTANCE)
-		return RANGE_MELEE;
-	if (len < 500)
-		return RANGE_NEAR;
-	if (len < 1000)
-		return RANGE_MID;
-	return RANGE_FAR;
-}
-
-/*
-=============
-visible
-
-returns 1 if the entity is visible to self, even if not infront ()
-=============
-*/
-qboolean visible (edict_t *self, edict_t *other)
-{
-	vec3_t	spot1;
-	vec3_t	spot2;
-	trace_t	trace;
-
-	VectorCopy (self->s.origin, spot1);
-	spot1[2] += self->viewheight;
-	VectorCopy (other->s.origin, spot2);
-	spot2[2] += other->viewheight;
-	trace = gi.trace (spot1, vec3_origin, vec3_origin, spot2, self, MASK_OPAQUE);
-	
-	if (trace.fraction == 1.0)
-		return true;
-	return false;
-}
-
-
-/*
-=============
-infront
-
-returns 1 if the entity is in front (in sight) of self
-=============
-*/
-qboolean infront (edict_t *self, edict_t *other)
-{
-	vec3_t	vec;
-	float	dot;
-	vec3_t	forward;
-	
-	AngleVectors (self->s.angles, forward, NULL, NULL);
-	VectorSubtract (other->s.origin, self->s.origin, vec);
-	VectorNormalize (vec);
-	dot = DotProduct (vec, forward);
-	
-	if (dot > 0.3)
-		return true;
-	return false;
-}
-
-
-//============================================================================
-
-void HuntTarget (edict_t *self)
-{
-	vec3_t	vec;
-
-	self->goalentity = self->enemy;
-	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
-		self->monsterinfo.stand (self);
-	else
-		self->monsterinfo.run (self);
-	VectorSubtract (self->enemy->s.origin, self->s.origin, vec);
-	self->ideal_yaw = vectoyaw(vec);
-	// wait a while before first attack
-	if (!(self->monsterinfo.aiflags & AI_STAND_GROUND))
-		AttackFinished (self, 1);
-}
-
-void FoundTarget (edict_t *self)
-{
-	// let other monsters see this monster for a while
-	if (self->enemy->client)
-	{
-		level.sight_entity = self;
-		level.sight_entity_framenum = level.framenum;
-		level.sight_entity->light_level = 128;
-	}
-
-	self->show_hostile = level.time + 1;		// wake up other monsters
-
-	VectorCopy(self->enemy->s.origin, self->monsterinfo.last_sighting);
-	self->monsterinfo.trail_time = level.time;
-
-	if (!self->combattarget)
-	{
-		HuntTarget (self);
-		return;
-	}
-
-	self->goalentity = self->movetarget = G_PickTarget(self->combattarget);
-	if (!self->movetarget)
-	{
-		self->goalentity = self->movetarget = self->enemy;
-		HuntTarget (self);
-		gi.dprintf("%s at %s, combattarget %s not found\n", self->classname, vtos(self->s.origin), self->combattarget);
-		return;
-	}
-
-	// clear out our combattarget, these are a one shot deal
-	self->combattarget = NULL;
-	self->monsterinfo.aiflags |= AI_COMBAT_POINT;
-
-	// clear the targetname, that point is ours!
-	self->movetarget->targetname = NULL;
-	self->monsterinfo.pausetime = 0;
-
-	// run for it
-	self->monsterinfo.run (self);
-}
-
-
 /*
 ===========
 FindTarget
@@ -580,6 +222,23 @@ qboolean FindTarget (edict_t *self)
 }
 
 
+static void HuntTarget (edict_t *self)
+{
+	vec3_t	vec;
+
+	self->goalentity = self->enemy;
+	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+		self->monsterinfo.stand (self);
+	else
+		self->monsterinfo.run (self);
+	VectorSubtract (self->enemy->s.origin, self->s.origin, vec);
+	self->ideal_yaw = vectoyaw(vec);
+	// wait a while before first attack
+	if (!(self->monsterinfo.aiflags & AI_STAND_GROUND))
+		AttackFinished (self, 1);
+}
+
+
 //=============================================================================
 
 /*
@@ -588,7 +247,7 @@ FacingIdeal
 
 ============
 */
-qboolean FacingIdeal(edict_t *self)
+static qboolean FacingIdeal(edict_t *self)
 {
 	float	delta;
 
@@ -606,7 +265,7 @@ ai_run_melee
 Turn and close until within an angle to launch a melee attack
 =============
 */
-void ai_run_melee(edict_t *self, float enemy_yaw)
+static void ai_run_melee(edict_t *self, float enemy_yaw)
 {
 	self->ideal_yaw = enemy_yaw;
 	M_ChangeYaw (self);
@@ -626,7 +285,7 @@ ai_run_missile
 Turn in place until within an angle to launch a missile attack
 =============
 */
-void ai_run_missile(edict_t *self, float enemy_yaw)
+static void ai_run_missile(edict_t *self, float enemy_yaw)
 {
 	self->ideal_yaw = enemy_yaw;
 	M_ChangeYaw (self);
@@ -646,7 +305,7 @@ ai_run_slide
 Strafe sideways, but stay at aproximately the same range
 =============
 */
-void ai_run_slide(edict_t *self, float distance, float enemy_yaw)
+static void ai_run_slide(edict_t *self, float distance, float enemy_yaw)
 {
 	float	ofs;
 	
@@ -674,7 +333,7 @@ Decides if we're going to attack or do something else
 used by ai_run and ai_stand
 =============
 */
-qboolean ai_checkattack (edict_t *self, float dist, qboolean *enemy_vis, float *enemy_yaw)
+static qboolean ai_checkattack (edict_t *self, float dist, qboolean *enemy_vis, float *enemy_yaw)
 {
 	vec3_t		temp;
 	qboolean	hesDeadJim;
@@ -807,6 +466,333 @@ qboolean ai_checkattack (edict_t *self, float dist, qboolean *enemy_vis, float *
 		return false;
 
 	return self->monsterinfo.checkattack (self);
+}
+
+
+//============================================================================
+
+
+/*
+=================
+AI_SetSightClient
+
+Called once each frame to set level.sight_client to the
+player to be checked for in findtarget.
+
+If all clients are either dead or in notarget, sight_client
+will be null.
+
+In coop games, sight_client will cycle between the clients.
+=================
+*/
+void AI_SetSightClient (void)
+{
+	edict_t	*ent;
+	int		start, check;
+
+	if (level.sight_client == NULL)
+		start = 1;
+	else
+		start = level.sight_client - g_edicts;
+
+	check = start;
+	while (1)
+	{
+		check++;
+		if (check > game.maxclients)
+			check = 1;
+		ent = &g_edicts[check];
+		if (ent->inuse
+			&& ent->health > 0
+			&& !(ent->flags & FL_NOTARGET) )
+		{
+			level.sight_client = ent;
+			return;		// got one
+		}
+		if (check == start)
+		{
+			level.sight_client = NULL;
+			return;		// nobody to see
+		}
+	}
+}
+
+
+//============================================================================
+
+
+/*
+
+.enemy
+Will be world if not currently angry at anyone.
+
+.movetarget
+The next path spot to walk toward.  If .enemy, ignore .movetarget.
+When an enemy is killed, the monster will try to return to it's path.
+
+.hunt_time
+Set to time + something when the player is in sight, but movement straight for
+him is blocked.  This causes the monster to use wall following code for
+movement direction instead of sighting on the player.
+
+.ideal_yaw
+A yaw angle of the intended direction, which will be turned towards at up
+to 45 deg / state.  If the enemy is in view and hunt_time is not active,
+this will be the exact line towards the enemy.
+
+.pausetime
+A monster will leave it's stand state and head towards it's .movetarget when
+time > .pausetime.
+
+walkmove(angle, speed) primitive is all or nothing
+*/
+
+/*
+=============
+range
+
+returns the range catagorization of an entity reletive to self
+0	melee range, will become hostile even if back is turned
+1	visibility and infront, or visibility and show hostile
+2	infront and show hostile
+3	only triggered by damage
+=============
+*/
+int range (edict_t *self, edict_t *other)
+{
+	vec3_t	v;
+	float	len;
+
+	VectorSubtract (self->s.origin, other->s.origin, v);
+	len = VectorLength (v);
+	if (len < MELEE_DISTANCE)
+		return RANGE_MELEE;
+	if (len < 500)
+		return RANGE_NEAR;
+	if (len < 1000)
+		return RANGE_MID;
+	return RANGE_FAR;
+}
+
+/*
+=============
+visible
+
+returns 1 if the entity is visible to self, even if not infront ()
+=============
+*/
+qboolean visible (edict_t *self, edict_t *other)
+{
+	vec3_t	spot1;
+	vec3_t	spot2;
+	trace_t	trace;
+
+	VectorCopy (self->s.origin, spot1);
+	spot1[2] += self->viewheight;
+	VectorCopy (other->s.origin, spot2);
+	spot2[2] += other->viewheight;
+	trace = gi.trace (spot1, vec3_origin, vec3_origin, spot2, self, MASK_OPAQUE);
+	
+	if (trace.fraction == 1.0)
+		return true;
+	return false;
+}
+
+
+/*
+=============
+infront
+
+returns 1 if the entity is in front (in sight) of self
+=============
+*/
+qboolean infront (edict_t *self, edict_t *other)
+{
+	vec3_t	vec;
+	float	dot;
+	vec3_t	forward;
+	
+	AngleVectors (self->s.angles, forward, NULL, NULL);
+	VectorSubtract (other->s.origin, self->s.origin, vec);
+	VectorNormalize (vec);
+	dot = DotProduct (vec, forward);
+	
+	if (dot > 0.3)
+		return true;
+	return false;
+}
+
+
+//============================================================================
+
+
+void FoundTarget (edict_t *self)
+{
+	// let other monsters see this monster for a while
+	if (self->enemy->client)
+	{
+		level.sight_entity = self;
+		level.sight_entity_framenum = level.framenum;
+		level.sight_entity->light_level = 128;
+	}
+
+	self->show_hostile = level.time + 1;		// wake up other monsters
+
+	VectorCopy(self->enemy->s.origin, self->monsterinfo.last_sighting);
+	self->monsterinfo.trail_time = level.time;
+
+	if (!self->combattarget)
+	{
+		HuntTarget (self);
+		return;
+	}
+
+	self->goalentity = self->movetarget = G_PickTarget(self->combattarget);
+	if (!self->movetarget)
+	{
+		self->goalentity = self->movetarget = self->enemy;
+		HuntTarget (self);
+		gi.dprintf("%s at %s, combattarget %s not found\n", self->classname, vtos(self->s.origin), self->combattarget);
+		return;
+	}
+
+	// clear out our combattarget, these are a one shot deal
+	self->combattarget = NULL;
+	self->monsterinfo.aiflags |= AI_COMBAT_POINT;
+
+	// clear the targetname, that point is ours!
+	self->movetarget->targetname = NULL;
+	self->monsterinfo.pausetime = 0;
+
+	// run for it
+	self->monsterinfo.run (self);
+}
+
+
+//============================================================================
+
+
+/*
+=============
+ai_stand
+
+Used for standing around and looking for players
+Distance is for slight position adjustments needed by the animations
+==============
+*/
+void ai_stand (edict_t *self, float dist)
+{
+	vec3_t	v;
+	qboolean enemy_vis;
+	float enemy_yaw;
+
+	if (dist)
+		M_walkmove (self, self->s.angles[YAW], dist);
+
+	if (self->monsterinfo.aiflags & AI_STAND_GROUND)
+	{
+		if (self->enemy)
+		{
+			VectorSubtract (self->enemy->s.origin, self->s.origin, v);
+			self->ideal_yaw = vectoyaw(v);
+			if (self->s.angles[YAW] != self->ideal_yaw && self->monsterinfo.aiflags & AI_TEMP_STAND_GROUND)
+			{
+				self->monsterinfo.aiflags &= ~(AI_STAND_GROUND | AI_TEMP_STAND_GROUND);
+				self->monsterinfo.run (self);
+			}
+			M_ChangeYaw (self);
+			ai_checkattack (self, 0, &enemy_vis, &enemy_yaw);
+		}
+		else
+			FindTarget (self);
+		return;
+	}
+
+	if (FindTarget (self))
+		return;
+	
+	if (level.time > self->monsterinfo.pausetime)
+	{
+		self->monsterinfo.walk (self);
+		return;
+	}
+
+	if (!(self->spawnflags & 1) && (self->monsterinfo.idle) && (level.time > self->monsterinfo.idle_time))
+	{
+		if (self->monsterinfo.idle_time)
+		{
+			self->monsterinfo.idle (self);
+			self->monsterinfo.idle_time = level.time + 15 + random() * 15;
+		}
+		else
+		{
+			self->monsterinfo.idle_time = level.time + random() * 15;
+		}
+	}
+}
+
+
+/*
+=============
+ai_move
+
+Move the specified distance at current facing.
+This replaces the QC functions: ai_forward, ai_back, ai_pain, and ai_painforward
+==============
+*/
+void ai_move (edict_t *self, float dist)
+{
+	M_walkmove (self, self->s.angles[YAW], dist);
+}
+
+
+/*
+=============
+ai_walk
+
+The monster is walking it's beat
+=============
+*/
+void ai_walk (edict_t *self, float dist)
+{
+	M_MoveToGoal (self, dist);
+
+	// check for noticing a player
+	if (FindTarget (self))
+		return;
+
+	if ((self->monsterinfo.search) && (level.time > self->monsterinfo.idle_time))
+	{
+		if (self->monsterinfo.idle_time)
+		{
+			self->monsterinfo.search (self);
+			self->monsterinfo.idle_time = level.time + 15 + random() * 15;
+		}
+		else
+		{
+			self->monsterinfo.idle_time = level.time + random() * 15;
+		}
+	}
+}
+
+
+/*
+=============
+ai_turn
+
+don't move, but turn towards ideal_yaw
+Distance is for slight position adjustments needed by the animations
+=============
+*/
+void ai_turn (edict_t *self, float dist)
+{
+	if (dist)
+		M_walkmove (self, self->s.angles[YAW], dist);
+
+	if (FindTarget (self))
+		return;
+	
+	M_ChangeYaw (self);
 }
 
 
@@ -1022,4 +1008,25 @@ void ai_run (edict_t *self, float dist)
 
 	if (self)
 		self->goalentity = save;
+}
+
+
+/*
+=============
+ai_charge
+
+Turns towards target and advances
+Use this call with a distnace of 0 to replace ai_face
+==============
+*/
+void ai_charge (edict_t *self, float dist)
+{
+	vec3_t	v;
+
+	VectorSubtract (self->enemy->s.origin, self->s.origin, v);
+	self->ideal_yaw = vectoyaw(v);
+	M_ChangeYaw (self);
+
+	if (dist)
+		M_walkmove (self, self->s.angles[YAW], dist);
 }
