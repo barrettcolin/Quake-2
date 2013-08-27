@@ -1,3 +1,7 @@
++set vid_ref gl +set freelook 1 +set hand 0 +set m_pitch 0.022 +set s_initsound 0 +map base2
+
+===
+
 gunner_frames_fidget
 + ai_stand, 0, NULL
 + ai_stand, 0, gunner_idlesound
