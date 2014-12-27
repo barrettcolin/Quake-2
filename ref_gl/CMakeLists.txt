@@ -19,7 +19,7 @@ set(REF_GL_INCS
   #ref_gl.h
   warpsin.h)
   
-add_library(ref_gl SHARED ${REF_GL_SRCS} ${REF_GL_INCS} ref_gl.def)
+add_library(ref_gl SHARED ${REF_GL_SRCS} ${REF_GL_INCS} ../win32/glw_imp.c ref_gl.def)
 add_dependencies(ref_gl shared)
 target_link_libraries(ref_gl shared winmm)
 

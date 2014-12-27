@@ -4,10 +4,18 @@ project(quake2)
 
 add_definitions(-D_CRT_SECURE_NO_WARNINGS -DC_ONLY)
 
-add_library(shared game/q_shared.c win32/glw_imp.c win32/q_shwin.c win32/qgl_win.c game/q_shared.h win32/glw_win.h)
+add_library(shared
+  game/q_shared.c
+  win32/q_shwin.c
+  win32/qgl_win.c
+  win32/rw_ddraw.c
+  win32/rw_dib.c
+  game/q_shared.h
+  win32/glw_win.h)
 
 add_subdirectory(game)
 add_subdirectory(ref_gl)
+add_subdirectory(ref_soft)
 
 set(Q2_SRCS
   client/cl_cin.c
