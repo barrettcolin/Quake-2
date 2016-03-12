@@ -1,4 +1,6 @@
 set(REF_GL_SRCS
+  ../linux/qgl_linux.c
+  ../sdl2_gl1.c
   gl_draw.c
   gl_image.c
   gl_light.c
@@ -19,9 +21,11 @@ set(REF_GL_INCS
   #ref_gl.h
   warpsin.h)
   
-add_library(ref_gl SHARED ${REF_GL_SRCS} ${REF_GL_INCS} ref_gl.def)
-add_dependencies(ref_gl shared)
-target_link_libraries(ref_gl shared winmm)
+#add_library(ref_gl SHARED ${REF_GL_SRCS} ${REF_GL_INCS} ref_gl.def)
+#add_dependencies(ref_gl shared)
+#target_link_libraries(ref_gl shared winmm)
 
-add_custom_command(TARGET ref_gl POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETPATH)\" ${PROJECT_SOURCE_DIR})
-add_custom_command(TARGET ref_gl POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETDIR)$(TARGETNAME).pdb\" ${PROJECT_SOURCE_DIR})
+#add_custom_command(TARGET ref_gl POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETPATH)\" ${PROJECT_SOURCE_DIR})
+#add_custom_command(TARGET ref_gl POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETDIR)$(TARGETNAME).pdb\" ${PROJECT_SOURCE_DIR})
+
+add_library(ref_gl_static ${REF_GL_SRCS} ${REF_GL_INCS})

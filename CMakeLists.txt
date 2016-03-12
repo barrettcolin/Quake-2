@@ -2,9 +2,20 @@ cmake_minimum_required(VERSION 2.6)
 
 project(quake2)
 
-add_definitions(-D_CRT_SECURE_NO_WARNINGS -DC_ONLY)
+include(FindPkgConfig)
+pkg_search_module(SDL2 REQUIRED sdl2)
 
-add_library(shared game/q_shared.c win32/glw_imp.c win32/q_shwin.c win32/qgl_win.c game/q_shared.h win32/glw_win.h)
+include_directories(${SDL2_INCLUDE_DIRS})
+
+add_definitions(-D_CRT_SECURE_NO_WARNINGS -DC_ONLY -DGAME_HARD_LINKED -DREF_HARD_LINKED)
+
+#add_library(shared game/q_shared.c win32/glw_imp.c win32/q_shwin.c win32/qgl_win.c game/q_shared.h win32/glw_win.h)
+add_library(shared
+  game/q_shared.c
+  linux/glob.c
+  linux/q_shlinux.c
+  game/q_shared.h
+  )
 
 add_subdirectory(game)
 add_subdirectory(ref_gl)
@@ -31,6 +42,12 @@ set(Q2_SRCS
   client/snd_mix.c
   client/x86.c
   game/m_flash.c
+  linux/net_udp.c
+  null/cd_null.c
+  null/in_null.c
+  null/snddma_null.c
+  #null/sys_null.c
+  null/vid_null.c
   qcommon/cmd.c
   qcommon/cmodel.c
   qcommon/common.c
@@ -48,14 +65,16 @@ set(Q2_SRCS
   server/sv_send.c
   server/sv_user.c
   server/sv_world.c
-  win32/cd_win.c
-  win32/conproc.c
-  win32/in_win.c
-  win32/net_wins.c
-  win32/snd_win.c
-  win32/sys_win.c
-  win32/vid_dll.c
-  win32/vid_menu.c)
+  sdl2.c
+  #win32/cd_win.c
+  #win32/conproc.c
+  #win32/in_win.c
+  #win32/net_wins.c
+  #win32/snd_win.c
+  #win32/sys_win.c
+  #win32/vid_dll.c
+  #win32/vid_menu.c
+  )
 
 set(Q2_INCS
   client/anorms.h
@@ -76,11 +95,14 @@ set(Q2_INCS
   qcommon/qcommon.h
   qcommon/qfiles.h
   server/server.h
-  win32/conproc.h
-  win32/winquake.h)
+  #win32/conproc.h
+  #win32/winquake.h
+  )
 
-add_executable(Quake2 WIN32 ${Q2_SRCS} ${Q2_INCS} win32/q2.rc win32/q2.ico)
-target_link_libraries(Quake2 shared winmm wsock32)
+#add_executable(Quake2 WIN32 ${Q2_SRCS} ${Q2_INCS} win32/q2.rc win32/q2.ico)
+#target_link_libraries(Quake2 shared winmm wsock32)
+add_executable(Quake2 ${Q2_SRCS} ${Q2_INCS})
+target_link_libraries(Quake2 game_static ref_gl_static shared ${SDL2_LIBRARIES} GL m)
 
-add_custom_command(TARGET Quake2 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETPATH)\" ${PROJECT_SOURCE_DIR})
-add_custom_command(TARGET Quake2 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETDIR)$(TARGETNAME).pdb\" ${PROJECT_SOURCE_DIR})
+#add_custom_command(TARGET Quake2 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETPATH)\" ${PROJECT_SOURCE_DIR})
+#add_custom_command(TARGET Quake2 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETDIR)$(TARGETNAME).pdb\" ${PROJECT_SOURCE_DIR})

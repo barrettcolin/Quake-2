@@ -20,6 +20,7 @@ DIRECT LINK GLUE
 #define	MAXPRINTMSG	4096
 void VID_Printf (int print_level, char *fmt, ...)
 {
+#if 0
         va_list		argptr;
         char		msg[MAXPRINTMSG];
 
@@ -31,10 +32,12 @@ void VID_Printf (int print_level, char *fmt, ...)
                 Com_Printf ("%s", msg);
         else
                 Com_DPrintf ("%s", msg);
+#endif
 }
 
 void VID_Error (int err_level, char *fmt, ...)
 {
+#if 0
         va_list		argptr;
         char		msg[MAXPRINTMSG];
 
@@ -43,6 +46,7 @@ void VID_Error (int err_level, char *fmt, ...)
         va_end (argptr);
 
 		Com_Error (err_level, "%s", msg);
+#endif
 }
 
 void VID_NewWindow (int width, int height)
@@ -92,8 +96,8 @@ void	VID_Init (void)
 {
     refimport_t	ri;
 
-    viddef.width = 320;
-    viddef.height = 240;
+    viddef.width = 640;
+    viddef.height = 480;
 
     ri.Cmd_AddCommand = Cmd_AddCommand;
     ri.Cmd_RemoveCommand = Cmd_RemoveCommand;
@@ -110,6 +114,7 @@ void	VID_Init (void)
     ri.Cvar_Set = Cvar_Set;
     ri.Cvar_SetValue = Cvar_SetValue;
     ri.Vid_GetModeInfo = VID_GetModeInfo;
+    ri.Vid_MenuInit = VID_MenuInit;
 
     re = GetRefAPI(ri);
 

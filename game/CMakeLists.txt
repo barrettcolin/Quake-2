@@ -75,9 +75,11 @@ set(GAME_INCS
   m_tank.h
   q_shared.h)
   
-add_library(gamex86 SHARED ${GAME_SRCS} ${GAME_INCS} game.def)
-add_dependencies(gamex86 shared)
-target_link_libraries(gamex86 shared)
+#add_library(gamex86 SHARED ${GAME_SRCS} ${GAME_INCS} game.def)
+#add_dependencies(gamex86 shared)
+#target_link_libraries(gamex86 shared)
 
-add_custom_command(TARGET gamex86 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETPATH)\" ${PROJECT_SOURCE_DIR})
-add_custom_command(TARGET gamex86 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETDIR)$(TARGETNAME).pdb\" ${PROJECT_SOURCE_DIR})
+#add_custom_command(TARGET gamex86 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETPATH)\" ${PROJECT_SOURCE_DIR})
+#add_custom_command(TARGET gamex86 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETDIR)$(TARGETNAME).pdb\" ${PROJECT_SOURCE_DIR})
+
+add_library(game_static ${GAME_SRCS} ${GAME_INCS})
