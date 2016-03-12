@@ -26,9 +26,9 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
 
     window = SDL_CreateWindow("Quake 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_OPENGL);
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
     GLcontext = SDL_GL_CreateContext(window);
