@@ -12,13 +12,17 @@ game_export_t *GetGameAPI(game_import_t *import);
 
 void Sys_Init(void)
 {
+    SDL_Init(SDL_INIT_EVERYTHING);
 }
 
 void Sys_Quit(void)
 {
-    //<todo.cb SDL_QUIT
+    SDL_Quit();
+
     exit(0);
 }
+
+
 
 void Sys_Error(char *error, ...)
 {
@@ -62,6 +66,10 @@ void Sys_ConsoleOutput(char *string)
 
 // IN
 cvar_t *in_joystick;
+
+static qboolean mouseActive;
+static Sint32 mouseRelX;
+static Sint32 mouseRelY;
 
 static int IN_SDL2_key(SDL_Keycode key)
 {
@@ -128,9 +136,23 @@ static int IN_SDL2_key(SDL_Keycode key)
     }
 }
 
+static int IN_SDL2_button(int button)
+{
+    switch(button)
+    {
+    case SDL_BUTTON_LEFT: return K_MOUSE1;
+    case SDL_BUTTON_RIGHT: return K_MOUSE2;
+    case SDL_BUTTON_MIDDLE: return K_MOUSE3;
+    default: return 0;
+    }
+}
+
 void IN_Init(void)
 {
     in_joystick = Cvar_Get("in_joystick", "0", CVAR_ARCHIVE);
+
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+    mouseActive = true;
 }
 
 void IN_Shutdown(void)
@@ -139,10 +161,29 @@ void IN_Shutdown(void)
 
 void IN_Frame(void)
 {
+    if(cl.refresh_prepped == false || cls.key_dest == key_console || cls.key_dest == key_menu)
+    {
+        SDL_SetRelativeMouseMode(SDL_FALSE);
+        mouseActive = false;
+        return;
+    }
+
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+    mouseActive = true;
 }
 
 void IN_Move(usercmd_t *cmd)
 {
+    float yawDelta, pitchDelta;
+
+    if(!mouseActive)
+        return;
+
+    yawDelta = sensitivity->value * mouseRelX * m_yaw->value;
+    pitchDelta = sensitivity->value * mouseRelY * m_pitch->value;
+
+    cl.viewangles[YAW] -= yawDelta;
+    cl.viewangles[PITCH] += pitchDelta;
 }
 
 void IN_Commands(void)
@@ -376,17 +417,15 @@ const char *VID_MenuKey(int k)
 // main
 int main(int argc, char **argv)
 {
-    SDL_Init(SDL_INIT_EVERYTHING);
-
     Qcommon_Init(argc, argv);
     {
-        int prevTime, currTime;
-        prevTime = Sys_Milliseconds();
+        int prevTime = Sys_Milliseconds();
 
         for(;;)
         {
-            int deltaTime;
-            currTime = Sys_Milliseconds();
+            int deltaTime, currTime = Sys_Milliseconds();
+
+            mouseRelX = mouseRelY = 0;
 
             SDL_Event event;
             while (SDL_PollEvent(&event))
@@ -397,11 +436,24 @@ int main(int argc, char **argv)
                 case SDL_KEYUP:
                     Key_Event(IN_SDL2_key(event.key.keysym.sym), event.type == SDL_KEYDOWN, currTime);
                     break;
+
+                case SDL_MOUSEBUTTONDOWN:
+                case SDL_MOUSEBUTTONUP:
+                    Key_Event(IN_SDL2_button(event.button.button), event.type == SDL_MOUSEBUTTONDOWN, currTime);
+                    break;
+
+                case SDL_MOUSEMOTION:
+                    mouseRelX = event.motion.xrel;
+                    mouseRelY = event.motion.yrel;
+                    break;
+
+                case SDL_QUIT:
+                    Com_Quit();
+                    break;
                 }
             }
 
             deltaTime = currTime - prevTime;
-
             if(deltaTime == 0)
                 continue;
 
@@ -411,8 +463,5 @@ int main(int argc, char **argv)
         }
     }
 
-    Qcommon_Shutdown();
-
-    SDL_Quit();
     return 0;
 }
