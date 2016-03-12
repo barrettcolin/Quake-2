@@ -1,6 +1,7 @@
 #include "SDL.h"
 
 #include "client/client.h"
+#include "client/snd_loc.h"
 #include "game/game.h"
 
 unsigned sys_frame_time;
@@ -9,7 +10,6 @@ qboolean stdin_active = true;
 // Sys
 void Sys_Init(void)
 {
-
 }
 
 void Sys_Quit(void)
@@ -93,6 +93,119 @@ void IN_ActivateMouse(void)
 
 void IN_DeactivateMouse(void)
 {
+}
+
+// SNDDMA
+static int snd_inited;
+
+static int dma_sample_bytes, dma_pos, dma_size;
+static unsigned char *dma_buffer;
+
+static unsigned next_power_of_two(unsigned n)
+{
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n++;
+
+    return n;
+}
+
+static void paint_audio(void *unused, Uint8 *stream, int num_bytes)
+{
+    int current_byte = dma_pos * dma_sample_bytes;
+    int num_bytes_to_end_of_buffer = dma_size - current_byte;
+
+    int bytes1 = (num_bytes < num_bytes_to_end_of_buffer)
+        ? num_bytes
+        : num_bytes_to_end_of_buffer;
+
+    memcpy(stream, dma.buffer + current_byte, bytes1);
+    dma_pos += (bytes1 / dma_sample_bytes);
+
+    if (bytes1 < num_bytes)
+    {
+        int bytes2 = num_bytes - bytes1;
+        memcpy(stream + bytes1, dma.buffer, bytes2);
+        dma_pos = (bytes2 / dma_sample_bytes);
+    }
+}
+
+qboolean SNDDMA_Init(void)
+{
+    SDL_AudioSpec desired = { 0 }, obtained = { 0 };
+
+    // desired.freq
+    if (s_khz->value == 44)
+        desired.freq = 44100;
+    else if (s_khz->value == 22)
+        desired.freq = 22050;
+    else
+        desired.freq = 11025;
+
+    // desired.format
+    if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
+        desired.format = AUDIO_S16MSB;
+    else
+        desired.format = AUDIO_S16LSB;
+
+    desired.channels = 2;
+    desired.samples = 512;
+    desired.callback = paint_audio;
+
+    if (SDL_OpenAudio(&desired, &obtained) < 0)
+    {
+        Com_Printf("Couldn't open SDL audio: %s\n", SDL_GetError());
+        return 0;
+    }
+
+    memset(&dma, 0, sizeof(dma));
+    dma.samplebits = (obtained.format & 0xFF);
+    dma.speed = obtained.freq;
+    dma.channels = obtained.channels;
+    dma.samples = next_power_of_two(dma.speed * dma.channels);
+    dma.submission_chunk = 1;
+
+    dma_sample_bytes = dma.samplebits / 8;
+    dma_size = (dma.samples * dma_sample_bytes);
+    dma.buffer = dma_buffer = calloc(1, dma_size);
+
+    SDL_PauseAudio(0);
+
+    snd_inited = 1;
+    return true;
+}
+
+int SNDDMA_GetDMAPos(void)
+{
+    return dma_pos;
+}
+
+void SNDDMA_Shutdown(void)
+{
+    if (snd_inited)
+    {
+        SDL_PauseAudio(1);
+        SDL_CloseAudio();
+
+        free(dma_buffer);
+        dma_size = dma_pos = 0;
+
+        snd_inited = 0;
+    }
+}
+
+void SNDDMA_BeginPainting(void)
+{
+    SDL_LockAudio();
+}
+
+void SNDDMA_Submit(void)
+{
+    SDL_UnlockAudio();
 }
 
 // CDAudio
@@ -191,6 +304,8 @@ static int quakeKey(SDL_Keycode key)
 
 int main(int argc, char **argv)
 {
+    SDL_Init(SDL_INIT_EVERYTHING);
+
     Qcommon_Init(argc, argv);
     {
         int prevTime, currTime;
@@ -227,5 +342,8 @@ int main(int argc, char **argv)
         }
     }
 
+    Qcommon_Shutdown();
+
+    SDL_Quit();
     return 0;
 }

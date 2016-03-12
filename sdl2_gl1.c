@@ -7,19 +7,21 @@ static SDL_GLContext GLcontext;
 
 int GLimp_Init(void *hinstance, void *hWnd)
 {
-    return SDL_Init(SDL_INIT_EVERYTHING) == 0 ? 1 : 0;
+    return 1;
 }
 
 void GLimp_Shutdown(void)
 {
     SDL_GL_DeleteContext(GLcontext);
     SDL_DestroyWindow(window);
-
-    SDL_Quit();
 }
 
 int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
 {
+    SDL_GL_DeleteContext(GLcontext);
+    if(window)
+        SDL_DestroyWindow(window);
+
     *pwidth = 640;
     *pheight = 480;
 
