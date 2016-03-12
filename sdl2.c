@@ -338,6 +338,9 @@ refexport_t	re;
 
 refexport_t GetRefAPI (refimport_t rimp);
 
+static const int vidWidth = 640;
+static const int vidHeight = 480;
+
 void VID_Printf(int print_level, char *fmt, ...)
 {
 }
@@ -348,8 +351,8 @@ void VID_Error(int err_level, char *fmt, ...)
 
 qboolean VID_GetModeInfo(int *width, int *height, int mode)
 {
-    *width = 640;
-    *height = 480;
+    *width = vidWidth;
+    *height = vidHeight;
     return true;
 }
 
