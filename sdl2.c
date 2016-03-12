@@ -14,7 +14,8 @@ void Sys_Init(void)
 
 void Sys_Quit(void)
 {
-
+    //<todo.cb SDL_QUIT
+    exit(0);
 }
 
 void Sys_Error(char *error, ...)
