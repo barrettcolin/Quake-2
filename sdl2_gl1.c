@@ -5,6 +5,9 @@
 static SDL_Window *window;
 static SDL_GLContext GLcontext;
 
+static const int windowWidth = 512;
+static const int windowHeight = 384;
+
 int GLimp_Init(void *hinstance, void *hWnd)
 {
     return 1;
@@ -22,10 +25,7 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
     if(window)
         SDL_DestroyWindow(window);
 
-    *pwidth = 640;
-    *pheight = 480;
-
-    window = SDL_CreateWindow("Quake 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_OPENGL);
+    window = SDL_CreateWindow("Quake 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, windowWidth, windowHeight, SDL_WINDOW_OPENGL);
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
@@ -33,6 +33,11 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
     GLcontext = SDL_GL_CreateContext(window);
+
+    ri.Vid_NewWindow(windowWidth, windowHeight);
+
+    *pwidth = windowWidth;
+    *pheight = windowHeight;
 
     return rserr_ok;
 }
