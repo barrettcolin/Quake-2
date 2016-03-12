@@ -7,8 +7,7 @@ static SDL_GLContext GLcontext;
 
 int GLimp_Init(void *hinstance, void *hWnd)
 {
-    SDL_Init(SDL_INIT_VIDEO);
-    return 1;
+    return SDL_Init(SDL_INIT_EVERYTHING) == 0 ? 1 : 0;
 }
 
 void GLimp_Shutdown(void)

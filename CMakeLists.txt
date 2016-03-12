@@ -43,10 +43,7 @@ set(Q2_SRCS
   client/x86.c
   game/m_flash.c
   linux/net_udp.c
-  null/cd_null.c
-  null/in_null.c
   null/snddma_null.c
-  #null/sys_null.c
   null/vid_null.c
   qcommon/cmd.c
   qcommon/cmodel.c
