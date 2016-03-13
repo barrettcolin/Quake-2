@@ -335,8 +335,12 @@ void CDAudio_Update(void)
 // VID
 viddef_t viddef;
 refexport_t	re;
+cvar_t *vid_ref;
+cvar_t *vid_fullscreen;
 
 refexport_t GetRefAPI (refimport_t rimp);
+
+static qboolean reflib_active;
 
 typedef struct vidmode_s
 {
@@ -358,6 +362,11 @@ static vidmode_t vid_modes[] =
 };
 
 #define VID_NUM_MODES (sizeof(vid_modes) / sizeof(vid_modes[0]))
+
+static void VID_Restart_f(void)
+{
+    vid_ref->modified = true;
+}
 
 void VID_Printf(int print_level, char *fmt, ...)
 {
@@ -385,44 +394,70 @@ void VID_NewWindow(int width, int height)
 
 void VID_Init(void)
 {
-    refimport_t	ri;
-    {
-        ri.Cmd_AddCommand = Cmd_AddCommand;
-        ri.Cmd_RemoveCommand = Cmd_RemoveCommand;
-        ri.Cmd_Argc = Cmd_Argc;
-        ri.Cmd_Argv = Cmd_Argv;
-        ri.Cmd_ExecuteText = Cbuf_ExecuteText;
-        ri.Con_Printf = VID_Printf;
-        ri.Sys_Error = VID_Error;
-        ri.FS_LoadFile = FS_LoadFile;
-        ri.FS_FreeFile = FS_FreeFile;
-        ri.FS_Gamedir = FS_Gamedir;
-        ri.Cvar_Get = Cvar_Get;
-        ri.Cvar_Set = Cvar_Set;
-        ri.Cvar_SetValue = Cvar_SetValue;
-        ri.Vid_GetModeInfo = VID_GetModeInfo;
-        ri.Vid_NewWindow = VID_NewWindow;
-        ri.Vid_MenuInit = VID_MenuInit;
-    }
+    vid_ref = Cvar_Get("vid_ref", "soft", CVAR_ARCHIVE);
+    vid_fullscreen = Cvar_Get("vid_fullscreen", "0", CVAR_ARCHIVE);
 
-    re = GetRefAPI(ri);
+    Cmd_AddCommand("vid_restart", VID_Restart_f);
 
-    if (re.api_version != API_VERSION)
-        Com_Error (ERR_FATAL, "Re has incompatible api_version");
-
-    // call the init function
-    if (re.Init (NULL, NULL) == -1)
-        Com_Error (ERR_FATAL, "Couldn't start refresh");
+    VID_CheckChanges();
 }
 
 void VID_Shutdown(void)
 {
-    if (re.Shutdown)
-        re.Shutdown();
+    if(reflib_active)
+    {
+        if (re.Shutdown)
+        {
+            re.Shutdown();
+        }
+
+        reflib_active = false;
+    }
 }
 
 void VID_CheckChanges(void)
 {
+    if(vid_ref->modified)
+    {
+        S_StopAllSounds();
+
+        vid_ref->modified = false;
+        vid_fullscreen->modified = true;
+        cl.refresh_prepped = false;
+
+        VID_Shutdown();
+
+        refimport_t	ri;
+        {
+            ri.Cmd_AddCommand = Cmd_AddCommand;
+            ri.Cmd_RemoveCommand = Cmd_RemoveCommand;
+            ri.Cmd_Argc = Cmd_Argc;
+            ri.Cmd_Argv = Cmd_Argv;
+            ri.Cmd_ExecuteText = Cbuf_ExecuteText;
+            ri.Con_Printf = VID_Printf;
+            ri.Sys_Error = VID_Error;
+            ri.FS_LoadFile = FS_LoadFile;
+            ri.FS_FreeFile = FS_FreeFile;
+            ri.FS_Gamedir = FS_Gamedir;
+            ri.Cvar_Get = Cvar_Get;
+            ri.Cvar_Set = Cvar_Set;
+            ri.Cvar_SetValue = Cvar_SetValue;
+            ri.Vid_GetModeInfo = VID_GetModeInfo;
+            ri.Vid_NewWindow = VID_NewWindow;
+            ri.Vid_MenuInit = VID_MenuInit;
+        }
+
+        re = GetRefAPI(ri);
+
+        if (re.api_version != API_VERSION)
+            Com_Error (ERR_FATAL, "Re has incompatible api_version");
+
+        // call the init function
+        if (re.Init (NULL, NULL) == -1)
+            Com_Error (ERR_FATAL, "Couldn't start refresh");
+
+        reflib_active = true;
+    }
 }
 
 void VID_MenuInit(void)

@@ -7,13 +7,24 @@ static SDL_GLContext GLcontext;
 
 int GLimp_Init(void *hinstance, void *hWnd)
 {
+    gl_config.allow_cds = true;
+
     return 1;
 }
 
 void GLimp_Shutdown(void)
 {
-    SDL_GL_DeleteContext(GLcontext);
-    SDL_DestroyWindow(window);
+    if(GLcontext)
+    {
+        SDL_GL_DeleteContext(GLcontext);
+        GLcontext = 0;
+    }
+
+    if(window)
+    {
+        SDL_DestroyWindow(window);
+        window = NULL;
+    }
 }
 
 int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
@@ -24,11 +35,8 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
         return rserr_invalid_mode;
     }
 
-    SDL_GL_DeleteContext(GLcontext);
-    if(window)
-    {
-        SDL_DestroyWindow(window);
-    }
+    //<todo.cb destroy window and context; might be able to do something nicer here
+    GLimp_Shutdown();
 
     Uint32 flags = SDL_WINDOW_OPENGL;
     if(fullscreen)
@@ -75,5 +83,7 @@ void GLimp_BeginFrame(float camera_separation)
 void GLimp_EndFrame(void)
 {
     if(window)
+    {
         SDL_GL_SwapWindow(window);
+    }
 }
