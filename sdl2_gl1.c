@@ -18,16 +18,29 @@ void GLimp_Shutdown(void)
 
 int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
 {
-    if(!ri.Vid_GetModeInfo(pwidth, pheight, mode))
+    int desiredWidth, desiredHeight, winWidth, winHeight;
+    if(!ri.Vid_GetModeInfo(&desiredWidth, &desiredHeight, mode))
     {
         return rserr_invalid_mode;
     }
 
     SDL_GL_DeleteContext(GLcontext);
     if(window)
+    {
         SDL_DestroyWindow(window);
+    }
 
-    window = SDL_CreateWindow("Quake 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, *pwidth, *pheight, SDL_WINDOW_OPENGL);
+    Uint32 flags = SDL_WINDOW_OPENGL;
+    if(fullscreen)
+    {
+        flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    }
+
+    window = SDL_CreateWindow("Quake 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, desiredWidth, desiredHeight, flags);
+    if(!window)
+    {
+        return rserr_unknown;
+    }
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
@@ -35,9 +48,19 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
     GLcontext = SDL_GL_CreateContext(window);
+    if(!GLcontext)
+    {
+        SDL_DestroyWindow(window);
+        window = NULL;
+        return rserr_unknown;
+    }
 
-    ri.Vid_NewWindow(*pwidth, *pheight);
+    SDL_GetWindowSize(window, &winWidth, &winHeight);
 
+    ri.Vid_NewWindow(winWidth, winHeight);
+
+    *pwidth = winWidth;
+    *pheight = winHeight;
     return rserr_ok;
 }
 
