@@ -338,8 +338,26 @@ refexport_t	re;
 
 refexport_t GetRefAPI (refimport_t rimp);
 
-static const int vidWidth = 640;
-static const int vidHeight = 480;
+typedef struct vidmode_s
+{
+    int width, height;
+} vidmode_t;
+
+static vidmode_t vid_modes[] =
+{
+    { 320, 240 },
+    { 400, 300 },
+    { 512, 384 },
+    { 640, 480 },
+    { 800, 600 },
+    { 960, 720 },
+    { 1024, 768 },
+    { 1152, 864 },
+    { 1280, 960 },
+    { 1600, 1200 },
+};
+
+#define VID_NUM_MODES (sizeof(vid_modes) / sizeof(vid_modes[0]))
 
 void VID_Printf(int print_level, char *fmt, ...)
 {
@@ -351,8 +369,11 @@ void VID_Error(int err_level, char *fmt, ...)
 
 qboolean VID_GetModeInfo(int *width, int *height, int mode)
 {
-    *width = vidWidth;
-    *height = vidHeight;
+    if(mode < 0 || mode >= VID_NUM_MODES)
+        return false;
+
+    *width = vid_modes[mode].width;
+    *height = vid_modes[mode].height;
     return true;
 }
 

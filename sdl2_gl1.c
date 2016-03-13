@@ -18,7 +18,10 @@ void GLimp_Shutdown(void)
 
 int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
 {
-    ri.Vid_GetModeInfo(pwidth, pheight, mode);
+    if(!ri.Vid_GetModeInfo(pwidth, pheight, mode))
+    {
+        return rserr_invalid_mode;
+    }
 
     SDL_GL_DeleteContext(GLcontext);
     if(window)
