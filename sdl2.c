@@ -22,8 +22,6 @@ void Sys_Quit(void)
     exit(0);
 }
 
-
-
 void Sys_Error(char *error, ...)
 {
 
@@ -161,7 +159,8 @@ void IN_Shutdown(void)
 
 void IN_Frame(void)
 {
-    if(cl.refresh_prepped == false || cls.key_dest == key_console || cls.key_dest == key_menu)
+    qboolean isFullscreen = (Cvar_VariableValue("vid_fullscreen") != 0);
+    if(!isFullscreen && (cl.refresh_prepped == false || cls.key_dest == key_console || cls.key_dest == key_menu))
     {
         SDL_SetRelativeMouseMode(SDL_FALSE);
         mouseActive = false;
@@ -177,7 +176,9 @@ void IN_Move(usercmd_t *cmd)
     float yawDelta, pitchDelta;
 
     if(!mouseActive)
+    {
         return;
+    }
 
     yawDelta = sensitivity->value * mouseRelX * m_yaw->value;
     pitchDelta = sensitivity->value * mouseRelY * m_pitch->value;
@@ -335,6 +336,8 @@ void CDAudio_Update(void)
 // VID
 viddef_t viddef;
 refexport_t	re;
+
+//<todo.cb multiply defined in gl_rmain when statically linked, though should have same value
 cvar_t *vid_ref;
 cvar_t *vid_fullscreen;
 
