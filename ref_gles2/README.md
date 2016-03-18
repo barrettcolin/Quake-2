@@ -1,0 +1,48 @@
+R_SetGL2D
+GL_SetDefaultState
+Draw_Char
+Draw_StretchPic
+Draw_Pic
+R_SetupGL/MYgluPerspective
+R_Clear
+R_RotateForEntity
+DrawGLPoly
+GL_TexEnv
+GL_BeginBuildingLightmaps
+GL_RenderLightmappedPoly
+R_DrawWorld
+MakeSkyVec
+R_DrawSkyBox
+
+R_DrawSpriteModel
+R_DrawNullModel
+R_DrawEntitiesOnList (transparent)
+GL_DrawParticles
+R_DrawParticles
+R_PolyBlend (flash)
+R_SetupFrame (NOWORLDMODEL)
+R_RenderView (qglFinish)
+GL_DrawColoredStereoLinePair
+GL_DrawStereoPattern
+R_BeginFrame (gl_drawbuffer)
+R_SetPalette
+R_DrawBeam
+GL_SetDefaultState (qglPointParameterfEXT, qglColorTableEXT)
+DrawGLFlowingPoly
+R_DrawTriangleOutlines
+DrawGLPolyChain
+Draw_TileClear
+Draw_Fill
+Draw_FadeScreen
+Draw_StretchRaw
+GL_SetTexturePalette (qglColorTableEXT)
+GL_EnableMultitexture
+GL_InitImages, GL_Upload32/GL_Upload8 (qglColorTableEXT)
+GL_DrawAliasFrameLerp
+R_DrawAliasModel
+R_RenderBrushPoly (SURF_DRAWTURB)
+R_DrawInlineBModel (RF_TRANSLUCENT, qglMTexCoord2fSGIS)
+R_DrawBrushModel
+EmitWaterPolys
+R_RenderDlight
+GL_DrawAliasShadow
