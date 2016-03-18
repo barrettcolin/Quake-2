@@ -362,6 +362,10 @@ static vidmode_t vid_modes[] =
     { 1152, 864 },
     { 1280, 960 },
     { 1600, 1200 },
+
+    // 1080p
+    { 720, 540 },
+    { 1440, 1080 },
 };
 
 #define VID_NUM_MODES (sizeof(vid_modes) / sizeof(vid_modes[0]))
