@@ -375,12 +375,37 @@ static void VID_Restart_f(void)
     vid_ref->modified = true;
 }
 
+#define VID_MSG_SIZE 4096
+
 void VID_Printf(int print_level, char *fmt, ...)
 {
+    char msg[VID_MSG_SIZE];
+    va_list args;
+
+    va_start(args, fmt);
+    vsnprintf(msg, sizeof(msg), fmt, args);
+    va_end(args);
+
+    if(print_level == PRINT_ALL)
+    {
+        Com_Printf("%s", msg);
+    }
+    else
+    {
+        Com_DPrintf("%s", msg);
+    }
 }
 
 void VID_Error(int err_level, char *fmt, ...)
 {
+    char msg[VID_MSG_SIZE];
+    va_list args;
+
+    va_start(args, fmt);
+    vsnprintf(msg, sizeof(msg), fmt, args);
+    va_end(args);
+
+    Com_Error(err_level, "%s", msg);
 }
 
 qboolean VID_GetModeInfo(int *width, int *height, int mode)
