@@ -19,6 +19,8 @@ add_library(shared
 
 add_subdirectory(game)
 add_subdirectory(ref_gl)
+#add_subdirectory(ref_gl2)
+#add_subdirectory(ref_gles2)
 
 set(Q2_SRCS
   client/cl_cin.c
