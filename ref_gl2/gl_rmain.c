@@ -753,7 +753,7 @@ void R_SetupGL (void)
         glDisable(GL_CULL_FACE);
 
     glDisable(GL_BLEND);
-    glDisable(GL_ALPHA_TEST);
+    //glDisable(GL_ALPHA_TEST);
     glEnable(GL_DEPTH_TEST);
 }
 
@@ -876,7 +876,7 @@ void	R_SetGL2D (void)
     glDisable (GL_DEPTH_TEST);
     glDisable (GL_CULL_FACE);
     glDisable (GL_BLEND);
-    glEnable (GL_ALPHA_TEST);
+    //glEnable (GL_ALPHA_TEST);
     glColor4f (1,1,1,1);
 }
 
@@ -1172,6 +1172,8 @@ int R_Init( void *hinstance, void *hWnd )
 	R_InitParticleTexture ();
 	Draw_InitLocal ();
 
+    Material_Init();
+
     err = glGetError();
 	if ( err != GL_NO_ERROR )
 		ri.Con_Printf (PRINT_ALL, "glGetError() = 0x%x\n", err);
@@ -1188,6 +1190,8 @@ void R_Shutdown (void)
 	ri.Cmd_RemoveCommand ("screenshot");
 	ri.Cmd_RemoveCommand ("imagelist");
 	ri.Cmd_RemoveCommand ("gl_strings");
+
+    Material_Shutdown();
 
 	Mod_FreeAll ();
 
@@ -1255,6 +1259,9 @@ void R_BeginFrame( float camera_separation )
 	}
 
 	GLimp_BeginFrame( camera_separation );
+
+    //<todo hack until all drawing is through Material
+    Material_SetCurrent(&g_default_material);
 
     R_SetGL2D();
 #if 0

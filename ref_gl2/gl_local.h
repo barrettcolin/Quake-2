@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <stdio.h>
 
+#define GL_GLEXT_PROTOTYPES
 #include "SDL_opengl.h"
 
 #include <math.h>
@@ -403,6 +404,8 @@ typedef struct
 	qboolean stereo_enabled;
 
     GLfloat world_matrix[16]; // for rendering world alpha surfaces after everything else
+
+    struct material_s const *current_material;
 } glstate_t;
 
 extern glconfig_t  gl_config;
@@ -435,3 +438,50 @@ int     	GLimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen
 void		GLimp_AppActivate( qboolean active );
 void		GLimp_EnableLogging( qboolean enable );
 void		GLimp_LogNewFrame( void );
+
+// Shader material
+typedef enum
+{
+    mt_generic,
+
+    num_material_types
+} materialtype_t;
+
+typedef enum
+{
+    tu_diffuse,
+
+    num_texture_units
+} textureunit_t;
+
+typedef struct materialdesc_s
+{
+    materialtype_t type;
+} materialdesc_t;
+
+typedef struct material_s
+{
+    materialdesc_t desc;
+    GLuint program;
+} material_t;
+
+typedef struct vertex_s
+{
+    float x, y, z;
+    float s, t;
+} vertex_t;
+
+void Material_Init();
+
+void Material_Shutdown();
+
+material_t *Material_Find(materialdesc_t const *desc);
+
+void Material_Render(material_t const *mat, int num_verts, vertex_t const *verts, GLuint textures[num_texture_units]);
+
+extern material_t *g_generic_material;
+
+//<todo internal glue
+void Material_SetCurrent(material_t const *mat);
+
+extern material_t g_default_material;

@@ -58,6 +58,9 @@ void Draw_Char (int x, int y, int num)
 	int				row, col;
 	float			frow, fcol, size;
 
+    vertex_t verts[4];
+    GLuint textures[num_texture_units];
+
 	num &= 255;
 	
 	if ( (num&127) == 32 )
@@ -73,18 +76,34 @@ void Draw_Char (int x, int y, int num)
 	fcol = col*0.0625;
 	size = 0.0625;
 
-	GL_Bind (draw_chars->texnum);
+    verts[0].x = x;
+    verts[0].y = y;
+    verts[0].z = 0;
+    verts[0].s = fcol;
+    verts[0].t = frow;
 
-    glBegin (GL_QUADS);
-    glTexCoord2f (fcol, frow);
-    glVertex2f (x, y);
-    glTexCoord2f (fcol + size, frow);
-    glVertex2f (x+8, y);
-    glTexCoord2f (fcol + size, frow + size);
-    glVertex2f (x+8, y+8);
-    glTexCoord2f (fcol, frow + size);
-    glVertex2f (x, y+8);
-    glEnd ();
+    verts[1].x = x;
+    verts[1].y = y + 8;
+    verts[1].z = 0;
+    verts[1].s = fcol;
+    verts[1].t = frow + size;
+
+    verts[2].x = x + 8;
+    verts[2].y = y;
+    verts[2].z = 0;
+    verts[2].s = fcol + size;
+    verts[2].t = frow;
+
+    verts[3].x = x + 8;
+    verts[3].y = y + 8;
+    verts[3].z = 0;
+    verts[3].s = fcol + size;
+    verts[3].t = frow + size;
+
+    textures[tu_diffuse] = draw_chars->texnum;
+
+    //<todo chars always alpha-tested, use a specific material
+    Material_Render(g_generic_material, 4, verts, textures);
 }
 
 /*
@@ -175,7 +194,10 @@ void Draw_Pic (int x, int y, char *pic)
 {
 	image_t *gl;
 
-	gl = Draw_FindPic (pic);
+    vertex_t verts[4];
+    GLuint textures[num_texture_units];
+
+    gl = Draw_FindPic (pic);
 	if (!gl)
 	{
 		ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
@@ -184,23 +206,34 @@ void Draw_Pic (int x, int y, char *pic)
 	if (scrap_dirty)
 		Scrap_Upload ();
 
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
-		glDisable (GL_ALPHA_TEST);
+    verts[0].x = x;
+    verts[0].y = y;
+    verts[0].z = 0;
+    verts[0].s = gl->sl;
+    verts[0].t = gl->tl;
 
-	GL_Bind (gl->texnum);
-	glBegin (GL_QUADS);
-	glTexCoord2f (gl->sl, gl->tl);
-	glVertex2f (x, y);
-	glTexCoord2f (gl->sh, gl->tl);
-	glVertex2f (x+gl->width, y);
-	glTexCoord2f (gl->sh, gl->th);
-	glVertex2f (x+gl->width, y+gl->height);
-	glTexCoord2f (gl->sl, gl->th);
-	glVertex2f (x, y+gl->height);
-	glEnd ();
+    verts[1].x = x;
+    verts[1].y = y + gl->height;
+    verts[1].z = 0;
+    verts[1].s = gl->sl;
+    verts[1].t = gl->th;
 
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) )  && !gl->has_alpha)
-		glEnable (GL_ALPHA_TEST);
+    verts[2].x = x + gl->width;
+    verts[2].y = y;
+    verts[2].z = 0;
+    verts[2].s = gl->sh;
+    verts[2].t = gl->tl;
+
+    verts[3].x = x + gl->width;
+    verts[3].y = y + gl->height;
+    verts[3].z = 0;
+    verts[3].s = gl->sh;
+    verts[3].t = gl->th;
+
+    textures[tu_diffuse] = gl->texnum;
+
+    //<todo different materials for gl->has_alpha true/false
+    Material_Render(g_generic_material, 4, verts, textures);
 }
 
 /*

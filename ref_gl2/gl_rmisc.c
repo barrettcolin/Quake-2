@@ -180,8 +180,8 @@ void GL_SetDefaultState( void )
 	
 	//<todo.gles2
 	glEnable(GL_TEXTURE_2D);
-    glEnable(GL_ALPHA_TEST);
-    glAlphaFunc(GL_GREATER, 0.666);
+    //glEnable(GL_ALPHA_TEST);
+    //glAlphaFunc(GL_GREATER, 0.666);
 
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
