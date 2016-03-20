@@ -598,7 +598,7 @@ void R_DrawAlphaSurfaces (void)
 	//
 	// go back to the world matrix
 	//
-    qglLoadMatrixf (r_world_matrix);
+    qglLoadMatrixf(gl_state.world_matrix);
 
 	qglEnable (GL_BLEND);
 	GL_TexEnv( GL_MODULATE );

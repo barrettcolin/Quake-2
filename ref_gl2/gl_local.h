@@ -224,8 +224,6 @@ extern	cvar_t	*gl_3dlabs_broken;
 extern  cvar_t  *gl_driver;
 extern	cvar_t	*gl_swapinterval;
 extern	cvar_t	*gl_texturemode;
-extern	cvar_t	*gl_texturealphamode;
-extern	cvar_t	*gl_texturesolidmode;
 extern  cvar_t  *gl_saturatelighting;
 extern  cvar_t  *gl_lockpvs;
 
@@ -236,8 +234,6 @@ extern	cvar_t		*intensity;
 
 extern	int		c_visible_lightmaps;
 extern	int		c_visible_textures;
-
-extern	float	r_world_matrix[16];
 
 void R_TranslatePlayerSkin (int playernum);
 void GL_Bind (int texnum);
@@ -331,9 +327,6 @@ void	GL_ShutdownImages (void);
 
 void	GL_FreeUnusedImages (void);
 
-void GL_TextureAlphaMode( char *string );
-void GL_TextureSolidMode( char *string );
-
 /*
 ** GL extension emulation functions
 */
@@ -409,9 +402,7 @@ typedef struct
 	float camera_separation;
 	qboolean stereo_enabled;
 
-	unsigned char originalRedGammaTable[256];
-	unsigned char originalGreenGammaTable[256];
-	unsigned char originalBlueGammaTable[256];
+    GLfloat world_matrix[16]; // for rendering world alpha surfaces after everything else
 } glstate_t;
 
 extern glconfig_t  gl_config;
@@ -444,4 +435,3 @@ int     	GLimp_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen
 void		GLimp_AppActivate( qboolean active );
 void		GLimp_EnableLogging( qboolean enable );
 void		GLimp_LogNewFrame( void );
-

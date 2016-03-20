@@ -58,9 +58,6 @@ vec3_t	vpn;
 vec3_t	vright;
 vec3_t	r_origin;
 
-float	r_world_matrix[16];
-float	r_base_world_matrix[16];
-
 //
 // screen size info
 //
@@ -122,8 +119,6 @@ cvar_t	*gl_playermip;
 cvar_t  *gl_saturatelighting;
 cvar_t	*gl_swapinterval;
 cvar_t	*gl_texturemode;
-cvar_t	*gl_texturealphamode;
-cvar_t	*gl_texturesolidmode;
 cvar_t	*gl_lockpvs;
 
 cvar_t	*gl_3dlabs_broken;
@@ -747,7 +742,7 @@ void R_SetupGL (void)
 //	if ( gl_state.camera_separation != 0 && gl_state.stereo_enabled )
 //		qglTranslatef ( gl_state.camera_separation, 0, 0 );
 
-    glGetFloatv (GL_MODELVIEW_MATRIX, r_world_matrix);
+    glGetFloatv(GL_MODELVIEW_MATRIX, gl_state.world_matrix);
 
 	//
 	// set drawing parms
@@ -981,8 +976,6 @@ void R_Register( void )
 	gl_monolightmap = ri.Cvar_Get( "gl_monolightmap", "0", 0 );
 	gl_driver = ri.Cvar_Get( "gl_driver", "opengl32", CVAR_ARCHIVE );
 	gl_texturemode = ri.Cvar_Get( "gl_texturemode", "GL_LINEAR_MIPMAP_NEAREST", CVAR_ARCHIVE );
-	gl_texturealphamode = ri.Cvar_Get( "gl_texturealphamode", "default", CVAR_ARCHIVE );
-	gl_texturesolidmode = ri.Cvar_Get( "gl_texturesolidmode", "default", CVAR_ARCHIVE );
 	gl_lockpvs = ri.Cvar_Get( "gl_lockpvs", "0", 0 );
 
 	gl_vertex_arrays = ri.Cvar_Get( "gl_vertex_arrays", "0", CVAR_ARCHIVE );
@@ -1171,87 +1164,6 @@ int R_Init( void *hinstance, void *hWnd )
 	{
 		ri.Cvar_SetValue( "gl_finish", 1 );
 	}
-
-	/*
-	** grab extensions
-	*/
-#ifdef WIN32
-	if ( strstr( gl_config.extensions_string, "GL_EXT_compiled_vertex_array" ) || 
-		 strstr( gl_config.extensions_string, "GL_SGI_compiled_vertex_array" ) )
-	{
-		ri.Con_Printf( PRINT_ALL, "...enabling GL_EXT_compiled_vertex_array\n" );
-		qglLockArraysEXT = ( void * ) qwglGetProcAddress( "glLockArraysEXT" );
-		qglUnlockArraysEXT = ( void * ) qwglGetProcAddress( "glUnlockArraysEXT" );
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...GL_EXT_compiled_vertex_array not found\n" );
-	}
-
-	if ( strstr( gl_config.extensions_string, "WGL_EXT_swap_control" ) )
-	{
-		qwglSwapIntervalEXT = ( BOOL (WINAPI *)(int)) qwglGetProcAddress( "wglSwapIntervalEXT" );
-		ri.Con_Printf( PRINT_ALL, "...enabling WGL_EXT_swap_control\n" );
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...WGL_EXT_swap_control not found\n" );
-	}
-
-	if ( strstr( gl_config.extensions_string, "GL_EXT_point_parameters" ) )
-	{
-		if ( gl_ext_pointparameters->value )
-		{
-			qglPointParameterfEXT = ( void (APIENTRY *)( GLenum, GLfloat ) ) qwglGetProcAddress( "glPointParameterfEXT" );
-			qglPointParameterfvEXT = ( void (APIENTRY *)( GLenum, const GLfloat * ) ) qwglGetProcAddress( "glPointParameterfvEXT" );
-			ri.Con_Printf( PRINT_ALL, "...using GL_EXT_point_parameters\n" );
-		}
-		else
-		{
-			ri.Con_Printf( PRINT_ALL, "...ignoring GL_EXT_point_parameters\n" );
-		}
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...GL_EXT_point_parameters not found\n" );
-	}
-
-	if ( strstr( gl_config.extensions_string, "GL_EXT_paletted_texture" ) && 
-		 strstr( gl_config.extensions_string, "GL_EXT_shared_texture_palette" ) )
-	{
-		if ( gl_ext_palettedtexture->value )
-		{
-			ri.Con_Printf( PRINT_ALL, "...using GL_EXT_shared_texture_palette\n" );
-			qglColorTableEXT = ( void ( APIENTRY * ) ( int, int, int, int, int, const void * ) ) qwglGetProcAddress( "glColorTableEXT" );
-		}
-		else
-		{
-			ri.Con_Printf( PRINT_ALL, "...ignoring GL_EXT_shared_texture_palette\n" );
-		}
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...GL_EXT_shared_texture_palette not found\n" );
-	}
-
-	if ( strstr( gl_config.extensions_string, "GL_SGIS_multitexture" ) )
-	{
-		if ( gl_ext_multitexture->value )
-		{
-			ri.Con_Printf( PRINT_ALL, "...using GL_SGIS_multitexture\n" );
-			qglMTexCoord2fSGIS = ( void * ) qwglGetProcAddress( "glMTexCoord2fSGIS" );
-			qglSelectTextureSGIS = ( void * ) qwglGetProcAddress( "glSelectTextureSGIS" );
-		}
-		else
-		{
-			ri.Con_Printf( PRINT_ALL, "...ignoring GL_SGIS_multitexture\n" );
-		}
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...GL_SGIS_multitexture not found\n" );
-	}
-#endif
 
 	GL_SetDefaultState();
 
