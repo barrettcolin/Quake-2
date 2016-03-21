@@ -22,11 +22,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "gl_local.h"
 
-image_t		*draw_chars;
+static image_t *draw_chars;
 
 extern	qboolean	scrap_dirty;
 void Scrap_Upload (void);
 
+typedef struct draw_vertex_s
+{
+    float x, y, z;
+    float s, t;
+} draw_vertex_t;
+
+static material_id s_draw_material;
+static material_id s_draw_alpha_material;
 
 /*
 ===============
@@ -40,6 +48,16 @@ void Draw_InitLocal (void)
 	GL_Bind( draw_chars->texnum );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    materialdesc_t desc;
+    desc.type = mt_unlit;
+    desc.blend = mb_opaque;
+
+    s_draw_material = Material_Find(&desc);
+
+    desc.blend = mb_alpha_test_66;
+
+    s_draw_alpha_material = Material_Find(&desc);
 }
 
 
@@ -57,9 +75,7 @@ void Draw_Char (int x, int y, int num)
 {
 	int				row, col;
 	float			frow, fcol, size;
-
-    vertex_t verts[4];
-    GLuint textures[num_texture_units];
+    draw_vertex_t verts[4];
 
 	num &= 255;
 	
@@ -100,10 +116,14 @@ void Draw_Char (int x, int y, int num)
     verts[3].s = fcol + size;
     verts[3].t = frow + size;
 
-    textures[tu_diffuse] = draw_chars->texnum;
+    Material_SetCurrent(s_draw_alpha_material);
 
-    //<todo chars always alpha-tested, use a specific material
-    Material_Render(g_generic_material, 4, verts, textures);
+    GL_SelectTexture(GL_TEXTURE0);
+    GL_Bind(draw_chars->texnum);
+
+    glVertexPointer(3, GL_FLOAT, sizeof(verts[0]), &verts[0].x);
+    glTexCoordPointer(2, GL_FLOAT, sizeof(verts[0]), &verts[0].s);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 /*
@@ -193,9 +213,7 @@ Draw_Pic
 void Draw_Pic (int x, int y, char *pic)
 {
 	image_t *gl;
-
-    vertex_t verts[4];
-    GLuint textures[num_texture_units];
+    draw_vertex_t verts[4];
 
     gl = Draw_FindPic (pic);
 	if (!gl)
@@ -230,10 +248,14 @@ void Draw_Pic (int x, int y, char *pic)
     verts[3].s = gl->sh;
     verts[3].t = gl->th;
 
-    textures[tu_diffuse] = gl->texnum;
+    Material_SetCurrent(gl->has_alpha ? s_draw_alpha_material : s_draw_material);
 
-    //<todo different materials for gl->has_alpha true/false
-    Material_Render(g_generic_material, 4, verts, textures);
+    GL_SelectTexture(GL_TEXTURE0);
+    GL_Bind(gl->texnum);
+
+    glVertexPointer(3, GL_FLOAT, sizeof(verts[0]), &verts[0].x);
+    glTexCoordPointer(2, GL_FLOAT, sizeof(verts[0]), &verts[0].s);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 /*

@@ -404,8 +404,6 @@ typedef struct
 	qboolean stereo_enabled;
 
     GLfloat world_matrix[16]; // for rendering world alpha surfaces after everything else
-
-    struct material_s const *current_material;
 } glstate_t;
 
 extern glconfig_t  gl_config;
@@ -442,10 +440,25 @@ void		GLimp_LogNewFrame( void );
 // Shader material
 typedef enum
 {
-    mt_generic,
-
-    num_material_types
+    mt_default,
+    mt_unlit
 } materialtype_t;
+
+typedef enum
+{
+    mb_opaque,
+    mb_alpha_test_66,
+    mb_alpha_blend_66,
+    mb_alpha_blend_33
+} materialblend_t;
+
+typedef struct materialdesc_s
+{
+    materialtype_t type;
+    materialblend_t blend;
+} materialdesc_t;
+
+typedef struct material_s *material_id;
 
 typedef enum
 {
@@ -454,34 +467,15 @@ typedef enum
     num_texture_units
 } textureunit_t;
 
-typedef struct materialdesc_s
-{
-    materialtype_t type;
-} materialdesc_t;
-
-typedef struct material_s
-{
-    materialdesc_t desc;
-    GLuint program;
-} material_t;
-
-typedef struct vertex_s
-{
-    float x, y, z;
-    float s, t;
-} vertex_t;
-
 void Material_Init();
 
 void Material_Shutdown();
 
-material_t *Material_Find(materialdesc_t const *desc);
+material_id Material_Find(materialdesc_t const *desc);
 
-void Material_Render(material_t const *mat, int num_verts, vertex_t const *verts, GLuint textures[num_texture_units]);
+void Material_SetCurrent(material_id mat);
 
-extern material_t *g_generic_material;
+void Material_Render(material_id mat, void const *data, GLuint textures[num_texture_units]);
 
-//<todo internal glue
-void Material_SetCurrent(material_t const *mat);
-
-extern material_t g_default_material;
+//<todo reset state for ff pipeline
+extern material_id g_default_material;

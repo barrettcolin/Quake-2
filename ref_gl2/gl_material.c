@@ -8,21 +8,30 @@ typedef struct shader_s
     GLuint shader;
 } shader_t;
 
-#define MAX_SHADERS 2
+#define MAX_SHADERS 32
 
 static shader_t s_shaders[MAX_SHADERS];
 static int s_num_shaders;
 
 // Material array
-#define MAX_MATERIALS 1
+typedef struct material_s
+{
+    materialdesc_t desc;
+
+	// GL state
+    qboolean enable_client_state_vertex_array;
+    qboolean enable_client_state_texture_coord_array;
+    GLuint program;
+} material_t;
+
+#define MAX_MATERIALS 16
 
 static material_t s_materials[MAX_MATERIALS];
 static int s_num_materials;
 
-material_t g_default_material;
+static material_t *s_current_material;
 
-// Global materials
-material_t *g_generic_material;
+material_t *g_default_material;
 
 static int MaterialDesc_Compare(materialdesc_t const *a, materialdesc_t const *b)
 {
@@ -187,20 +196,22 @@ static void MaterialGeneric_Load(material_t *mat)
 
     if(mat->program == 0)
         ri.Sys_Error(ERR_DROP, "MaterialGeneric_Load");
+
+    mat->enable_client_state_vertex_array = true;
+    mat->enable_client_state_texture_coord_array = true;
 }
 
 void Material_Init()
 {
     // init mat_default (program 0, default state)
-
-    // mat_generic
     {
-        materialdesc_t desc;
-        {
-            desc.type = mt_generic;
-        }
-        g_generic_material = Material_Find(&desc);
+        materialdesc_t desc = { 0 };
+        desc.type = mt_default;
+
+        g_default_material = Material_Find(&desc);
     }
+
+    s_current_material = g_default_material;
 }
 
 void Material_Shutdown()
@@ -223,7 +234,7 @@ void Material_Shutdown()
     }
     s_num_shaders = 0;
 
-    g_generic_material = NULL;
+	g_default_material = NULL;
 }
 
 material_t *Material_Find(materialdesc_t const* desc)
@@ -253,7 +264,7 @@ material_t *Material_Find(materialdesc_t const* desc)
 
     switch(desc->type)
     {
-    case mt_generic:
+    case mt_unlit:
         MaterialGeneric_Load(mat);
         break;
     }
@@ -261,30 +272,41 @@ material_t *Material_Find(materialdesc_t const* desc)
     return mat;
 }
 
-void Material_SetCurrent(const material_t *mat)
+void Material_SetCurrent(material_t *mat)
 {
-    if(gl_state.current_material != mat)
+    if(s_current_material != mat)
     {
+        if(s_current_material->enable_client_state_vertex_array != mat->enable_client_state_vertex_array)
+        {
+            if(mat->enable_client_state_vertex_array)
+            {
+                glEnableClientState(GL_VERTEX_ARRAY);
+            }
+            else
+            {
+                glDisableClientState(GL_VERTEX_ARRAY);
+            }
+        }
+
+        if(s_current_material->enable_client_state_texture_coord_array != mat->enable_client_state_texture_coord_array)
+        {
+            if(mat->enable_client_state_texture_coord_array)
+            {
+                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+            }
+            else
+            {
+                glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+            }
+        }
+
         glUseProgram(mat->program);
 
-        gl_state.current_material = mat;
+        s_current_material = mat;
     }
 }
 
-void Material_Render(material_t const* mat, int num_verts, vertex_t const *verts, GLuint textures[num_texture_units])
+void Material_Render(material_t *mat, void const *data, GLuint textures[num_texture_units])
 {
     Material_SetCurrent(mat);
-
-    GL_SelectTexture(GL_TEXTURE0);
-    GL_Bind(textures[tu_diffuse]);
-
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-    glVertexPointer(3, GL_FLOAT, sizeof(vertex_t), &verts[0].x);
-    glTexCoordPointer(2, GL_FLOAT, sizeof(vertex_t), &verts[0].s);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, num_verts);
-
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glDisableClientState(GL_VERTEX_ARRAY);
 }

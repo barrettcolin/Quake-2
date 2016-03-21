@@ -1261,7 +1261,7 @@ void R_BeginFrame( float camera_separation )
 	GLimp_BeginFrame( camera_separation );
 
     //<todo hack until all drawing is through Material
-    Material_SetCurrent(&g_default_material);
+    Material_SetCurrent(g_default_material);
 
     R_SetGL2D();
 #if 0
