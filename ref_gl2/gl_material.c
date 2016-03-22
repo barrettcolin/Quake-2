@@ -218,8 +218,6 @@ void Material_Shutdown()
         Material_Destroy(mat);
     }
     s_num_materials = 0;
-
-	g_default_material = NULL;
 }
 
 material_t *Material_Find(materialdesc_t const* desc)
