@@ -1167,12 +1167,12 @@ int R_Init( void *hinstance, void *hWnd )
 
 	GL_SetDefaultState();
 
-	GL_InitImages ();
+    Material_Init();
+
+    GL_InitImages ();
 	Mod_Init ();
 	R_InitParticleTexture ();
 	Draw_InitLocal ();
-
-    Material_Init();
 
     err = glGetError();
 	if ( err != GL_NO_ERROR )
@@ -1191,11 +1191,11 @@ void R_Shutdown (void)
 	ri.Cmd_RemoveCommand ("imagelist");
 	ri.Cmd_RemoveCommand ("gl_strings");
 
-    Material_Shutdown();
-
 	Mod_FreeAll ();
 
 	GL_ShutdownImages ();
+
+    Material_Shutdown();
 
 	/*
 	** shut down OS specific OpenGL stuff like contexts, etc.

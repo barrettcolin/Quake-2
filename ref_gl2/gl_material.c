@@ -1,18 +1,5 @@
 #include "gl_local.h"
 
-// Shader array
-typedef struct shader_s
-{
-    char pathname[MAX_QPATH];
-    GLenum type;
-    GLuint shader;
-} shader_t;
-
-#define MAX_SHADERS 32
-
-static shader_t s_shaders[MAX_SHADERS];
-static int s_num_shaders;
-
 // Material array
 typedef struct material_s
 {
@@ -21,6 +8,8 @@ typedef struct material_s
 	// GL state
     qboolean enable_client_state_vertex_array;
     qboolean enable_client_state_texture_coord_array;
+    GLuint vertex_shader;
+    GLuint fragment_shader;
     GLuint program;
 } material_t;
 
@@ -31,34 +20,65 @@ static int s_num_materials;
 
 static material_t *s_current_material;
 
-material_t *g_default_material;
+static material_t s_default_material;
+
+//<todo needed for ff pipeline glue
+material_t *g_default_material = &s_default_material;
 
 static int MaterialDesc_Compare(materialdesc_t const *a, materialdesc_t const *b)
 {
     if(a->type != b->type)
         return 1;
 
+    if(a->blend != b->blend)
+        return 1;
+
     return 0;
 }
 
-static GLuint Shader_Load(const char *pathname, GLenum type)
+static void Material_Destroy(material_t *mat)
 {
-    const GLchar *src;
+    if(mat->program)
+    {
+        glDeleteProgram(mat->program);
+        mat->program = 0;
+    }
+
+    if(mat->fragment_shader)
+    {
+        glDeleteShader(mat->fragment_shader);
+        mat->fragment_shader = 0;
+    }
+
+    if(mat->vertex_shader)
+    {
+        glDeleteShader(mat->vertex_shader);
+        mat->vertex_shader = 0;
+    }
+}
+
+static GLuint Material_LoadShader(GLenum type, char const *pathname, char const *defines)
+{
     GLuint shader;
 
     for(;;)
     {
         GLint compiled;
-        GLint src_len = ri.FS_LoadFile((char *)pathname, (void**)&src);
-        if(!src)
-            break;
+        GLchar const *strs[2] = { defines };
+        GLint str_lens[2] = { strlen(defines) };
 
         shader = glCreateShader(type);
         if (shader == 0)
             break;
 
+        str_lens[1] = ri.FS_LoadFile((char *)pathname, (void**)&strs[1]);
+        if(!strs[1])
+            break;
+
         // Load the shader source
-        glShaderSource(shader, 1, &src, &src_len);
+        glShaderSource(shader, 2, strs, str_lens);
+
+        ri.FS_FreeFile((void *)strs[1]);
 
         // Compile the shader
         glCompileShader(shader);
@@ -66,7 +86,7 @@ static GLuint Shader_Load(const char *pathname, GLenum type)
         // Check the compile status
         glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 
-        if (compiled == GL_FALSE)
+        if(compiled == GL_FALSE)
         {
             GLint info_len = 0;
             glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_len);
@@ -79,146 +99,118 @@ static GLuint Shader_Load(const char *pathname, GLenum type)
                 free(info_log);
             }
 
-            glDeleteShader(shader);
-            shader = 0;
+            break;
         }
 
-        break;
+        return shader;
     }
 
-    if(src)
-        ri.FS_FreeFile((void *)src);
-
-    if(shader == 0)
-        ri.Sys_Error(ERR_DROP, "Failed to load %s", pathname);
+    if(shader)
+    {
+        glDeleteShader(shader);
+        shader = 0;
+    }
 
     return shader;
 }
 
-static shader_t *Shader_Find(const char *pathname, GLenum type)
+static int Material_CreateProgram(material_t *mat, char const *vs_pathname, char const *fs_pathname, char const *defines)
 {
-    int i;
-    shader_t *shd;
+    mat->vertex_shader = Material_LoadShader(GL_VERTEX_SHADER, vs_pathname, defines);
+    if(mat->vertex_shader == 0)
+        return -1;
 
-    for(i = 0, shd = s_shaders; i < s_num_shaders; ++i, ++shd)
-    {
-        if(shd->type != type)
-            continue;
+    mat->fragment_shader = Material_LoadShader(GL_FRAGMENT_SHADER, fs_pathname, defines);
+    if(mat->fragment_shader == 0)
+        return -1;
 
-        if(strncmp(shd->pathname, pathname, sizeof(shd->pathname)) == 0)
-            return shd;
-    }
+    mat->program = glCreateProgram();
+    if(mat->program == 0)
+        return -1;
 
-    if(i == s_num_shaders)
-    {
-        if(s_num_shaders == MAX_SHADERS)
-            ri.Sys_Error(ERR_DROP, "MAX_SHADERS");
-
-        s_num_shaders++;
-    }
-
-    shd = &s_shaders[i];
-    shd->shader = Shader_Load(pathname, type);
-
-    return shd;
+    glAttachShader(mat->program, mat->vertex_shader);
+    glAttachShader(mat->program, mat->fragment_shader);
+    return 0;
 }
 
-static void Shader_Destroy(shader_t *shd)
+static int Material_LinkProgram(material_t *mat)
 {
-    if(shd->shader)
+    GLint linked;
+
+    // Link program
+    glLinkProgram(mat->program);
+
+    // Check the link status
+    glGetProgramiv(mat->program, GL_LINK_STATUS, &linked);
+
+    if (linked == GL_FALSE)
     {
-        glDeleteShader(shd->shader);
-        shd->shader = 0;
+        GLint info_len = 0;
+        glGetProgramiv(mat->program, GL_INFO_LOG_LENGTH, &info_len);
+
+        if (info_len > 1)
+        {
+            char* info_log = malloc(sizeof(char) * info_len);
+            glGetProgramInfoLog(mat->program, info_len, NULL, info_log);
+            ri.Con_Printf(PRINT_DEVELOPER, "Error linking program:\n%s\n", info_log);
+            free(info_log);
+        }
+
+        return -1;
     }
+
+    return 0;
 }
 
-static void Material_Destroy(material_t *mat)
-{
-    if(mat->program)
-    {
-        glDeleteProgram(mat->program);
-        mat->program = 0;
-    }
-}
-
-static void MaterialGeneric_Load(material_t *mat)
+static void MaterialUnlit_Create(material_t *mat)
 {
     for(;;)
     {
-        shader_t *vs, *fs;
-        GLint linked;
+        char const *defines;
 
-        vs = Shader_Find("ref_gl2/generic_vs.glsl", GL_VERTEX_SHADER);
-        if(vs == NULL)
-            break;
-
-        fs = Shader_Find("ref_gl2/generic_fs.glsl", GL_FRAGMENT_SHADER);
-        if(fs == NULL)
-            break;
-
-        //<todo move this to its own function
-        mat->program = glCreateProgram();
-        if(mat->program == 0)
-            break;
-
-        glAttachShader(mat->program, vs->shader);
-        glAttachShader(mat->program, fs->shader);
-
-        // Link program
-        glLinkProgram(mat->program);
-
-        // Check the link status
-        glGetProgramiv(mat->program, GL_LINK_STATUS, &linked);
-
-        if (linked == GL_FALSE)
+        switch(mat->desc.blend)
         {
-            GLint info_len = 0;
-            glGetProgramiv(mat->program, GL_INFO_LOG_LENGTH, &info_len);
+        case mb_alpha_test_66:
+            defines = "#define ALPHA_TEST_66\n";
+            break;
 
-            if (info_len > 1)
-            {
-                char* info_log = malloc(sizeof(char) * info_len);
-                glGetProgramInfoLog(mat->program, info_len, NULL, info_log);
-                ri.Con_Printf(PRINT_DEVELOPER, "Error linking program:\n%s\n", info_log);
-                free(info_log);
-            }
-
-            glDeleteProgram(mat->program);
-            mat->program = 0;
+        default:
+            defines = "";
             break;
         }
+
+        if(Material_CreateProgram(mat, "ref_gl2/generic_vs.glsl", "ref_gl2/generic_fs.glsl", defines) != 0)
+            break;
+
+        //<todo Bind attributes here
+
+        if(Material_LinkProgram(mat) != 0)
+            break;
 
         glUseProgram(mat->program);
         glUniform1i(glGetUniformLocation(mat->program, "diffuseTex"), 0);
         glUseProgram(0);
-        break;
+
+        mat->enable_client_state_vertex_array = true;
+        mat->enable_client_state_texture_coord_array = true;
+        return;
     }
 
-    if(mat->program == 0)
-        ri.Sys_Error(ERR_DROP, "MaterialGeneric_Load");
-
-    mat->enable_client_state_vertex_array = true;
-    mat->enable_client_state_texture_coord_array = true;
+    Material_Destroy(mat);
+    ri.Sys_Error(ERR_DROP, "MaterialUnlit_Create");
 }
 
 void Material_Init()
 {
-    // init mat_default (program 0, default state)
-    {
-        materialdesc_t desc = { 0 };
-        desc.type = mt_default;
+    // init s_default_material (program 0, default state)
 
-        g_default_material = Material_Find(&desc);
-    }
-
-    s_current_material = g_default_material;
+    s_current_material = &s_default_material;
 }
 
 void Material_Shutdown()
 {
     int i;
     material_t *mat;
-    shader_t *shd;
 
     // Materials
     for(i = 0, mat = s_materials; i < s_num_materials; ++i, ++mat)
@@ -226,13 +218,6 @@ void Material_Shutdown()
         Material_Destroy(mat);
     }
     s_num_materials = 0;
-
-    // Shaders
-    for(i = 0, shd = s_shaders; i < s_num_shaders; ++i, ++shd)
-    {
-        Shader_Destroy(shd);
-    }
-    s_num_shaders = 0;
 
 	g_default_material = NULL;
 }
@@ -265,7 +250,7 @@ material_t *Material_Find(materialdesc_t const* desc)
     switch(desc->type)
     {
     case mt_unlit:
-        MaterialGeneric_Load(mat);
+        MaterialUnlit_Create(mat);
         break;
     }
 

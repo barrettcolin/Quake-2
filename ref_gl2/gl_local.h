@@ -440,7 +440,6 @@ void		GLimp_LogNewFrame( void );
 // Shader material
 typedef enum
 {
-    mt_default,
     mt_unlit
 } materialtype_t;
 
