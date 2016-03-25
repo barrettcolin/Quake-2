@@ -296,15 +296,17 @@ void Material_SetCurrent(material_t *mat)
 {
     if(s_current_material != mat)
     {
-        if(s_current_material->enable_client_state_vertex_array != mat->enable_client_state_vertex_array)
+        if(s_current_material->enable_client_state_texture_coord_array_1 != mat->enable_client_state_texture_coord_array_1)
         {
-            if(mat->enable_client_state_vertex_array)
+            glClientActiveTexture(GL_TEXTURE1);
+
+            if(mat->enable_client_state_texture_coord_array_1)
             {
-                glEnableClientState(GL_VERTEX_ARRAY);
+                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
             }
             else
             {
-                glDisableClientState(GL_VERTEX_ARRAY);
+                glDisableClientState(GL_TEXTURE_COORD_ARRAY);
             }
         }
 
@@ -322,17 +324,15 @@ void Material_SetCurrent(material_t *mat)
             }
         }
 
-        if(s_current_material->enable_client_state_texture_coord_array_1 != mat->enable_client_state_texture_coord_array_1)
+        if(s_current_material->enable_client_state_vertex_array != mat->enable_client_state_vertex_array)
         {
-            glClientActiveTexture(GL_TEXTURE1);
-
-            if(mat->enable_client_state_texture_coord_array_1)
+            if(mat->enable_client_state_vertex_array)
             {
-                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+                glEnableClientState(GL_VERTEX_ARRAY);
             }
             else
             {
-                glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+                glDisableClientState(GL_VERTEX_ARRAY);
             }
         }
 

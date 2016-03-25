@@ -327,7 +327,8 @@ void R_RenderBrushPoly (msurface_t *fa)
 	image = R_TextureAnimation (fa->texinfo);
 
 	if (fa->flags & SURF_DRAWTURB)
-	{	
+    {
+        GL_SelectTexture(GL_TEXTURE0);
 		GL_Bind( image->texnum );
 
 		// warp texture, no lightmaps
@@ -577,14 +578,13 @@ dynamic:
         for ( p = surf->polys; p; p = p->chain )
         {
             v = p->verts[0];
-            glBegin (GL_POLYGON);
-            for (i=0 ; i< nv; i++, v+= VERTEXSIZE)
-            {
-                glMultiTexCoord2f( GL_TEXTURE0, (v[3]+scroll), v[4]);
-                glMultiTexCoord2f( GL_TEXTURE1, v[5], v[6]);
-                glVertex3fv (v);
-            }
-            glEnd ();
+
+            glVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(float), v);
+            glClientActiveTexture(GL_TEXTURE0);
+            glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 3);
+            glClientActiveTexture(GL_TEXTURE1);
+            glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 5);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
     else
@@ -592,14 +592,12 @@ dynamic:
         for ( p = surf->polys; p; p = p->chain )
         {
             v = p->verts[0];
-            glBegin (GL_POLYGON);
-            for (i=0 ; i< nv; i++, v+= VERTEXSIZE)
-            {
-                glMultiTexCoord2f( GL_TEXTURE0, v[3], v[4]);
-                glMultiTexCoord2f( GL_TEXTURE1, v[5], v[6]);
-                glVertex3fv (v);
-            }
-            glEnd ();
+            glVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(float), v);
+            glClientActiveTexture(GL_TEXTURE0);
+            glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 3);
+            glClientActiveTexture(GL_TEXTURE1);
+            glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 5);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
 }
@@ -713,7 +711,6 @@ void R_DrawBrushModel (entity_t *e)
 	if (R_CullBox (mins, maxs))
 		return;
 
-    glColor3f (1,1,1);
 	memset (gl_lms.lightmap_surfaces, 0, sizeof(gl_lms.lightmap_surfaces));
 
 	VectorSubtract (r_newrefdef.vieworg, e->origin, modelorg);
@@ -736,14 +733,10 @@ e->angles[2] = -e->angles[2];	// stupid quake bug
 e->angles[0] = -e->angles[0];	// stupid quake bug
 e->angles[2] = -e->angles[2];	// stupid quake bug
 
-	GL_EnableMultitexture( true );
-    GL_SelectTexture( GL_TEXTURE0 );
-	GL_TexEnv( GL_REPLACE );
-    GL_SelectTexture( GL_TEXTURE1 );
-	GL_TexEnv( GL_MODULATE );
+    Material_SetCurrent(g_lightmapped_material);
+    R_DrawInlineBModel ();
 
-	R_DrawInlineBModel ();
-	GL_EnableMultitexture( false );
+    Material_SetCurrent(g_default_material);
 
     glPopMatrix ();
 }
@@ -944,25 +937,13 @@ void R_DrawWorld (void)
 	gl_state.currenttextures[0] = gl_state.currenttextures[1] = -1;
     gl_state.currenttexenvs[0] = gl_state.currenttexenvs[1] = -1;
 
-    glColor3f (1,1,1);
 	memset (gl_lms.lightmap_surfaces, 0, sizeof(gl_lms.lightmap_surfaces));
 	R_ClearSkyBox ();
 
-    GL_EnableMultitexture( true );
-
-    GL_SelectTexture( GL_TEXTURE0 );
-    GL_TexEnv( GL_REPLACE );
-    GL_SelectTexture( GL_TEXTURE1 );
-
-    if ( gl_lightmap->value )
-        GL_TexEnv( GL_REPLACE );
-    else
-        GL_TexEnv( GL_MODULATE );
-
+    Material_SetCurrent(g_lightmapped_material);
     R_RecursiveWorldNode (r_worldmodel->nodes);
 
-    GL_EnableMultitexture( false );
-
+    Material_SetCurrent(g_default_material);
 
     // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by R_RecursiveWorldNode
 	DrawTextureChains ();
