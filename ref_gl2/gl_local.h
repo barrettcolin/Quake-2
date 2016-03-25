@@ -440,7 +440,8 @@ void		GLimp_LogNewFrame( void );
 // Shader material
 typedef enum
 {
-    mt_unlit
+    mt_unlit,
+    mt_lightmapped
 } materialtype_t;
 
 typedef enum
@@ -475,6 +476,8 @@ material_id Material_Find(materialdesc_t const *desc);
 void Material_SetCurrent(material_id mat);
 
 void Material_Render(material_id mat, void const *data, GLuint textures[num_texture_units]);
+
+extern material_id g_lightmapped_material;
 
 //<todo reset state for ff pipeline
 extern material_id g_default_material;

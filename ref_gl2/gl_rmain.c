@@ -127,6 +127,8 @@ cvar_t	*vid_fullscreen;
 cvar_t	*vid_gamma;
 cvar_t	*vid_ref;
 
+material_id g_lightmapped_material;
+
 /*
 =================
 R_CullBox
@@ -1173,6 +1175,14 @@ int R_Init( void *hinstance, void *hWnd )
 	Mod_Init ();
 	R_InitParticleTexture ();
 	Draw_InitLocal ();
+
+    // Lightmapped material
+    {
+        materialdesc_t desc;
+        desc.type = mt_lightmapped;
+
+        g_lightmapped_material = Material_Find(&desc);
+    }
 
     err = glGetError();
 	if ( err != GL_NO_ERROR )

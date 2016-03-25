@@ -7,7 +7,8 @@ typedef struct material_s
 
 	// GL state
     qboolean enable_client_state_vertex_array;
-    qboolean enable_client_state_texture_coord_array;
+    qboolean enable_client_state_texture_coord_array_0;
+    qboolean enable_client_state_texture_coord_array_1;
     GLuint vertex_shader;
     GLuint fragment_shader;
     GLuint program;
@@ -192,10 +193,39 @@ static void MaterialUnlit_Create(material_t *mat)
             break;
 
         glUseProgram(mat->program);
-        glUniform1i(glGetUniformLocation(mat->program, "diffuseTex"), 0);
+        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
 
         mat->enable_client_state_vertex_array = true;
-        mat->enable_client_state_texture_coord_array = true;
+        mat->enable_client_state_texture_coord_array_0 = true;
+        mat->enable_client_state_texture_coord_array_1 = false;
+        return;
+    }
+
+    Material_Destroy(mat);
+    ri.Sys_Error(ERR_DROP, "MaterialUnlit_Create");
+}
+
+static void MaterialLightmapped_Create(material_t *mat)
+{
+    for(;;)
+    {
+        char const *defines = "";
+
+        if(Material_CreateProgram(mat, "ref_gl2/lightmapped", defines) != 0)
+            break;
+
+        //<todo Bind attributes here
+
+        if(Material_LinkProgram(mat) != 0)
+            break;
+
+        glUseProgram(mat->program);
+        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
+        glUniform1i(glGetUniformLocation(mat->program, "sLightmap"), 1);
+
+        mat->enable_client_state_vertex_array = true;
+        mat->enable_client_state_texture_coord_array_0 = true;
+        mat->enable_client_state_texture_coord_array_1 = true;
         return;
     }
 
@@ -253,6 +283,10 @@ material_t *Material_Find(materialdesc_t const* desc)
     case mt_unlit:
         MaterialUnlit_Create(mat);
         break;
+
+    case mt_lightmapped:
+        MaterialLightmapped_Create(mat);
+        break;
     }
 
     return mat;
@@ -274,9 +308,25 @@ void Material_SetCurrent(material_t *mat)
             }
         }
 
-        if(s_current_material->enable_client_state_texture_coord_array != mat->enable_client_state_texture_coord_array)
+        if(s_current_material->enable_client_state_texture_coord_array_0 != mat->enable_client_state_texture_coord_array_0)
         {
-            if(mat->enable_client_state_texture_coord_array)
+            glClientActiveTexture(GL_TEXTURE0);
+
+            if(mat->enable_client_state_texture_coord_array_0)
+            {
+                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+            }
+            else
+            {
+                glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+            }
+        }
+
+        if(s_current_material->enable_client_state_texture_coord_array_1 != mat->enable_client_state_texture_coord_array_1)
+        {
+            glClientActiveTexture(GL_TEXTURE1);
+
+            if(mat->enable_client_state_texture_coord_array_1)
             {
                 glEnableClientState(GL_TEXTURE_COORD_ARRAY);
             }
