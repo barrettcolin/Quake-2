@@ -114,13 +114,17 @@ static GLuint Material_LoadShader(GLenum type, char const *pathname, char const 
     return shader;
 }
 
-static int Material_CreateProgram(material_t *mat, char const *vs_pathname, char const *fs_pathname, char const *defines)
+static int Material_CreateProgram(material_t *mat, char const *pathname, char const *defines)
 {
-    mat->vertex_shader = Material_LoadShader(GL_VERTEX_SHADER, vs_pathname, defines);
+    char shader_name_buf[MAX_QPATH];
+
+    snprintf(shader_name_buf, sizeof(shader_name_buf), "%s_vs.glsl", pathname);
+    mat->vertex_shader = Material_LoadShader(GL_VERTEX_SHADER, shader_name_buf, defines);
     if(mat->vertex_shader == 0)
         return -1;
 
-    mat->fragment_shader = Material_LoadShader(GL_FRAGMENT_SHADER, fs_pathname, defines);
+    snprintf(shader_name_buf, sizeof(shader_name_buf), "%s_fs.glsl", pathname);
+    mat->fragment_shader = Material_LoadShader(GL_FRAGMENT_SHADER, shader_name_buf, defines);
     if(mat->fragment_shader == 0)
         return -1;
 
@@ -179,7 +183,7 @@ static void MaterialUnlit_Create(material_t *mat)
             break;
         }
 
-        if(Material_CreateProgram(mat, "ref_gl2/generic_vs.glsl", "ref_gl2/generic_fs.glsl", defines) != 0)
+        if(Material_CreateProgram(mat, "ref_gl2/unlit", defines) != 0)
             break;
 
         //<todo Bind attributes here
@@ -189,7 +193,6 @@ static void MaterialUnlit_Create(material_t *mat)
 
         glUseProgram(mat->program);
         glUniform1i(glGetUniformLocation(mat->program, "diffuseTex"), 0);
-        glUseProgram(0);
 
         mat->enable_client_state_vertex_array = true;
         mat->enable_client_state_texture_coord_array = true;
