@@ -194,6 +194,7 @@ static void MaterialUnlit_Create(material_t *mat)
 
         glUseProgram(mat->program);
         glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
+        glUseProgram(0);
 
         mat->enable_client_state_vertex_array = true;
         mat->enable_client_state_texture_coord_array_0 = true;
@@ -222,6 +223,7 @@ static void MaterialLightmapped_Create(material_t *mat)
         glUseProgram(mat->program);
         glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
         glUniform1i(glGetUniformLocation(mat->program, "sLightmap"), 1);
+        glUseProgram(0);
 
         mat->enable_client_state_vertex_array = true;
         mat->enable_client_state_texture_coord_array_0 = true;
