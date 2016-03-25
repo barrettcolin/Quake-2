@@ -210,7 +210,6 @@ Does a water warp on the pre-fragmented glpoly_t chain
 */
 void EmitWaterPolys (msurface_t *fa)
 {
-#if 0
 	glpoly_t	*p, *bp;
 	float		*v;
 	int			i;
@@ -226,7 +225,7 @@ void EmitWaterPolys (msurface_t *fa)
 	{
 		p = bp;
 
-		qglBegin (GL_TRIANGLE_FAN);
+        glBegin (GL_TRIANGLE_FAN);
 		for (i=0,v=p->verts[0] ; i<p->numverts ; i++, v+=VERTEXSIZE)
 		{
 			os = v[3];
@@ -247,12 +246,11 @@ void EmitWaterPolys (msurface_t *fa)
 #endif
 			t *= (1.0/64);
 
-			qglTexCoord2f (s, t);
-			qglVertex3fv (v);
+            glTexCoord2f (s, t);
+            glVertex3fv (v);
 		}
-		qglEnd ();
+        glEnd ();
 	}
-#endif
 }
 
 
