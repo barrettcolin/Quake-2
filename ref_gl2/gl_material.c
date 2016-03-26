@@ -363,3 +363,158 @@ void Material_Render(material_t *mat, void const *data, GLuint textures[num_text
 {
     Material_SetCurrent(mat);
 }
+
+void Matrix_Perspective(GLfloat camera_separation, GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar, GLfloat matrix_out[16])
+{
+    GLfloat xmin, xmax, ymin, ymax, near2, zDiff;
+    ymax = zNear * tan(fovy * M_PI / 360.0);
+    ymin = -ymax;
+
+    xmin = ymin * aspect;
+    xmax = ymax * aspect;
+
+    xmin += -( 2.0f * camera_separation ) / zNear;
+    xmax += -( 2.0f * camera_separation ) / zNear;
+
+    near2 = 2.0f * zNear;
+    zDiff = zFar - zNear;
+
+    // col0
+    matrix_out[0] = near2 / (xmax - xmin);
+    matrix_out[1] = 0;
+    matrix_out[2] = 0;
+    matrix_out[3] = 0;
+
+    // col1
+    matrix_out[4] = 0;
+    matrix_out[5] = near2 / (ymax - ymin);
+    matrix_out[6] = 0;
+    matrix_out[7] = 0;
+
+    // col2
+    matrix_out[8] = 0;
+    matrix_out[9] = 0;
+    matrix_out[10] = -(zFar + zNear) / zDiff;
+    matrix_out[11] = -1;
+
+    // col3
+    matrix_out[12] = 0;
+    matrix_out[13] = 0;
+    matrix_out[14] = -(2.0f * zFar * zNear) / zDiff;
+    matrix_out[15] = 0;
+}
+
+void Matrix_Orthographic(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat nearVal, GLfloat farVal, GLfloat matrix_out[16])
+{
+    GLfloat const right_minus_left = right - left;
+    GLfloat const top_minus_bottom = top - bottom;
+    GLfloat const far_minus_near = farVal - nearVal;
+
+    // col0
+    matrix_out[0] = 2.0f / right_minus_left;
+    matrix_out[1] = 0;
+    matrix_out[2] = 0;
+    matrix_out[3] = 0;
+
+    // col1
+    matrix_out[4] = 0;
+    matrix_out[5] = 2.0f / top_minus_bottom;
+    matrix_out[6] = 0;
+    matrix_out[7] = 0;
+
+    // col2
+    matrix_out[8] = 0;
+    matrix_out[9] = 0;
+    matrix_out[10] = -2.0f / far_minus_near;
+    matrix_out[11] = 0;
+
+    // col3
+    matrix_out[12] = -(right + left) / right_minus_left;
+    matrix_out[13] = -(top + bottom) / top_minus_bottom;
+    matrix_out[14] = -(farVal + nearVal) / far_minus_near;
+    matrix_out[15] = 1;
+}
+
+void Matrix_FromAnglesOrigin(vec3_t const angles, vec3_t const origin, GLfloat matrix_out[16])
+{
+    float const DEG_TO_RAD = M_PI / 180.0f;
+
+    float const sy = sin(angles[YAW] * DEG_TO_RAD);
+    float const cy = cos(angles[YAW] * DEG_TO_RAD);
+    float const sp = sin(angles[PITCH] * DEG_TO_RAD);
+    float const cp = cos(angles[PITCH] * DEG_TO_RAD);
+    float const sr = sin(angles[ROLL] * DEG_TO_RAD);
+    float const cr = cos(angles[ROLL] * DEG_TO_RAD);
+
+    float const cycp = cy * cp;
+    float const sycp = sy * cp;
+    float const cysr = cy * sr;
+    float const sysr = sy * sr;
+    float const spcr = sp * cr;
+
+    // col0
+    matrix_out[0] = cycp;
+    matrix_out[1] = sycp;
+    matrix_out[2] = -sp;
+    matrix_out[3] = 0;
+
+    // col1
+    matrix_out[4] = cysr * sp - sy * cr;
+    matrix_out[5] = cy * cr + sysr * sp;
+    matrix_out[6] = cp * sr;
+    matrix_out[7] = 0;
+
+    // col2
+    matrix_out[8] = sysr + cy * spcr;
+    matrix_out[9] = sy * spcr - cysr;
+    matrix_out[10] = cp * cr;
+    matrix_out[11] = 0;
+
+    // col3
+    matrix_out[12] = origin[0];
+    matrix_out[13] = origin[1];
+    matrix_out[14] = origin[2];
+    matrix_out[15] = 1;
+}
+
+void Matrix_InverseFromAnglesOrigin(vec3_t const angles, vec3_t const origin, GLfloat matrix_out[16])
+{
+    float const DEG_TO_RAD = M_PI / 180.0f;
+
+    float const sy = sin(angles[YAW] * DEG_TO_RAD);
+    float const cy = cos(angles[YAW] * DEG_TO_RAD);
+    float const sp = sin(angles[PITCH] * DEG_TO_RAD);
+    float const cp = cos(angles[PITCH] * DEG_TO_RAD);
+    float const sr = sin(angles[ROLL] * DEG_TO_RAD);
+    float const cr = cos(angles[ROLL] * DEG_TO_RAD);
+
+    float const cycp = cy * cp;
+    float const sycp = sy * cp;
+    float const cysr = cy * sr;
+    float const sysr = sy * sr;
+    float const spcr = sp * cr;
+
+    // col0
+    matrix_out[0] = cycp;
+    matrix_out[1] = cysr * sp - sy * cr;
+    matrix_out[2] = sysr + cy * spcr;
+    matrix_out[3] = 0;
+
+    // col1
+    matrix_out[4] = sycp;
+    matrix_out[5] = cy * cr + sysr * sp;
+    matrix_out[6] = sy * spcr - cysr;
+    matrix_out[7] = 0;
+
+    // col2
+    matrix_out[8] = -sp;
+    matrix_out[9] = cp * sr;
+    matrix_out[10] = cp * cr;
+    matrix_out[11] = 0;
+
+    // col3
+    matrix_out[12] = -matrix_out[0] * origin[0] - matrix_out[4] * origin[1] - matrix_out[8] * origin[2];
+    matrix_out[13] = -matrix_out[1] * origin[0] - matrix_out[5] * origin[1] - matrix_out[9] * origin[2];
+    matrix_out[14] = -matrix_out[2] * origin[0] - matrix_out[6] * origin[1] - matrix_out[10] * origin[2];
+    matrix_out[15] = 1;
+}

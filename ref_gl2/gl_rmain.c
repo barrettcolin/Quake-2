@@ -155,11 +155,10 @@ qboolean R_CullBox (vec3_t mins, vec3_t maxs)
 
 void R_RotateForEntity (entity_t *e)
 {
-    glTranslatef (e->origin[0],  e->origin[1],  e->origin[2]);
+    GLfloat world_from_entity[16];
 
-    glRotatef (e->angles[YAW],  0, 0, 1);
-    glRotatef (e->angles[PITCH],  0, 1, 0);
-    glRotatef (e->angles[ROLL],  1, 0, 0);
+    Matrix_FromAnglesOrigin(e->angles, e->origin, world_from_entity);
+    glMultMatrixf(world_from_entity);
 }
 
 /*
@@ -681,34 +680,25 @@ void R_SetupFrame (void)
 }
 
 
-void MYgluPerspective( GLdouble fovy, GLdouble aspect,
-		     GLdouble zNear, GLdouble zFar )
-{
-   GLdouble xmin, xmax, ymin, ymax;
-
-   ymax = zNear * tan( fovy * M_PI / 360.0 );
-   ymin = -ymax;
-
-   xmin = ymin * aspect;
-   xmax = ymax * aspect;
-
-   xmin += -( 2 * gl_state.camera_separation ) / zNear;
-   xmax += -( 2 * gl_state.camera_separation ) / zNear;
-
-   glFrustum( xmin, xmax, ymin, ymax, zNear, zFar );
-}
-
-
 /*
 =============
 R_SetupGL
 =============
 */
+// view_from_ref (rotation)
+//  0 -1  0
+//  0  0  1
+// -1  0  0
+// maps (Quake is +X-fwd, +Z-up, GL view is +Y-up, -Z-fwd)
+// ( 1, 0, 0) -> ( 0, 0,-1)
+// ( 0, 1, 0) -> (-1, 0, 0)
+// ( 0, 0, 1) -> ( 0, 1, 0)
 void R_SetupGL (void)
 {
 	float	screenaspect;
 //	float	yfov;
 	int		x, x2, y2, y, w, h;
+    GLfloat clip_from_view[16], ref_from_world[16];
 
 	//
 	// set up viewport
@@ -728,26 +718,39 @@ void R_SetupGL (void)
 	//
     screenaspect = (float)r_newrefdef.width/r_newrefdef.height;
 //	yfov = 2*atan((float)r_newrefdef.height/r_newrefdef.width)*180/M_PI;
+
     glMatrixMode(GL_PROJECTION);
-    glLoadIdentity ();
-    MYgluPerspective (r_newrefdef.fov_y,  screenaspect,  4,  4096);
+    Matrix_Perspective(gl_state.camera_separation, r_newrefdef.fov_y, screenaspect, 4, 4096, clip_from_view);
+    glLoadMatrixf(clip_from_view);
 
     glCullFace(GL_FRONT);
 
     glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity ();
+    // view_from_world (== world_matrix)
+    Matrix_InverseFromAnglesOrigin(r_newrefdef.viewangles, r_newrefdef.vieworg, ref_from_world);
+    // view_from_world = view_from_ref * ref_from_world
+    {
+        gl_state.world_matrix[0] = -ref_from_world[1];
+        gl_state.world_matrix[1] = ref_from_world[2];
+        gl_state.world_matrix[2] = -ref_from_world[0];
+        gl_state.world_matrix[3] = 0;
 
-    glRotatef (-90,  1, 0, 0);	    // put Z going up
-    glRotatef (90,  0, 0, 1);	    // put Z going up
-    glRotatef (-r_newrefdef.viewangles[2],  1, 0, 0);
-    glRotatef (-r_newrefdef.viewangles[0],  0, 1, 0);
-    glRotatef (-r_newrefdef.viewangles[1],  0, 0, 1);
-    glTranslatef (-r_newrefdef.vieworg[0],  -r_newrefdef.vieworg[1],  -r_newrefdef.vieworg[2]);
+        gl_state.world_matrix[4] = -ref_from_world[5];
+        gl_state.world_matrix[5] = ref_from_world[6];
+        gl_state.world_matrix[6] = -ref_from_world[4];
+        gl_state.world_matrix[7] = 0;
 
-//	if ( gl_state.camera_separation != 0 && gl_state.stereo_enabled )
-//		qglTranslatef ( gl_state.camera_separation, 0, 0 );
+        gl_state.world_matrix[8] = -ref_from_world[9];
+        gl_state.world_matrix[9] = ref_from_world[10];
+        gl_state.world_matrix[10] = -ref_from_world[8];
+        gl_state.world_matrix[11] = 0;
 
-    glGetFloatv(GL_MODELVIEW_MATRIX, gl_state.world_matrix);
+        gl_state.world_matrix[12] = -ref_from_world[13];
+        gl_state.world_matrix[13] = ref_from_world[14];
+        gl_state.world_matrix[14] = -ref_from_world[12];
+        gl_state.world_matrix[15] = 1;
+    }
+    glLoadMatrixf(gl_state.world_matrix);
 
 	//
 	// set drawing parms
@@ -871,13 +874,18 @@ void R_RenderView (refdef_t *fd)
 
 void	R_SetGL2D (void)
 {
+    GLfloat clip_from_view[16];
+
 	// set 2D virtual screen size
     glViewport (0,0, vid.width, vid.height);
+
     glMatrixMode(GL_PROJECTION);
-    glLoadIdentity ();
-    glOrtho  (0, vid.width, vid.height, 0, -99999, 99999);
+    Matrix_Orthographic(0, vid.width, vid.height, 0, -99999, 99999, clip_from_view);
+    glLoadMatrixf(clip_from_view);
+
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity ();
+
     glDisable (GL_DEPTH_TEST);
     glDisable (GL_CULL_FACE);
     //glDisable (GL_BLEND);

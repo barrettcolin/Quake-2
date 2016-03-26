@@ -718,13 +718,20 @@ void R_DrawAliasModel (entity_t *e)
 
 	if ( ( currententity->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
 	{
-		extern void MYgluPerspective( GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar );
-
+        GLfloat clip_from_view[16];
         glMatrixMode( GL_PROJECTION );
+
         glPushMatrix();
-        glLoadIdentity();
-        glScalef( -1, 1, 1 );
-	    MYgluPerspective( r_newrefdef.fov_y, ( float ) r_newrefdef.width / r_newrefdef.height,  4,  4096);
+
+        Matrix_Perspective(gl_state.camera_separation, r_newrefdef.fov_y, (float)r_newrefdef.width / r_newrefdef.height, 4, 4096, clip_from_view);
+
+        // premultiply by scale (-x, y, z)
+        clip_from_view[0] = -clip_from_view[0];
+        clip_from_view[4] = -clip_from_view[4];
+        clip_from_view[8] = -clip_from_view[8];
+
+        glLoadMatrixf(clip_from_view);
+
         glMatrixMode( GL_MODELVIEW );
 
         glCullFace( GL_BACK );

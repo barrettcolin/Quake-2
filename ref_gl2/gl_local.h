@@ -485,3 +485,15 @@ extern material_id g_unlit_alpha_material; // alpha surface, opaque SURF_DRAWTUR
 
 //<todo reset state for ff pipeline
 extern material_id g_default_material;
+
+// calculate GL perspective projection
+void Matrix_Perspective(GLfloat camera_separation, GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar, GLfloat matrix_out[16]);
+
+// calculate GL orthographic projection
+void Matrix_Orthographic(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat nearVal, GLfloat farVal, GLfloat matrix_out[16]);
+
+// calculate T * Ry * Rp * Rr
+void Matrix_FromAnglesOrigin(vec3_t const angles, vec3_t const origin, GLfloat matrix_out[16]);
+
+// calculate inv(Rr) * inv(Rp) * inv(Ry) * inv(T)
+void Matrix_InverseFromAnglesOrigin(vec3_t const angles, vec3_t const origin, GLfloat matrix_out[16]);
