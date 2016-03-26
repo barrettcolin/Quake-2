@@ -120,8 +120,7 @@ void Draw_Char (int x, int y, int num)
     Material_SetCurrent(s_draw_alpha_material);
     Material_SetDiffuseColor(s_draw_alpha_material, 1, 1, 1, 1);
 
-    GL_SelectTexture(GL_TEXTURE0);
-    GL_Bind(draw_chars->texnum);
+    GL_MBind(GL_TEXTURE0, draw_chars->texnum);
 
     glVertexPointer(3, GL_FLOAT, sizeof(verts[0]), &verts[0].x);
     glTexCoordPointer(2, GL_FLOAT, sizeof(verts[0]), &verts[0].s);
@@ -175,8 +174,9 @@ Draw_StretchPic
 */
 void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 {
-#if 0
 	image_t *gl;
+    draw_vertex_t verts[4];
+    material_id mat;
 
 	gl = Draw_FindPic (pic);
 	if (!gl)
@@ -188,24 +188,39 @@ void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 	if (scrap_dirty)
 		Scrap_Upload ();
 
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
-        glDisable (GL_ALPHA_TEST);
+    verts[0].x = x;
+    verts[0].y = y;
+    verts[0].z = 0;
+    verts[0].s = gl->sl;
+    verts[0].t = gl->tl;
 
-	GL_Bind (gl->texnum);
-    glBegin (GL_QUADS);
-    glTexCoord2f (gl->sl, gl->tl);
-    glVertex2f (x, y);
-    glTexCoord2f (gl->sh, gl->tl);
-    glVertex2f (x+w, y);
-    glTexCoord2f (gl->sh, gl->th);
-    glVertex2f (x+w, y+h);
-    glTexCoord2f (gl->sl, gl->th);
-    glVertex2f (x, y+h);
-    glEnd ();
+    verts[1].x = x;
+    verts[1].y = y + h;
+    verts[1].z = 0;
+    verts[1].s = gl->sl;
+    verts[1].t = gl->th;
 
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
-        glEnable (GL_ALPHA_TEST);
-#endif
+    verts[2].x = x + w;
+    verts[2].y = y;
+    verts[2].z = 0;
+    verts[2].s = gl->sh;
+    verts[2].t = gl->tl;
+
+    verts[3].x = x + w;
+    verts[3].y = y + h;
+    verts[3].z = 0;
+    verts[3].s = gl->sh;
+    verts[3].t = gl->th;
+
+    mat = gl->has_alpha ? s_draw_alpha_material : s_draw_material;
+    Material_SetCurrent(mat);
+    Material_SetDiffuseColor(mat, 1, 1, 1, 1);
+
+    GL_MBind(GL_TEXTURE0, gl->texnum);
+
+    glVertexPointer(3, GL_FLOAT, sizeof(verts[0]), &verts[0].x);
+    glTexCoordPointer(2, GL_FLOAT, sizeof(verts[0]), &verts[0].s);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 
@@ -257,8 +272,7 @@ void Draw_Pic (int x, int y, char *pic)
     Material_SetCurrent(mat);
     Material_SetDiffuseColor(mat, 1, 1, 1, 1);
 
-    GL_SelectTexture(GL_TEXTURE0);
-    GL_Bind(gl->texnum);
+    GL_MBind(GL_TEXTURE0, gl->texnum);
 
     glVertexPointer(3, GL_FLOAT, sizeof(verts[0]), &verts[0].x);
     glTexCoordPointer(2, GL_FLOAT, sizeof(verts[0]), &verts[0].s);
