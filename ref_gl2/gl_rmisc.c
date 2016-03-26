@@ -185,10 +185,10 @@ void GL_SetDefaultState( void )
 
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
-    glDisable(GL_BLEND);
+    //glDisable(GL_BLEND);
 
 	//<todo.gles2
-	glColor4f (1,1,1,1);
+    //glColor4f (1,1,1,1);
 	glPolygonMode (GL_FRONT_AND_BACK, GL_FILL);
 	glShadeModel (GL_FLAT);
 	GL_TextureMode( gl_texturemode->string );
@@ -199,9 +199,9 @@ void GL_SetDefaultState( void )
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	GL_TexEnv( GL_REPLACE );
+	//GL_TexEnv( GL_REPLACE );
 
 	GL_UpdateSwapInterval();
 }

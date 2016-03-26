@@ -128,6 +128,9 @@ cvar_t	*vid_gamma;
 cvar_t	*vid_ref;
 
 material_id g_lightmapped_material;
+material_id g_lightmapped_alpha_material;
+material_id g_unlit_material;
+material_id g_unlit_alpha_material;
 
 /*
 =================
@@ -754,7 +757,7 @@ void R_SetupGL (void)
 	else
         glDisable(GL_CULL_FACE);
 
-    glDisable(GL_BLEND);
+    //glDisable(GL_BLEND);
     //glDisable(GL_ALPHA_TEST);
     glEnable(GL_DEPTH_TEST);
 }
@@ -877,9 +880,9 @@ void	R_SetGL2D (void)
     glLoadIdentity ();
     glDisable (GL_DEPTH_TEST);
     glDisable (GL_CULL_FACE);
-    glDisable (GL_BLEND);
+    //glDisable (GL_BLEND);
     //glEnable (GL_ALPHA_TEST);
-    glColor4f (1,1,1,1);
+    //glColor4f (1,1,1,1);
 }
 
 
@@ -1178,10 +1181,28 @@ int R_Init( void *hinstance, void *hWnd )
 
     // Lightmapped material
     {
-        materialdesc_t desc;
+        materialdesc_t desc = { 0 };
         desc.type = mt_lightmapped;
+        desc.blend = mb_opaque;
 
         g_lightmapped_material = Material_Find(&desc);
+
+        desc.blend = mb_blend;
+
+        g_lightmapped_alpha_material = Material_Find(&desc);
+    }
+
+    // Unlit material
+    {
+        materialdesc_t desc = { 0 };
+        desc.type = mt_unlit;
+        desc.blend = mb_opaque;
+
+        g_unlit_material = Material_Find(&desc);
+
+        desc.blend = mb_blend;
+
+        g_unlit_alpha_material = Material_Find(&desc);
     }
 
     err = glGetError();

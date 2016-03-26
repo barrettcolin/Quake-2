@@ -12,6 +12,8 @@ typedef struct material_s
     GLuint vertex_shader;
     GLuint fragment_shader;
     GLuint program;
+
+    GLint diffuse_color_location;
 } material_t;
 
 #define MAX_MATERIALS 16
@@ -32,6 +34,9 @@ static int MaterialDesc_Compare(materialdesc_t const *a, materialdesc_t const *b
         return 1;
 
     if(a->blend != b->blend)
+        return 1;
+
+    if(a->alpha_test_66 != b->alpha_test_66)
         return 1;
 
     return 0;
@@ -171,18 +176,7 @@ static void MaterialUnlit_Create(material_t *mat)
 {
     for(;;)
     {
-        char const *defines;
-
-        switch(mat->desc.blend)
-        {
-        case mb_alpha_test_66:
-            defines = "#define ALPHA_TEST_66\n";
-            break;
-
-        default:
-            defines = "";
-            break;
-        }
+        char const *defines = mat->desc.alpha_test_66 ? "#define ALPHA_TEST_66\n" : "";
 
         if(Material_CreateProgram(mat, "ref_gl2/unlit", defines) != 0)
             break;
@@ -192,13 +186,14 @@ static void MaterialUnlit_Create(material_t *mat)
         if(Material_LinkProgram(mat) != 0)
             break;
 
-        glUseProgram(mat->program);
-        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
-        glUseProgram(0);
-
         mat->enable_client_state_vertex_array = true;
         mat->enable_client_state_texture_coord_array_0 = true;
         mat->enable_client_state_texture_coord_array_1 = false;
+
+        glUseProgram(mat->program);
+        mat->diffuse_color_location = glGetUniformLocation(mat->program, "vDiffuseColor");
+        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
+        glUseProgram(0);
         return;
     }
 
@@ -220,14 +215,15 @@ static void MaterialLightmapped_Create(material_t *mat)
         if(Material_LinkProgram(mat) != 0)
             break;
 
-        glUseProgram(mat->program);
-        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
-        glUniform1i(glGetUniformLocation(mat->program, "sLightmap"), 1);
-        glUseProgram(0);
-
         mat->enable_client_state_vertex_array = true;
         mat->enable_client_state_texture_coord_array_0 = true;
         mat->enable_client_state_texture_coord_array_1 = true;
+
+        glUseProgram(mat->program);
+        mat->diffuse_color_location = glGetUniformLocation(mat->program, "vDiffuseColor");
+        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
+        glUniform1i(glGetUniformLocation(mat->program, "sLightmap"), 1);
+        glUseProgram(0);
         return;
     }
 
@@ -298,10 +294,9 @@ void Material_SetCurrent(material_t *mat)
 {
     if(s_current_material != mat)
     {
+        glClientActiveTexture(GL_TEXTURE1);
         if(s_current_material->enable_client_state_texture_coord_array_1 != mat->enable_client_state_texture_coord_array_1)
         {
-            glClientActiveTexture(GL_TEXTURE1);
-
             if(mat->enable_client_state_texture_coord_array_1)
             {
                 glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -312,10 +307,9 @@ void Material_SetCurrent(material_t *mat)
             }
         }
 
+        glClientActiveTexture(GL_TEXTURE0); // touch GL_TEXTURE0 last so as to leave as active
         if(s_current_material->enable_client_state_texture_coord_array_0 != mat->enable_client_state_texture_coord_array_0)
         {
-            glClientActiveTexture(GL_TEXTURE0);
-
             if(mat->enable_client_state_texture_coord_array_0)
             {
                 glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -338,9 +332,30 @@ void Material_SetCurrent(material_t *mat)
             }
         }
 
+        if(s_current_material->desc.blend != mat->desc.blend)
+        {
+            if(mat->desc.blend != mb_opaque)
+            {
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            }
+            else
+            {
+                glDisable(GL_BLEND);
+            }
+        }
+
         glUseProgram(mat->program);
 
         s_current_material = mat;
+    }
+}
+
+void Material_SetDiffuseColor(material_id mat, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
+{
+    if(mat->diffuse_color_location != -1)
+    {
+        glUniform4f(mat->diffuse_color_location, r, g, b, a);
     }
 }
 

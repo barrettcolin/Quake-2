@@ -43,19 +43,20 @@ Draw_InitLocal
 */
 void Draw_InitLocal (void)
 {
+    materialdesc_t desc = { 0 };
+
 	// load console characters (don't bilerp characters)
 	draw_chars = GL_FindImage ("pics/conchars.pcx", it_pic);
 	GL_Bind( draw_chars->texnum );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    materialdesc_t desc;
     desc.type = mt_unlit;
     desc.blend = mb_opaque;
 
     s_draw_material = Material_Find(&desc);
 
-    desc.blend = mb_alpha_test_66;
+    desc.alpha_test_66 = true;
 
     s_draw_alpha_material = Material_Find(&desc);
 }
@@ -117,6 +118,7 @@ void Draw_Char (int x, int y, int num)
     verts[3].t = frow + size;
 
     Material_SetCurrent(s_draw_alpha_material);
+    Material_SetDiffuseColor(s_draw_alpha_material, 1, 1, 1, 1);
 
     GL_SelectTexture(GL_TEXTURE0);
     GL_Bind(draw_chars->texnum);
@@ -173,6 +175,7 @@ Draw_StretchPic
 */
 void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 {
+#if 0
 	image_t *gl;
 
 	gl = Draw_FindPic (pic);
@@ -202,6 +205,7 @@ void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 
 	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
         glEnable (GL_ALPHA_TEST);
+#endif
 }
 
 
@@ -214,6 +218,7 @@ void Draw_Pic (int x, int y, char *pic)
 {
 	image_t *gl;
     draw_vertex_t verts[4];
+    material_id mat;
 
     gl = Draw_FindPic (pic);
 	if (!gl)
@@ -248,7 +253,9 @@ void Draw_Pic (int x, int y, char *pic)
     verts[3].s = gl->sh;
     verts[3].t = gl->th;
 
-    Material_SetCurrent(gl->has_alpha ? s_draw_alpha_material : s_draw_material);
+    mat = gl->has_alpha ? s_draw_alpha_material : s_draw_material;
+    Material_SetCurrent(mat);
+    Material_SetDiffuseColor(mat, 1, 1, 1, 1);
 
     GL_SelectTexture(GL_TEXTURE0);
     GL_Bind(gl->texnum);
@@ -377,6 +384,7 @@ extern unsigned	r_rawpalette[256];
 
 void Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *data)
 {
+#if 0
 	unsigned	image32[256*256];
 	unsigned char image8[256*256];
 	int			i, j, trows;
@@ -473,5 +481,6 @@ void Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *data
 
 	if ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) 
 		glEnable (GL_ALPHA_TEST);
+#endif
 }
 

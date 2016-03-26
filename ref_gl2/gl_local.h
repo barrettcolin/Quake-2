@@ -447,15 +447,14 @@ typedef enum
 typedef enum
 {
     mb_opaque,
-    mb_alpha_test_66,
-    mb_alpha_blend_66,
-    mb_alpha_blend_33
+    mb_blend
 } materialblend_t;
 
 typedef struct materialdesc_s
 {
     materialtype_t type;
     materialblend_t blend;
+    qboolean alpha_test_66;
 } materialdesc_t;
 
 typedef struct material_s *material_id;
@@ -475,9 +474,14 @@ material_id Material_Find(materialdesc_t const *desc);
 
 void Material_SetCurrent(material_id mat);
 
+void Material_SetDiffuseColor(material_id mat, GLfloat r, GLfloat g, GLfloat b, GLfloat a);
+
 void Material_Render(material_id mat, void const *data, GLuint textures[num_texture_units]);
 
 extern material_id g_lightmapped_material;
+extern material_id g_lightmapped_alpha_material; // for RF_TRANSLUCENT brushmodels
+extern material_id g_unlit_material; // for opaque SURF_DRAWTURB (same material as opaque Draw_*)
+extern material_id g_unlit_alpha_material; // alpha surface, opaque SURF_DRAWTURB on RF_TRANSLUCENT brushmodels
 
 //<todo reset state for ff pipeline
 extern material_id g_default_material;

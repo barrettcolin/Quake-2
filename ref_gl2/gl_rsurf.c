@@ -179,17 +179,10 @@ DrawGLPoly
 */
 void DrawGLPoly (glpoly_t *p)
 {
-	int		i;
-	float	*v;
-
-	glBegin (GL_POLYGON);
-	v = p->verts[0];
-	for (i=0 ; i<p->numverts ; i++, v+= VERTEXSIZE)
-	{
-		glTexCoord2f (v[3], v[4]);
-		glVertex3fv (v);
-	}
-	glEnd ();
+    float	*v = p->verts[0];
+    glVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(float), v);
+    glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 3);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
 }
 
 //============
@@ -269,47 +262,6 @@ void R_DrawTriangleOutlines (void)
 #endif
 }
 
-/*
-** DrawGLPolyChain
-*/
-void DrawGLPolyChain( glpoly_t *p, float soffset, float toffset )
-{
-	if ( soffset == 0 && toffset == 0 )
-	{
-		for ( ; p != 0; p = p->chain )
-		{
-			float *v;
-			int j;
-
-			glBegin (GL_POLYGON);
-			v = p->verts[0];
-			for (j=0 ; j<p->numverts ; j++, v+= VERTEXSIZE)
-			{
-				glTexCoord2f (v[5], v[6] );
-				glVertex3fv (v);
-			}
-			glEnd ();
-		}
-	}
-	else
-	{
-		for ( ; p != 0; p = p->chain )
-		{
-			float *v;
-			int j;
-
-			glBegin (GL_POLYGON);
-			v = p->verts[0];
-			for (j=0 ; j<p->numverts ; j++, v+= VERTEXSIZE)
-			{
-				glTexCoord2f (v[5] - soffset, v[6] - toffset );
-				glVertex3fv (v);
-			}
-			glEnd ();
-		}
-	}
-}
-
 
 /*
 ================
@@ -326,27 +278,12 @@ void R_RenderBrushPoly (msurface_t *fa)
 
 	image = R_TextureAnimation (fa->texinfo);
 
-	if (fa->flags & SURF_DRAWTURB)
+    GL_MBind(GL_TEXTURE0, image->texnum);
+
+    if (fa->flags & SURF_DRAWTURB)
     {
-        GL_SelectTexture(GL_TEXTURE0);
-		GL_Bind( image->texnum );
-
-		// warp texture, no lightmaps
-		GL_TexEnv( GL_MODULATE );
-        glColor4f( gl_state.inverse_intensity,
-			        gl_state.inverse_intensity,
-					gl_state.inverse_intensity,
-					1.0F );
 		EmitWaterPolys (fa);
-		GL_TexEnv( GL_REPLACE );
-
 		return;
-	}
-	else
-	{
-		GL_Bind( image->texnum );
-
-		GL_TexEnv( GL_REPLACE );
 	}
 
 //======
@@ -429,17 +366,18 @@ of alpha_surfaces will draw back to front, giving proper ordering.
 */
 void R_DrawAlphaSurfaces (void)
 {
-#if 0
 	msurface_t	*s;
 	float		intens;
+
+    if(!r_alpha_surfaces)
+        return;
 
 	//
 	// go back to the world matrix
 	//
-    qglLoadMatrixf(gl_state.world_matrix);
+    glLoadMatrixf(gl_state.world_matrix);
 
-	qglEnable (GL_BLEND);
-	GL_TexEnv( GL_MODULATE );
+    Material_SetCurrent(g_unlit_alpha_material);
 
 	// the textures are prescaled up for a better lighting range,
 	// so scale it back down
@@ -447,26 +385,25 @@ void R_DrawAlphaSurfaces (void)
 
 	for (s=r_alpha_surfaces ; s ; s=s->texturechain)
 	{
-		GL_Bind(s->texinfo->image->texnum);
+        GL_MBind(GL_TEXTURE0, s->texinfo->image->texnum);
 		c_brush_polys++;
 		if (s->texinfo->flags & SURF_TRANS33)
-			qglColor4f (intens,intens,intens,0.33);
+            Material_SetDiffuseColor(g_unlit_alpha_material, intens, intens, intens, 0.33f);
 		else if (s->texinfo->flags & SURF_TRANS66)
-			qglColor4f (intens,intens,intens,0.66);
+            Material_SetDiffuseColor(g_unlit_alpha_material, intens, intens, intens, 0.66f);
 		else
-			qglColor4f (intens,intens,intens,1);
+            Material_SetDiffuseColor(g_unlit_alpha_material, intens, intens, intens, 1.0f);
+
 		if (s->flags & SURF_DRAWTURB)
 			EmitWaterPolys (s);
 		else
 			DrawGLPoly (s->polys);
 	}
 
-	GL_TexEnv( GL_REPLACE );
-	qglColor4f (1,1,1,1);
-	qglDisable (GL_BLEND);
-
 	r_alpha_surfaces = NULL;
-#endif
+
+    //<todo
+    Material_SetCurrent(g_default_material);
 }
 
 /*
@@ -614,6 +551,7 @@ void R_DrawInlineBModel (void)
 	float		dot;
 	msurface_t	*psurf;
 	dlight_t	*lt;
+    float alpha;
 
 	// calculate dynamic lighting for bmodel
 	if ( !gl_flashblend->value )
@@ -627,12 +565,7 @@ void R_DrawInlineBModel (void)
 
 	psurf = &currentmodel->surfaces[currentmodel->firstmodelsurface];
 
-	if ( currententity->flags & RF_TRANSLUCENT )
-	{
-        glEnable (GL_BLEND);
-        glColor4f (1,1,1,0.25);
-		GL_TexEnv( GL_MODULATE );
-	}
+    alpha = (currententity->flags & RF_TRANSLUCENT) ? 0.25 : 1;
 
 	//
 	// draw texture
@@ -649,29 +582,29 @@ void R_DrawInlineBModel (void)
 			(!(psurf->flags & SURF_PLANEBACK) && (dot > BACKFACE_EPSILON)))
 		{
 			if (psurf->texinfo->flags & (SURF_TRANS33|SURF_TRANS66) )
-			{	// add to the translucent chain
+			{	// add to the translucent chain (drawn with world_matrix, so this probably doesn't work)
 				psurf->texturechain = r_alpha_surfaces;
 				r_alpha_surfaces = psurf;
 			}
             else if ( !( psurf->flags & SURF_DRAWTURB ) )
 			{
+                material_id mat = g_lightmapped_material;
+                Material_SetCurrent(mat);
+                Material_SetDiffuseColor(mat, 1, 1, 1, alpha);
 				GL_RenderLightmappedPoly( psurf );
 			}
 			else
 			{
-				GL_EnableMultitexture( false );
+                material_id mat = g_unlit_material;
+                Material_SetCurrent(mat);
+                Material_SetDiffuseColor(g_unlit_material, gl_state.inverse_intensity, gl_state.inverse_intensity, gl_state.inverse_intensity, alpha);
 				R_RenderBrushPoly( psurf );
-				GL_EnableMultitexture( true );
 			}
 		}
 	}
 
-    if ( currententity->flags & RF_TRANSLUCENT )
-	{
-        glDisable (GL_BLEND);
-        glColor4f (1,1,1,1);
-		GL_TexEnv( GL_REPLACE );
-	}
+    //<todo
+    Material_SetCurrent(g_default_material);
 }
 
 /*
@@ -733,10 +666,7 @@ e->angles[2] = -e->angles[2];	// stupid quake bug
 e->angles[0] = -e->angles[0];	// stupid quake bug
 e->angles[2] = -e->angles[2];	// stupid quake bug
 
-    Material_SetCurrent(g_lightmapped_material);
     R_DrawInlineBModel ();
-
-    Material_SetCurrent(g_default_material);
 
     glPopMatrix ();
 }
@@ -941,14 +871,18 @@ void R_DrawWorld (void)
 	R_ClearSkyBox ();
 
     Material_SetCurrent(g_lightmapped_material);
+    Material_SetDiffuseColor(g_lightmapped_material, 1, 1, 1, 1);
     R_RecursiveWorldNode (r_worldmodel->nodes);
 
-    Material_SetCurrent(g_default_material);
-
     // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by R_RecursiveWorldNode
+    Material_SetCurrent(g_unlit_material);
+    Material_SetDiffuseColor(g_unlit_material, gl_state.inverse_intensity, gl_state.inverse_intensity, gl_state.inverse_intensity, 1);
 	DrawTextureChains ();
 	
+    Material_SetDiffuseColor(g_unlit_material, 1, 1, 1, 1);
 	R_DrawSkyBox ();
+
+    Material_SetCurrent(g_default_material);
 
 	R_DrawTriangleOutlines ();
 }
