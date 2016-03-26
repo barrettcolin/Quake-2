@@ -13,6 +13,9 @@ typedef struct material_s
     GLuint fragment_shader;
     GLuint program;
 
+    GLint clip_from_view_location;
+    GLint view_from_world_location;
+    GLint world_from_model_location;
     GLint diffuse_color_location;
 } material_t;
 
@@ -27,6 +30,14 @@ static material_t s_default_material;
 
 //<todo needed for ff pipeline glue
 material_t *g_default_material = &s_default_material;
+
+GLfloat const g_identity_matrix[16] =
+{
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1,
+};
 
 static int MaterialDesc_Compare(materialdesc_t const *a, materialdesc_t const *b)
 {
@@ -191,6 +202,9 @@ static void MaterialUnlit_Create(material_t *mat)
         mat->enable_client_state_texture_coord_array_1 = false;
 
         glUseProgram(mat->program);
+        mat->clip_from_view_location = glGetUniformLocation(mat->program, "mClipFromView");
+        mat->view_from_world_location = glGetUniformLocation(mat->program, "mViewFromWorld");
+        mat->world_from_model_location = glGetUniformLocation(mat->program, "mWorldFromModel");
         mat->diffuse_color_location = glGetUniformLocation(mat->program, "vDiffuseColor");
         glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
         glUseProgram(0);
@@ -220,6 +234,9 @@ static void MaterialLightmapped_Create(material_t *mat)
         mat->enable_client_state_texture_coord_array_1 = true;
 
         glUseProgram(mat->program);
+        mat->clip_from_view_location = glGetUniformLocation(mat->program, "mClipFromView");
+        mat->view_from_world_location = glGetUniformLocation(mat->program, "mViewFromWorld");
+        mat->world_from_model_location = glGetUniformLocation(mat->program, "mWorldFromModel");
         mat->diffuse_color_location = glGetUniformLocation(mat->program, "vDiffuseColor");
         glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
         glUniform1i(glGetUniformLocation(mat->program, "sLightmap"), 1);
@@ -351,12 +368,24 @@ void Material_SetCurrent(material_t *mat)
     }
 }
 
+void Material_SetClipFromView(material_id mat, GLfloat const clip_from_view[16])
+{
+    glUniformMatrix4fv(mat->clip_from_view_location, 1, GL_FALSE, clip_from_view);
+}
+
+void Material_SetViewFromWorld(material_id mat, GLfloat const view_from_world[16])
+{
+    glUniformMatrix4fv(mat->view_from_world_location, 1, GL_FALSE, view_from_world);
+}
+
+void Material_SetWorldFromModel(material_id mat, GLfloat const world_from_model[16])
+{
+    glUniformMatrix4fv(mat->world_from_model_location, 1, GL_FALSE, world_from_model);
+}
+
 void Material_SetDiffuseColor(material_id mat, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
-    if(mat->diffuse_color_location != -1)
-    {
-        glUniform4f(mat->diffuse_color_location, r, g, b, a);
-    }
+    glUniform4f(mat->diffuse_color_location, r, g, b, a);
 }
 
 void Material_Render(material_t *mat, void const *data, GLuint textures[num_texture_units])

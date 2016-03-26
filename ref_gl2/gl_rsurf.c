@@ -375,9 +375,10 @@ void R_DrawAlphaSurfaces (void)
 	//
 	// go back to the world matrix
 	//
-    glLoadMatrixf(gl_state.world_matrix);
-
     Material_SetCurrent(g_unlit_alpha_material);
+    Material_SetClipFromView(g_unlit_alpha_material, gl_state.clip_from_view);
+    Material_SetViewFromWorld(g_unlit_alpha_material, gl_state.view_from_world);
+    Material_SetWorldFromModel(g_unlit_alpha_material, g_identity_matrix);
 
 	// the textures are prescaled up for a better lighting range,
 	// so scale it back down
@@ -552,6 +553,9 @@ void R_DrawInlineBModel (void)
 	msurface_t	*psurf;
 	dlight_t	*lt;
     float alpha;
+    GLfloat world_from_model[16];
+
+    Matrix_FromAnglesOrigin(currententity->angles, currententity->origin, world_from_model);
 
 	// calculate dynamic lighting for bmodel
 	if ( !gl_flashblend->value )
@@ -590,6 +594,7 @@ void R_DrawInlineBModel (void)
 			{
                 material_id mat = g_lightmapped_material;
                 Material_SetCurrent(mat);
+                Material_SetWorldFromModel(mat, world_from_model); // proj + view already set when drawing world
                 Material_SetDiffuseColor(mat, 1, 1, 1, alpha);
 				GL_RenderLightmappedPoly( psurf );
 			}
@@ -597,6 +602,7 @@ void R_DrawInlineBModel (void)
 			{
                 material_id mat = g_unlit_material;
                 Material_SetCurrent(mat);
+                Material_SetWorldFromModel(mat, world_from_model); // proj + view already set when drawing world
                 Material_SetDiffuseColor(g_unlit_material, gl_state.inverse_intensity, gl_state.inverse_intensity, gl_state.inverse_intensity, alpha);
 				R_RenderBrushPoly( psurf );
 			}
@@ -659,12 +665,7 @@ void R_DrawBrushModel (entity_t *e)
 		modelorg[2] = DotProduct (temp, up);
 	}
 
-    glPushMatrix ();
-
-    R_RotateForEntity (e);
     R_DrawInlineBModel ();
-
-    glPopMatrix ();
 }
 
 /*
@@ -867,11 +868,17 @@ void R_DrawWorld (void)
 	R_ClearSkyBox ();
 
     Material_SetCurrent(g_lightmapped_material);
+    Material_SetClipFromView(g_lightmapped_material, gl_state.clip_from_view);
+    Material_SetViewFromWorld(g_lightmapped_material, gl_state.view_from_world);
+    Material_SetWorldFromModel(g_lightmapped_material, g_identity_matrix);
     Material_SetDiffuseColor(g_lightmapped_material, 1, 1, 1, 1);
     R_RecursiveWorldNode (r_worldmodel->nodes);
 
     // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by R_RecursiveWorldNode
     Material_SetCurrent(g_unlit_material);
+    Material_SetClipFromView(g_unlit_material, gl_state.clip_from_view);
+    Material_SetViewFromWorld(g_unlit_material, gl_state.view_from_world);
+    Material_SetWorldFromModel(g_unlit_material, g_identity_matrix);
     Material_SetDiffuseColor(g_unlit_material, gl_state.inverse_intensity, gl_state.inverse_intensity, gl_state.inverse_intensity, 1);
 	DrawTextureChains ();
 	

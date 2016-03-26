@@ -118,6 +118,9 @@ void Draw_Char (int x, int y, int num)
     verts[3].t = frow + size;
 
     Material_SetCurrent(s_draw_alpha_material);
+    Material_SetClipFromView(s_draw_alpha_material, gl_state.clip_from_view);
+    Material_SetViewFromWorld(s_draw_alpha_material, g_identity_matrix);
+    Material_SetWorldFromModel(s_draw_alpha_material, g_identity_matrix);
     Material_SetDiffuseColor(s_draw_alpha_material, 1, 1, 1, 1);
 
     GL_MBind(GL_TEXTURE0, draw_chars->texnum);
@@ -214,6 +217,9 @@ void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 
     mat = gl->has_alpha ? s_draw_alpha_material : s_draw_material;
     Material_SetCurrent(mat);
+    Material_SetClipFromView(mat, gl_state.clip_from_view);
+    Material_SetViewFromWorld(mat, g_identity_matrix);
+    Material_SetWorldFromModel(mat, g_identity_matrix);
     Material_SetDiffuseColor(mat, 1, 1, 1, 1);
 
     GL_MBind(GL_TEXTURE0, gl->texnum);

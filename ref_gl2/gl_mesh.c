@@ -51,7 +51,7 @@ float	r_avertexnormal_dots[SHADEDOT_QUANT][256] =
 
 float	*shadedots = r_avertexnormal_dots[0];
 
-void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx_t *verts, float *lerp, float move[3], float frontv[3], float backv[3] )
+static void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx_t *verts, float *lerp, float move[3], float frontv[3], float backv[3] )
 {
 	int i;
 
@@ -87,7 +87,7 @@ interpolates between two frames and origins
 FIXME: batch lerp all vertexes
 =============
 */
-void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
+static void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 {
 	float 	l;
 	daliasframe_t	*frame, *oldframe;
@@ -521,6 +521,7 @@ R_DrawAliasModel
 */
 void R_DrawAliasModel (entity_t *e)
 {
+#if 0
 	int			i;
 	dmdl_t		*paliashdr;
 	float		an;
@@ -843,6 +844,7 @@ void R_DrawAliasModel (entity_t *e)
 	}
 #endif
     glColor4f (1,1,1,1);
+#endif
 }
 
 

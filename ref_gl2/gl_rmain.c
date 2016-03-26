@@ -698,7 +698,7 @@ void R_SetupGL (void)
 	float	screenaspect;
 //	float	yfov;
 	int		x, x2, y2, y, w, h;
-    GLfloat clip_from_view[16], ref_from_world[16];
+    GLfloat ref_from_world[16];
 
 	//
 	// set up viewport
@@ -719,38 +719,34 @@ void R_SetupGL (void)
     screenaspect = (float)r_newrefdef.width/r_newrefdef.height;
 //	yfov = 2*atan((float)r_newrefdef.height/r_newrefdef.width)*180/M_PI;
 
-    glMatrixMode(GL_PROJECTION);
-    Matrix_Perspective(gl_state.camera_separation, r_newrefdef.fov_y, screenaspect, 4, 4096, clip_from_view);
-    glLoadMatrixf(clip_from_view);
+    Matrix_Perspective(gl_state.camera_separation, r_newrefdef.fov_y, screenaspect, 4, 4096, gl_state.clip_from_view);
 
     glCullFace(GL_FRONT);
 
-    glMatrixMode(GL_MODELVIEW);
     // view_from_world (== world_matrix)
     Matrix_InverseFromAnglesOrigin(r_newrefdef.viewangles, r_newrefdef.vieworg, ref_from_world);
     // view_from_world = view_from_ref * ref_from_world
     {
-        gl_state.world_matrix[0] = -ref_from_world[1];
-        gl_state.world_matrix[1] = ref_from_world[2];
-        gl_state.world_matrix[2] = -ref_from_world[0];
-        gl_state.world_matrix[3] = 0;
+        gl_state.view_from_world[0] = -ref_from_world[1];
+        gl_state.view_from_world[1] = ref_from_world[2];
+        gl_state.view_from_world[2] = -ref_from_world[0];
+        gl_state.view_from_world[3] = 0;
 
-        gl_state.world_matrix[4] = -ref_from_world[5];
-        gl_state.world_matrix[5] = ref_from_world[6];
-        gl_state.world_matrix[6] = -ref_from_world[4];
-        gl_state.world_matrix[7] = 0;
+        gl_state.view_from_world[4] = -ref_from_world[5];
+        gl_state.view_from_world[5] = ref_from_world[6];
+        gl_state.view_from_world[6] = -ref_from_world[4];
+        gl_state.view_from_world[7] = 0;
 
-        gl_state.world_matrix[8] = -ref_from_world[9];
-        gl_state.world_matrix[9] = ref_from_world[10];
-        gl_state.world_matrix[10] = -ref_from_world[8];
-        gl_state.world_matrix[11] = 0;
+        gl_state.view_from_world[8] = -ref_from_world[9];
+        gl_state.view_from_world[9] = ref_from_world[10];
+        gl_state.view_from_world[10] = -ref_from_world[8];
+        gl_state.view_from_world[11] = 0;
 
-        gl_state.world_matrix[12] = -ref_from_world[13];
-        gl_state.world_matrix[13] = ref_from_world[14];
-        gl_state.world_matrix[14] = -ref_from_world[12];
-        gl_state.world_matrix[15] = 1;
+        gl_state.view_from_world[12] = -ref_from_world[13];
+        gl_state.view_from_world[13] = ref_from_world[14];
+        gl_state.view_from_world[14] = -ref_from_world[12];
+        gl_state.view_from_world[15] = 1;
     }
-    glLoadMatrixf(gl_state.world_matrix);
 
 	//
 	// set drawing parms
@@ -874,17 +870,10 @@ void R_RenderView (refdef_t *fd)
 
 void	R_SetGL2D (void)
 {
-    GLfloat clip_from_view[16];
-
 	// set 2D virtual screen size
     glViewport (0,0, vid.width, vid.height);
 
-    glMatrixMode(GL_PROJECTION);
-    Matrix_Orthographic(0, vid.width, vid.height, 0, -99999, 99999, clip_from_view);
-    glLoadMatrixf(clip_from_view);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity ();
+    Matrix_Orthographic(0, vid.width, vid.height, 0, -99999, 99999, gl_state.clip_from_view);
 
     glDisable (GL_DEPTH_TEST);
     glDisable (GL_CULL_FACE);

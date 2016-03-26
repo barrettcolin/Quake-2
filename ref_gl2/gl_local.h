@@ -403,7 +403,8 @@ typedef struct
 	float camera_separation;
 	qboolean stereo_enabled;
 
-    GLfloat world_matrix[16]; // for rendering world alpha surfaces after everything else
+    GLfloat clip_from_view[16];
+    GLfloat view_from_world[16]; // for rendering world alpha surfaces after everything else
 } glstate_t;
 
 extern glconfig_t  gl_config;
@@ -474,6 +475,12 @@ material_id Material_Find(materialdesc_t const *desc);
 
 void Material_SetCurrent(material_id mat);
 
+void Material_SetClipFromView(material_id mat, GLfloat const clip_from_view[16]);
+
+void Material_SetViewFromWorld(material_id mat, GLfloat const view_from_world[16]);
+
+void Material_SetWorldFromModel(material_id mat, GLfloat const world_from_model[16]);
+
 void Material_SetDiffuseColor(material_id mat, GLfloat r, GLfloat g, GLfloat b, GLfloat a);
 
 void Material_Render(material_id mat, void const *data, GLuint textures[num_texture_units]);
@@ -485,6 +492,8 @@ extern material_id g_unlit_alpha_material; // alpha surface, opaque SURF_DRAWTUR
 
 //<todo reset state for ff pipeline
 extern material_id g_default_material;
+
+extern GLfloat const g_identity_matrix[16];
 
 // calculate GL perspective projection
 void Matrix_Perspective(GLfloat camera_separation, GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar, GLfloat matrix_out[16]);
