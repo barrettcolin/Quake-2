@@ -660,12 +660,8 @@ void R_DrawBrushModel (entity_t *e)
 	}
 
     glPushMatrix ();
-e->angles[0] = -e->angles[0];	// stupid quake bug
-e->angles[2] = -e->angles[2];	// stupid quake bug
-	R_RotateForEntity (e);
-e->angles[0] = -e->angles[0];	// stupid quake bug
-e->angles[2] = -e->angles[2];	// stupid quake bug
 
+    R_RotateForEntity (e);
     R_DrawInlineBModel ();
 
     glPopMatrix ();

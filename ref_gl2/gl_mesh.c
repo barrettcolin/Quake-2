@@ -731,9 +731,8 @@ void R_DrawAliasModel (entity_t *e)
 	}
 
     glPushMatrix ();
-	e->angles[PITCH] = -e->angles[PITCH];	// sigh.
-	R_RotateForEntity (e);
-	e->angles[PITCH] = -e->angles[PITCH];	// sigh.
+
+    R_RotateForEntity (e);
 
 	// select skin
 	if (currententity->skin)
