@@ -1,3 +1,7 @@
+#if defined (GL_ES)
+precision mediump float;
+#endif
+
 uniform vec4 vDiffuseColor;
 
 uniform sampler2D sDiffuse;

@@ -1,3 +1,7 @@
+#if defined (GL_ES)
+precision mediump float;
+#endif
+
 // inline bmodels with RF_TRANSLUCENT use 0.25 alpha
 uniform vec4 vDiffuseColor;
 

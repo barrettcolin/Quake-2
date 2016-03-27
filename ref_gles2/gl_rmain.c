@@ -58,9 +58,6 @@ vec3_t	vpn;
 vec3_t	vright;
 vec3_t	r_origin;
 
-float	r_world_matrix[16];
-float	r_base_world_matrix[16];
-
 //
 // screen size info
 //
@@ -122,8 +119,6 @@ cvar_t	*gl_playermip;
 cvar_t  *gl_saturatelighting;
 cvar_t	*gl_swapinterval;
 cvar_t	*gl_texturemode;
-cvar_t	*gl_texturealphamode;
-cvar_t	*gl_texturesolidmode;
 cvar_t	*gl_lockpvs;
 
 cvar_t	*gl_3dlabs_broken;
@@ -131,6 +126,11 @@ cvar_t	*gl_3dlabs_broken;
 cvar_t	*vid_fullscreen;
 cvar_t	*vid_gamma;
 cvar_t	*vid_ref;
+
+material_id g_lightmapped_material;
+material_id g_lightmapped_alpha_material;
+material_id g_unlit_material;
+material_id g_unlit_alpha_material;
 
 /*
 =================
@@ -152,17 +152,6 @@ qboolean R_CullBox (vec3_t mins, vec3_t maxs)
 	return false;
 }
 
-
-void R_RotateForEntity (entity_t *e)
-{
-#if 0
-    qglTranslatef (e->origin[0],  e->origin[1],  e->origin[2]);
-
-    qglRotatef (e->angles[1],  0, 0, 1);
-    qglRotatef (-e->angles[0],  0, 1, 0);
-    qglRotatef (-e->angles[2],  1, 0, 0);
-#endif
-}
 
 /*
 =============================================================
@@ -682,37 +671,26 @@ void R_SetupFrame (void)
 #endif
 }
 
-#if 0
-void MYgluPerspective( GLdouble fovy, GLdouble aspect,
-		     GLdouble zNear, GLdouble zFar )
-{
-   GLdouble xmin, xmax, ymin, ymax;
-
-   ymax = zNear * tan( fovy * M_PI / 360.0 );
-   ymin = -ymax;
-
-   xmin = ymin * aspect;
-   xmax = ymax * aspect;
-
-   xmin += -( 2 * gl_state.camera_separation ) / zNear;
-   xmax += -( 2 * gl_state.camera_separation ) / zNear;
-
-   qglFrustum( xmin, xmax, ymin, ymax, zNear, zFar );
-}
-#endif
-
 
 /*
 =============
 R_SetupGL
 =============
 */
+// view_from_ref (rotation)
+//  0 -1  0
+//  0  0  1
+// -1  0  0
+// maps (Quake is +X-fwd, +Z-up, GL view is +Y-up, -Z-fwd)
+// ( 1, 0, 0) -> ( 0, 0,-1)
+// ( 0, 1, 0) -> (-1, 0, 0)
+// ( 0, 0, 1) -> ( 0, 1, 0)
 void R_SetupGL (void)
 {
-#if 0
 	float	screenaspect;
 //	float	yfov;
 	int		x, x2, y2, y, w, h;
+    GLfloat ref_from_world[16];
 
 	//
 	// set up viewport
@@ -725,46 +703,54 @@ void R_SetupGL (void)
 	w = x2 - x;
 	h = y - y2;
 
-	qglViewport (x, y2, w, h);
+    glViewport (x, y2, w, h);
 
 	//
 	// set up projection matrix
 	//
     screenaspect = (float)r_newrefdef.width/r_newrefdef.height;
 //	yfov = 2*atan((float)r_newrefdef.height/r_newrefdef.width)*180/M_PI;
-	qglMatrixMode(GL_PROJECTION);
-    qglLoadIdentity ();
-    MYgluPerspective (r_newrefdef.fov_y,  screenaspect,  4,  4096);
 
-	qglCullFace(GL_FRONT);
+    Matrix_Perspective(gl_state.camera_separation, r_newrefdef.fov_y, screenaspect, 4, 4096, gl_state.clip_from_view);
 
-	qglMatrixMode(GL_MODELVIEW);
-    qglLoadIdentity ();
+    glCullFace(GL_FRONT);
 
-    qglRotatef (-90,  1, 0, 0);	    // put Z going up
-    qglRotatef (90,  0, 0, 1);	    // put Z going up
-    qglRotatef (-r_newrefdef.viewangles[2],  1, 0, 0);
-    qglRotatef (-r_newrefdef.viewangles[0],  0, 1, 0);
-    qglRotatef (-r_newrefdef.viewangles[1],  0, 0, 1);
-    qglTranslatef (-r_newrefdef.vieworg[0],  -r_newrefdef.vieworg[1],  -r_newrefdef.vieworg[2]);
+    // view_from_world (== world_matrix)
+    Matrix_InverseFromAnglesOrigin(r_newrefdef.viewangles, r_newrefdef.vieworg, ref_from_world);
+    // view_from_world = view_from_ref * ref_from_world
+    {
+        gl_state.view_from_world[0] = -ref_from_world[1];
+        gl_state.view_from_world[1] = ref_from_world[2];
+        gl_state.view_from_world[2] = -ref_from_world[0];
+        gl_state.view_from_world[3] = 0;
 
-//	if ( gl_state.camera_separation != 0 && gl_state.stereo_enabled )
-//		qglTranslatef ( gl_state.camera_separation, 0, 0 );
+        gl_state.view_from_world[4] = -ref_from_world[5];
+        gl_state.view_from_world[5] = ref_from_world[6];
+        gl_state.view_from_world[6] = -ref_from_world[4];
+        gl_state.view_from_world[7] = 0;
 
-	qglGetFloatv (GL_MODELVIEW_MATRIX, r_world_matrix);
+        gl_state.view_from_world[8] = -ref_from_world[9];
+        gl_state.view_from_world[9] = ref_from_world[10];
+        gl_state.view_from_world[10] = -ref_from_world[8];
+        gl_state.view_from_world[11] = 0;
+
+        gl_state.view_from_world[12] = -ref_from_world[13];
+        gl_state.view_from_world[13] = ref_from_world[14];
+        gl_state.view_from_world[14] = -ref_from_world[12];
+        gl_state.view_from_world[15] = 1;
+    }
 
 	//
 	// set drawing parms
 	//
 	if (gl_cull->value)
-		qglEnable(GL_CULL_FACE);
+        glEnable(GL_CULL_FACE);
 	else
-		qglDisable(GL_CULL_FACE);
+        glDisable(GL_CULL_FACE);
 
-	qglDisable(GL_BLEND);
-	qglDisable(GL_ALPHA_TEST);
-	qglEnable(GL_DEPTH_TEST);
-#endif
+    //glDisable(GL_BLEND);
+    //glDisable(GL_ALPHA_TEST);
+    glEnable(GL_DEPTH_TEST);
 }
 
 /*
@@ -774,41 +760,40 @@ R_Clear
 */
 void R_Clear (void)
 {
-#if 0
 	if (gl_ztrick->value)
 	{
 		static int trickframe;
 
 		if (gl_clear->value)
-			qglClear (GL_COLOR_BUFFER_BIT);
+            glClear (GL_COLOR_BUFFER_BIT);
 
 		trickframe++;
 		if (trickframe & 1)
 		{
 			gldepthmin = 0;
 			gldepthmax = 0.49999;
-			qglDepthFunc (GL_LEQUAL);
+            glDepthFunc (GL_LEQUAL);
 		}
 		else
 		{
 			gldepthmin = 1;
 			gldepthmax = 0.5;
-			qglDepthFunc (GL_GEQUAL);
+            glDepthFunc (GL_GEQUAL);
 		}
 	}
 	else
 	{
 		if (gl_clear->value)
-			qglClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		else
-			qglClear (GL_DEPTH_BUFFER_BIT);
+            glClear (GL_DEPTH_BUFFER_BIT);
 		gldepthmin = 0;
 		gldepthmax = 1;
-		qglDepthFunc (GL_LEQUAL);
+        glDepthFunc (GL_LEQUAL);
 	}
 
-	qglDepthRange (gldepthmin, gldepthmax);
-#endif
+    //glDepthRange (gldepthmin, gldepthmax);
+
 }
 
 void R_Flash( void )
@@ -877,20 +862,16 @@ void R_RenderView (refdef_t *fd)
 
 void	R_SetGL2D (void)
 {
-#if 0
 	// set 2D virtual screen size
-	qglViewport (0,0, vid.width, vid.height);
-	qglMatrixMode(GL_PROJECTION);
-    qglLoadIdentity ();
-	qglOrtho  (0, vid.width, vid.height, 0, -99999, 99999);
-	qglMatrixMode(GL_MODELVIEW);
-    qglLoadIdentity ();
-	qglDisable (GL_DEPTH_TEST);
-	qglDisable (GL_CULL_FACE);
-	qglDisable (GL_BLEND);
-	qglEnable (GL_ALPHA_TEST);
-	qglColor4f (1,1,1,1);
-#endif
+    glViewport (0,0, vid.width, vid.height);
+
+    Matrix_Orthographic(0, vid.width, vid.height, 0, -99999, 99999, gl_state.clip_from_view);
+
+    glDisable (GL_DEPTH_TEST);
+    glDisable (GL_CULL_FACE);
+    //glDisable (GL_BLEND);
+    //glEnable (GL_ALPHA_TEST);
+    //glColor4f (1,1,1,1);
 }
 
 
@@ -989,8 +970,6 @@ void R_Register( void )
 	gl_monolightmap = ri.Cvar_Get( "gl_monolightmap", "0", 0 );
 	gl_driver = ri.Cvar_Get( "gl_driver", "opengl32", CVAR_ARCHIVE );
 	gl_texturemode = ri.Cvar_Get( "gl_texturemode", "GL_LINEAR_MIPMAP_NEAREST", CVAR_ARCHIVE );
-	gl_texturealphamode = ri.Cvar_Get( "gl_texturealphamode", "default", CVAR_ARCHIVE );
-	gl_texturesolidmode = ri.Cvar_Get( "gl_texturesolidmode", "default", CVAR_ARCHIVE );
 	gl_lockpvs = ri.Cvar_Get( "gl_lockpvs", "0", 0 );
 
 	gl_vertex_arrays = ri.Cvar_Get( "gl_vertex_arrays", "0", CVAR_ARCHIVE );
@@ -1180,93 +1159,40 @@ int R_Init( void *hinstance, void *hWnd )
 		ri.Cvar_SetValue( "gl_finish", 1 );
 	}
 
-	/*
-	** grab extensions
-	*/
-#ifdef WIN32
-	if ( strstr( gl_config.extensions_string, "GL_EXT_compiled_vertex_array" ) || 
-		 strstr( gl_config.extensions_string, "GL_SGI_compiled_vertex_array" ) )
-	{
-		ri.Con_Printf( PRINT_ALL, "...enabling GL_EXT_compiled_vertex_array\n" );
-		qglLockArraysEXT = ( void * ) qwglGetProcAddress( "glLockArraysEXT" );
-		qglUnlockArraysEXT = ( void * ) qwglGetProcAddress( "glUnlockArraysEXT" );
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...GL_EXT_compiled_vertex_array not found\n" );
-	}
-
-	if ( strstr( gl_config.extensions_string, "WGL_EXT_swap_control" ) )
-	{
-		qwglSwapIntervalEXT = ( BOOL (WINAPI *)(int)) qwglGetProcAddress( "wglSwapIntervalEXT" );
-		ri.Con_Printf( PRINT_ALL, "...enabling WGL_EXT_swap_control\n" );
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...WGL_EXT_swap_control not found\n" );
-	}
-
-	if ( strstr( gl_config.extensions_string, "GL_EXT_point_parameters" ) )
-	{
-		if ( gl_ext_pointparameters->value )
-		{
-			qglPointParameterfEXT = ( void (APIENTRY *)( GLenum, GLfloat ) ) qwglGetProcAddress( "glPointParameterfEXT" );
-			qglPointParameterfvEXT = ( void (APIENTRY *)( GLenum, const GLfloat * ) ) qwglGetProcAddress( "glPointParameterfvEXT" );
-			ri.Con_Printf( PRINT_ALL, "...using GL_EXT_point_parameters\n" );
-		}
-		else
-		{
-			ri.Con_Printf( PRINT_ALL, "...ignoring GL_EXT_point_parameters\n" );
-		}
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...GL_EXT_point_parameters not found\n" );
-	}
-
-	if ( strstr( gl_config.extensions_string, "GL_EXT_paletted_texture" ) && 
-		 strstr( gl_config.extensions_string, "GL_EXT_shared_texture_palette" ) )
-	{
-		if ( gl_ext_palettedtexture->value )
-		{
-			ri.Con_Printf( PRINT_ALL, "...using GL_EXT_shared_texture_palette\n" );
-			qglColorTableEXT = ( void ( APIENTRY * ) ( int, int, int, int, int, const void * ) ) qwglGetProcAddress( "glColorTableEXT" );
-		}
-		else
-		{
-			ri.Con_Printf( PRINT_ALL, "...ignoring GL_EXT_shared_texture_palette\n" );
-		}
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...GL_EXT_shared_texture_palette not found\n" );
-	}
-
-	if ( strstr( gl_config.extensions_string, "GL_SGIS_multitexture" ) )
-	{
-		if ( gl_ext_multitexture->value )
-		{
-			ri.Con_Printf( PRINT_ALL, "...using GL_SGIS_multitexture\n" );
-			qglMTexCoord2fSGIS = ( void * ) qwglGetProcAddress( "glMTexCoord2fSGIS" );
-			qglSelectTextureSGIS = ( void * ) qwglGetProcAddress( "glSelectTextureSGIS" );
-		}
-		else
-		{
-			ri.Con_Printf( PRINT_ALL, "...ignoring GL_SGIS_multitexture\n" );
-		}
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...GL_SGIS_multitexture not found\n" );
-	}
-#endif
-
 	GL_SetDefaultState();
 
-	GL_InitImages ();
+    Material_Init();
+
+    GL_InitImages ();
 	Mod_Init ();
 	R_InitParticleTexture ();
 	Draw_InitLocal ();
+
+    // Lightmapped material
+    {
+        materialdesc_t desc = { 0 };
+        desc.type = mt_lightmapped;
+        desc.blend = mb_opaque;
+
+        g_lightmapped_material = Material_Find(&desc);
+
+        desc.blend = mb_blend;
+
+        g_lightmapped_alpha_material = Material_Find(&desc);
+    }
+
+    // Unlit material
+    {
+        materialdesc_t desc = { 0 };
+        desc.type = mt_unlit;
+        desc.blend = mb_opaque;
+
+        g_unlit_material = Material_Find(&desc);
+
+        desc.blend = mb_blend;
+
+        g_unlit_alpha_material = Material_Find(&desc);
+    }
 
     err = glGetError();
 	if ( err != GL_NO_ERROR )
@@ -1288,6 +1214,8 @@ void R_Shutdown (void)
 	Mod_FreeAll ();
 
 	GL_ShutdownImages ();
+
+    Material_Shutdown();
 
 	/*
 	** shut down OS specific OpenGL stuff like contexts, etc.
@@ -1351,6 +1279,9 @@ void R_BeginFrame( float camera_separation )
 	}
 
 	GLimp_BeginFrame( camera_separation );
+
+    //<todo hack until all drawing is through Material
+    Material_SetCurrent(g_default_material);
 
     R_SetGL2D();
 #if 0
@@ -1424,11 +1355,10 @@ void R_SetPalette ( const unsigned char *palette)
 		}
 	}
 	GL_SetTexturePalette( r_rawpalette );
-#if 0
-	qglClearColor (0,0,0,0);
-	qglClear (GL_COLOR_BUFFER_BIT);
-	qglClearColor (1,0, 0.5 , 0.5);
-#endif
+
+    glClearColor (0,0,0,0);
+    glClear (GL_COLOR_BUFFER_BIT);
+    glClearColor (1,0, 0.5 , 0.5);
 }
 
 /*

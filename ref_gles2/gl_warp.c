@@ -33,6 +33,12 @@ msurface_t	*warpface;
 #define	SUBDIVIDE_SIZE	64
 //#define	SUBDIVIDE_SIZE	1024
 
+typedef struct warpvert_s
+{
+    float x, y, z;
+    float s, t;
+} warpvert_t;
+
 void BoundPoly (int numverts, float *verts, vec3_t mins, vec3_t maxs)
 {
 	int		i, j;
@@ -208,51 +214,61 @@ EmitWaterPolys
 Does a water warp on the pre-fragmented glpoly_t chain
 =============
 */
+// function scope for alloca
+static void EmitWaterPoly(glpoly_t const *p, float scroll)
+{
+    float const *v;
+    int i;
+    float s, t, os, ot;
+    warpvert_t *wv;
+    warpvert_t *waterverts = alloca(p->numverts * sizeof(warpvert_t));
+
+    for (i = 0, v = p->verts[0], wv = waterverts; i < p->numverts; ++i, v += VERTEXSIZE, ++wv)
+    {
+        os = v[3];
+        ot = v[4];
+
+#if !id386
+        s = os + r_turbsin[(int)((ot * 0.125f + r_newrefdef.time) * TURBSCALE) & 255];
+#else
+        s = os + r_turbsin[Q_ftol(((ot * 0.125f + r_newrefdef.time) * TURBSCALE)) & 255];
+#endif
+        s += scroll;
+        s *= (1.0f / 64.0f);
+
+#if !id386
+        t = ot + r_turbsin[(int)((os * 0.125f + r_newrefdef.time) * TURBSCALE) & 255];
+#else
+        t = ot + r_turbsin[Q_ftol(((os * 0.125f + r_newrefdef.time) * TURBSCALE) ) & 255];
+#endif
+        t *= (1.0f / 64.0f);
+
+        wv->x = v[0];
+        wv->y = v[1];
+        wv->z = v[2];
+        wv->s = s;
+        wv->t = t;
+    }
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &waterverts->x);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &waterverts->s);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
+}
+
 void EmitWaterPolys (msurface_t *fa)
 {
-#if 0
-	glpoly_t	*p, *bp;
-	float		*v;
-	int			i;
-	float		s, t, os, ot;
+    glpoly_t	*bp;
 	float		scroll;
-	float		rdt = r_newrefdef.time;
 
 	if (fa->texinfo->flags & SURF_FLOWING)
-		scroll = -64 * ( (r_newrefdef.time*0.5) - (int)(r_newrefdef.time*0.5) );
+        scroll = -64 * ((r_newrefdef.time * 0.5f) - (int)(r_newrefdef.time * 0.5f));
 	else
 		scroll = 0;
+
 	for (bp=fa->polys ; bp ; bp=bp->next)
 	{
-		p = bp;
-
-		qglBegin (GL_TRIANGLE_FAN);
-		for (i=0,v=p->verts[0] ; i<p->numverts ; i++, v+=VERTEXSIZE)
-		{
-			os = v[3];
-			ot = v[4];
-
-#if !id386
-			s = os + r_turbsin[(int)((ot*0.125+r_newrefdef.time) * TURBSCALE) & 255];
-#else
-			s = os + r_turbsin[Q_ftol( ((ot*0.125+rdt) * TURBSCALE) ) & 255];
-#endif
-			s += scroll;
-			s *= (1.0/64);
-
-#if !id386
-			t = ot + r_turbsin[(int)((os*0.125+rdt) * TURBSCALE) & 255];
-#else
-			t = ot + r_turbsin[Q_ftol( ((os*0.125+rdt) * TURBSCALE) ) & 255];
-#endif
-			t *= (1.0/64);
-
-			qglTexCoord2f (s, t);
-			qglVertex3fv (v);
-		}
-		qglEnd ();
-	}
-#endif
+        EmitWaterPoly(bp, scroll);
+    }
 }
 
 
@@ -519,7 +535,7 @@ void R_ClearSkyBox (void)
 }
 
 
-void MakeSkyVec (float s, float t, int axis)
+void MakeSkyVec (float s, float t, int axis, warpvert_t *vert_out)
 {
 	vec3_t		v, b;
 	int			j, k;
@@ -551,8 +567,12 @@ void MakeSkyVec (float s, float t, int axis)
 		t = sky_max;
 
 	t = 1.0 - t;
-    //qglTexCoord2f (s, t);
-    //qglVertex3fv (v);
+
+    vert_out->x = v[0];
+    vert_out->y = v[1];
+    vert_out->z = v[2];
+    vert_out->s = s;
+    vert_out->t = t;
 }
 
 /*
@@ -582,12 +602,14 @@ qglDisable (GL_DEPTH_TEST);
 			return;		// nothing visible
 	}
 
-qglPushMatrix ();
-qglTranslatef (r_origin[0], r_origin[1], r_origin[2]);
-qglRotatef (r_newrefdef.time * skyrotate, skyaxis[0], skyaxis[1], skyaxis[2]);
+glPushMatrix ();
+glTranslatef (r_origin[0], r_origin[1], r_origin[2]);
+glRotatef (r_newrefdef.time * skyrotate, skyaxis[0], skyaxis[1], skyaxis[2]);
 
 	for (i=0 ; i<6 ; i++)
 	{
+        warpvert_t verts[4];
+
 		if (skyrotate)
 		{	// hack, forces full sky to draw when rotating
 			skymins[0][i] = -1;
@@ -600,16 +622,18 @@ qglRotatef (r_newrefdef.time * skyrotate, skyaxis[0], skyaxis[1], skyaxis[2]);
 		|| skymins[1][i] >= skymaxs[1][i])
 			continue;
 
-		GL_Bind (sky_images[skytexorder[i]]->texnum);
+        GL_MBind(GL_TEXTURE0, sky_images[skytexorder[i]]->texnum);
 
-		qglBegin (GL_QUADS);
-		MakeSkyVec (skymins[0][i], skymins[1][i], i);
-		MakeSkyVec (skymins[0][i], skymaxs[1][i], i);
-		MakeSkyVec (skymaxs[0][i], skymaxs[1][i], i);
-		MakeSkyVec (skymaxs[0][i], skymins[1][i], i);
-		qglEnd ();
+        MakeSkyVec (skymins[0][i], skymins[1][i], i, verts);
+        MakeSkyVec (skymins[0][i], skymaxs[1][i], i, verts + 1);
+        MakeSkyVec (skymaxs[0][i], skymins[1][i], i, verts + 2);
+        MakeSkyVec (skymaxs[0][i], skymaxs[1][i], i, verts + 3);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &verts->x);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &verts->s);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
-qglPopMatrix ();
+glPopMatrix ();
 #if 0
 glDisable (GL_BLEND);
 glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);

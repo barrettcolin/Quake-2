@@ -22,11 +22,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "gl_local.h"
 
-image_t		*draw_chars;
+static image_t *draw_chars;
 
 extern	qboolean	scrap_dirty;
 void Scrap_Upload (void);
 
+typedef struct draw_vertex_s
+{
+    float x, y, z;
+    float s, t;
+} draw_vertex_t;
+
+static material_id s_draw_material;
+static material_id s_draw_alpha_material;
 
 /*
 ===============
@@ -35,11 +43,22 @@ Draw_InitLocal
 */
 void Draw_InitLocal (void)
 {
+    materialdesc_t desc = { 0 };
+
 	// load console characters (don't bilerp characters)
 	draw_chars = GL_FindImage ("pics/conchars.pcx", it_pic);
 	GL_Bind( draw_chars->texnum );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    desc.type = mt_unlit;
+    desc.blend = mb_opaque;
+
+    s_draw_material = Material_Find(&desc);
+
+    desc.alpha_test_66 = true;
+
+    s_draw_alpha_material = Material_Find(&desc);
 }
 
 
@@ -57,6 +76,7 @@ void Draw_Char (int x, int y, int num)
 {
 	int				row, col;
 	float			frow, fcol, size;
+    draw_vertex_t verts[4];
 
 	num &= 255;
 	
@@ -73,19 +93,41 @@ void Draw_Char (int x, int y, int num)
 	fcol = col*0.0625;
 	size = 0.0625;
 
-	GL_Bind (draw_chars->texnum);
-#if 0
-	qglBegin (GL_QUADS);
-	qglTexCoord2f (fcol, frow);
-	qglVertex2f (x, y);
-	qglTexCoord2f (fcol + size, frow);
-	qglVertex2f (x+8, y);
-	qglTexCoord2f (fcol + size, frow + size);
-	qglVertex2f (x+8, y+8);
-	qglTexCoord2f (fcol, frow + size);
-	qglVertex2f (x, y+8);
-	qglEnd ();
-#endif
+    verts[0].x = x;
+    verts[0].y = y;
+    verts[0].z = 0;
+    verts[0].s = fcol;
+    verts[0].t = frow;
+
+    verts[1].x = x;
+    verts[1].y = y + 8;
+    verts[1].z = 0;
+    verts[1].s = fcol;
+    verts[1].t = frow + size;
+
+    verts[2].x = x + 8;
+    verts[2].y = y;
+    verts[2].z = 0;
+    verts[2].s = fcol + size;
+    verts[2].t = frow;
+
+    verts[3].x = x + 8;
+    verts[3].y = y + 8;
+    verts[3].z = 0;
+    verts[3].s = fcol + size;
+    verts[3].t = frow + size;
+
+    Material_SetCurrent(s_draw_alpha_material);
+    Material_SetClipFromView(s_draw_alpha_material, gl_state.clip_from_view);
+    Material_SetViewFromWorld(s_draw_alpha_material, g_identity_matrix);
+    Material_SetWorldFromModel(s_draw_alpha_material, g_identity_matrix);
+    Material_SetDiffuseColor(s_draw_alpha_material, 1, 1, 1, 1);
+
+    GL_MBind(GL_TEXTURE0, draw_chars->texnum);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 /*
@@ -136,6 +178,8 @@ Draw_StretchPic
 void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 {
 	image_t *gl;
+    draw_vertex_t verts[4];
+    material_id mat;
 
 	gl = Draw_FindPic (pic);
 	if (!gl)
@@ -146,25 +190,43 @@ void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 
 	if (scrap_dirty)
 		Scrap_Upload ();
-#if 0
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
-		qglDisable (GL_ALPHA_TEST);
 
-	GL_Bind (gl->texnum);
-	qglBegin (GL_QUADS);
-	qglTexCoord2f (gl->sl, gl->tl);
-	qglVertex2f (x, y);
-	qglTexCoord2f (gl->sh, gl->tl);
-	qglVertex2f (x+w, y);
-	qglTexCoord2f (gl->sh, gl->th);
-	qglVertex2f (x+w, y+h);
-	qglTexCoord2f (gl->sl, gl->th);
-	qglVertex2f (x, y+h);
-	qglEnd ();
+    verts[0].x = x;
+    verts[0].y = y;
+    verts[0].z = 0;
+    verts[0].s = gl->sl;
+    verts[0].t = gl->tl;
 
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
-		qglEnable (GL_ALPHA_TEST);
-#endif
+    verts[1].x = x;
+    verts[1].y = y + h;
+    verts[1].z = 0;
+    verts[1].s = gl->sl;
+    verts[1].t = gl->th;
+
+    verts[2].x = x + w;
+    verts[2].y = y;
+    verts[2].z = 0;
+    verts[2].s = gl->sh;
+    verts[2].t = gl->tl;
+
+    verts[3].x = x + w;
+    verts[3].y = y + h;
+    verts[3].z = 0;
+    verts[3].s = gl->sh;
+    verts[3].t = gl->th;
+
+    mat = gl->has_alpha ? s_draw_alpha_material : s_draw_material;
+    Material_SetCurrent(mat);
+    Material_SetClipFromView(mat, gl_state.clip_from_view);
+    Material_SetViewFromWorld(mat, g_identity_matrix);
+    Material_SetWorldFromModel(mat, g_identity_matrix);
+    Material_SetDiffuseColor(mat, 1, 1, 1, 1);
+
+    GL_MBind(GL_TEXTURE0, gl->texnum);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 
@@ -176,8 +238,10 @@ Draw_Pic
 void Draw_Pic (int x, int y, char *pic)
 {
 	image_t *gl;
+    draw_vertex_t verts[4];
+    material_id mat;
 
-	gl = Draw_FindPic (pic);
+    gl = Draw_FindPic (pic);
 	if (!gl)
 	{
 		ri.Con_Printf (PRINT_ALL, "Can't find pic: %s\n", pic);
@@ -185,25 +249,43 @@ void Draw_Pic (int x, int y, char *pic)
 	}
 	if (scrap_dirty)
 		Scrap_Upload ();
-#if 0
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) && !gl->has_alpha)
-		qglDisable (GL_ALPHA_TEST);
 
-	GL_Bind (gl->texnum);
-	qglBegin (GL_QUADS);
-	qglTexCoord2f (gl->sl, gl->tl);
-	qglVertex2f (x, y);
-	qglTexCoord2f (gl->sh, gl->tl);
-	qglVertex2f (x+gl->width, y);
-	qglTexCoord2f (gl->sh, gl->th);
-	qglVertex2f (x+gl->width, y+gl->height);
-	qglTexCoord2f (gl->sl, gl->th);
-	qglVertex2f (x, y+gl->height);
-	qglEnd ();
+    verts[0].x = x;
+    verts[0].y = y;
+    verts[0].z = 0;
+    verts[0].s = gl->sl;
+    verts[0].t = gl->tl;
 
-	if ( ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) )  && !gl->has_alpha)
-		qglEnable (GL_ALPHA_TEST);
-#endif
+    verts[1].x = x;
+    verts[1].y = y + gl->height;
+    verts[1].z = 0;
+    verts[1].s = gl->sl;
+    verts[1].t = gl->th;
+
+    verts[2].x = x + gl->width;
+    verts[2].y = y;
+    verts[2].z = 0;
+    verts[2].s = gl->sh;
+    verts[2].t = gl->tl;
+
+    verts[3].x = x + gl->width;
+    verts[3].y = y + gl->height;
+    verts[3].z = 0;
+    verts[3].s = gl->sh;
+    verts[3].t = gl->th;
+
+    mat = gl->has_alpha ? s_draw_alpha_material : s_draw_material;
+    Material_SetCurrent(mat);
+    Material_SetClipFromView(mat, gl_state.clip_from_view);
+    Material_SetViewFromWorld(mat, g_identity_matrix);
+    Material_SetWorldFromModel(mat, g_identity_matrix);
+    Material_SetDiffuseColor(mat, 1, 1, 1, 1);
+
+    GL_MBind(GL_TEXTURE0, gl->texnum);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 /*
@@ -348,8 +430,9 @@ void Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *data
 		trows = 256;
 	}
 	t = rows*hscale / 256;
-
+#if 0
 	if ( !qglColorTableEXT )
+#endif
 	{
 		unsigned *dest;
 
@@ -369,8 +452,9 @@ void Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *data
 			}
 		}
 
-		qglTexImage2D (GL_TEXTURE_2D, 0, gl_tex_solid_format, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, image32);
+        glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, image32);
 	}
+#if 0
 	else
 	{
 		unsigned char *dest;
@@ -400,25 +484,26 @@ void Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *data
 					   GL_UNSIGNED_BYTE, 
 					   image8 );
 	}
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	qglTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#endif
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	if ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) 
-		qglDisable (GL_ALPHA_TEST);
+		glDisable (GL_ALPHA_TEST);
 
-	qglBegin (GL_QUADS);
-	qglTexCoord2f (0, 0);
-	qglVertex2f (x, y);
-	qglTexCoord2f (1, 0);
-	qglVertex2f (x+w, y);
-	qglTexCoord2f (1, t);
-	qglVertex2f (x+w, y+h);
-	qglTexCoord2f (0, t);
-	qglVertex2f (x, y+h);
-	qglEnd ();
+	glBegin (GL_QUADS);
+	glTexCoord2f (0, 0);
+	glVertex2f (x, y);
+	glTexCoord2f (1, 0);
+	glVertex2f (x+w, y);
+	glTexCoord2f (1, t);
+	glVertex2f (x+w, y+h);
+	glTexCoord2f (0, t);
+	glVertex2f (x, y+h);
+	glEnd ();
 
 	if ( ( gl_config.renderer == GL_RENDERER_MCD ) || ( gl_config.renderer & GL_RENDERER_RENDITION ) ) 
-		qglEnable (GL_ALPHA_TEST);
+		glEnable (GL_ALPHA_TEST);
 #endif
 }
 

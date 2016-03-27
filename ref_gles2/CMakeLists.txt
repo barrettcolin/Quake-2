@@ -3,6 +3,7 @@ set(REF_GL_SRCS
   gl_draw.c
   gl_image.c
   gl_light.c
+  gl_material.c
   gl_mesh.c
   gl_model.c
   gl_rmain.c

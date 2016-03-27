@@ -63,36 +63,25 @@ void GL_SetTexturePalette( unsigned palette[256] )
 
 void GL_EnableMultitexture( qboolean enable )
 {
-#if 0
-	if ( !qglSelectTextureSGIS )
-		return;
-
 	if ( enable )
 	{
-		GL_SelectTexture( GL_TEXTURE1_SGIS );
-		qglEnable( GL_TEXTURE_2D );
+        GL_SelectTexture( GL_TEXTURE1 );
 		GL_TexEnv( GL_REPLACE );
 	}
 	else
 	{
-		GL_SelectTexture( GL_TEXTURE1_SGIS );
-		qglDisable( GL_TEXTURE_2D );
+        GL_SelectTexture( GL_TEXTURE1 );
 		GL_TexEnv( GL_REPLACE );
 	}
-	GL_SelectTexture( GL_TEXTURE0_SGIS );
+    GL_SelectTexture( GL_TEXTURE0 );
 	GL_TexEnv( GL_REPLACE );
-#endif
 }
 
 void GL_SelectTexture( GLenum texture )
 {
-#if 0
 	int tmu;
 
-	if ( !qglSelectTextureSGIS )
-		return;
-
-	if ( texture == GL_TEXTURE0_SGIS )
+    if ( texture == GL_TEXTURE0 )
 		tmu = 0;
 	else
 		tmu = 1;
@@ -103,10 +92,9 @@ void GL_SelectTexture( GLenum texture )
 	gl_state.currenttmu = tmu;
 
 	if ( tmu == 0 )
-		qglSelectTextureSGIS( GL_TEXTURE0_SGIS );
+        glActiveTexture( GL_TEXTURE0 );
 	else
-		qglSelectTextureSGIS( GL_TEXTURE1_SGIS );
-#endif
+        glActiveTexture( GL_TEXTURE1 );
 }
 
 void GL_TexEnv( GLenum mode )
@@ -132,9 +120,8 @@ void GL_Bind (int texnum)
 
 void GL_MBind( GLenum target, int texnum )
 {
-#if 0
 	GL_SelectTexture( target );
-	if ( target == GL_TEXTURE0_SGIS )
+	if ( target == GL_TEXTURE0 )
 	{
 		if ( gl_state.currenttextures[0] == texnum )
 			return;
@@ -145,7 +132,6 @@ void GL_MBind( GLenum target, int texnum )
 			return;
 	}
 	GL_Bind( texnum );
-#endif
 }
 
 typedef struct
@@ -890,13 +876,12 @@ qboolean uploaded_paletted;
 
 qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 {
-	int			samples;
+	qboolean	has_alpha;
 	unsigned	scaled[256*256];
 	unsigned char paletted_texture[256*256];
 	int			scaled_width, scaled_height;
 	int			i, c;
 	byte		*scan;
-    int format;
 
 	uploaded_paletted = false;
 
@@ -936,25 +921,14 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 	// scan the texture for any non-255 alpha
 	c = width*height;
 	scan = ((byte *)data) + 3;
-    samples = 3;
+    has_alpha = false;
 	for (i=0 ; i<c ; i++, scan += 4)
 	{
 		if ( *scan != 255 )
 		{
-            samples = 4;
+            has_alpha = true;
 			break;
 		}
-	}
-
-    if (samples == 3)
-        format = GL_RGB;
-    else if (samples == 4)
-        format = GL_RGBA;
-	else {
-	    ri.Con_Printf (PRINT_ALL,
-			   "Unknown number of texture components %i\n",
-			   samples);
-        format = samples;
 	}
 
 #if 0
@@ -975,7 +949,7 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 		if (!mipmap)
 		{
 #if 0
-			if ( qglColorTableEXT && gl_ext_palettedtexture->value && samples == gl_solid_format )
+            if ( qglColorTableEXT && gl_ext_palettedtexture->value && samples == 3 )
 			{
 				uploaded_paletted = true;
 				GL_BuildPalettedTexture( paletted_texture, ( unsigned char * ) data, scaled_width, scaled_height );
@@ -992,7 +966,7 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 			else
 #endif
 			{
-                glTexImage2D (GL_TEXTURE_2D, 0, format, scaled_width, scaled_height, 0, format, GL_UNSIGNED_BYTE, data);
+                glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 			}
 			goto done;
 		}
@@ -1003,7 +977,7 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 
 	GL_LightScaleTexture (scaled, scaled_width, scaled_height, !mipmap );
 #if 0
-	if ( qglColorTableEXT && gl_ext_palettedtexture->value && ( samples == gl_solid_format ) )
+    if ( qglColorTableEXT && gl_ext_palettedtexture->value && ( samples == 3 ) )
 	{
 		uploaded_paletted = true;
 		GL_BuildPalettedTexture( paletted_texture, ( unsigned char * ) scaled, scaled_width, scaled_height );
@@ -1020,7 +994,7 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 	else
 #endif
 	{
-        glTexImage2D( GL_TEXTURE_2D, 0, format, scaled_width, scaled_height, 0, format, GL_UNSIGNED_BYTE, scaled );
+        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled );
 	}
 
 	if (mipmap)
@@ -1039,7 +1013,7 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 				scaled_height = 1;
 			miplevel++;
 #if 0
-			if ( qglColorTableEXT && gl_ext_palettedtexture->value && samples == gl_solid_format )
+            if ( qglColorTableEXT && gl_ext_palettedtexture->value && samples == 3 )
 			{
 				uploaded_paletted = true;
 				GL_BuildPalettedTexture( paletted_texture, ( unsigned char * ) scaled, scaled_width, scaled_height );
@@ -1056,7 +1030,7 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 			else
 #endif
 			{
-                glTexImage2D (GL_TEXTURE_2D, miplevel, format, scaled_width, scaled_height, 0, format, GL_UNSIGNED_BYTE, scaled);
+                glTexImage2D (GL_TEXTURE_2D, miplevel, GL_RGBA, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
 			}
 		}
 	}
@@ -1075,7 +1049,7 @@ done: ;
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
 	}
 
-    return (samples == 4);
+    return has_alpha;
 }
 
 /*

@@ -25,10 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #pragma warning(disable : 4051)     // ALPHA
 #endif
 
-#ifdef _WIN32
-#  include <windows.h>
-#endif
-
 #include <stdio.h>
 
 #include "SDL_opengles2.h"
@@ -38,7 +34,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../client/ref.h"
 
 
-#define	REF_VERSION	"GL 0.01"
+#define	REF_VERSION	"GLES2 0.01"
 
 // up / down
 #define	PITCH	0
@@ -224,8 +220,6 @@ extern	cvar_t	*gl_3dlabs_broken;
 extern  cvar_t  *gl_driver;
 extern	cvar_t	*gl_swapinterval;
 extern	cvar_t	*gl_texturemode;
-extern	cvar_t	*gl_texturealphamode;
-extern	cvar_t	*gl_texturesolidmode;
 extern  cvar_t  *gl_saturatelighting;
 extern  cvar_t  *gl_lockpvs;
 
@@ -234,16 +228,8 @@ extern	cvar_t	*vid_gamma;
 
 extern	cvar_t		*intensity;
 
-extern	int		gl_lightmap_format;
-extern	int		gl_solid_format;
-extern	int		gl_alpha_format;
-extern	int		gl_tex_solid_format;
-extern	int		gl_tex_alpha_format;
-
 extern	int		c_visible_lightmaps;
 extern	int		c_visible_textures;
-
-extern	float	r_world_matrix[16];
 
 void R_TranslatePlayerSkin (int playernum);
 void GL_Bind (int texnum);
@@ -337,9 +323,6 @@ void	GL_ShutdownImages (void);
 
 void	GL_FreeUnusedImages (void);
 
-void GL_TextureAlphaMode( char *string );
-void GL_TextureSolidMode( char *string );
-
 /*
 ** GL extension emulation functions
 */
@@ -414,9 +397,8 @@ typedef struct
 	float camera_separation;
 	qboolean stereo_enabled;
 
-	unsigned char originalRedGammaTable[256];
-	unsigned char originalGreenGammaTable[256];
-	unsigned char originalBlueGammaTable[256];
+    GLfloat clip_from_view[16];
+    GLfloat view_from_world[16]; // for rendering world alpha surfaces after everything else
 } glstate_t;
 
 extern glconfig_t  gl_config;
@@ -450,3 +432,71 @@ void		GLimp_AppActivate( qboolean active );
 void		GLimp_EnableLogging( qboolean enable );
 void		GLimp_LogNewFrame( void );
 
+// Shader material
+typedef enum
+{
+    mt_unlit,
+    mt_lightmapped
+} materialtype_t;
+
+typedef enum
+{
+    mb_opaque,
+    mb_blend
+} materialblend_t;
+
+typedef struct materialdesc_s
+{
+    materialtype_t type;
+    materialblend_t blend;
+    qboolean alpha_test_66;
+} materialdesc_t;
+
+typedef struct material_s *material_id;
+
+typedef enum
+{
+    tu_diffuse,
+
+    num_texture_units
+} textureunit_t;
+
+void Material_Init();
+
+void Material_Shutdown();
+
+material_id Material_Find(materialdesc_t const *desc);
+
+void Material_SetCurrent(material_id mat);
+
+void Material_SetClipFromView(material_id mat, GLfloat const clip_from_view[16]);
+
+void Material_SetViewFromWorld(material_id mat, GLfloat const view_from_world[16]);
+
+void Material_SetWorldFromModel(material_id mat, GLfloat const world_from_model[16]);
+
+void Material_SetDiffuseColor(material_id mat, GLfloat r, GLfloat g, GLfloat b, GLfloat a);
+
+void Material_Render(material_id mat, void const *data, GLuint textures[num_texture_units]);
+
+extern material_id g_lightmapped_material;
+extern material_id g_lightmapped_alpha_material; // for RF_TRANSLUCENT brushmodels
+extern material_id g_unlit_material; // for opaque SURF_DRAWTURB (same material as opaque Draw_*)
+extern material_id g_unlit_alpha_material; // alpha surface, opaque SURF_DRAWTURB on RF_TRANSLUCENT brushmodels
+
+//<todo reset state for ff pipeline
+extern material_id g_default_material;
+
+extern GLfloat const g_identity_matrix[16];
+
+// calculate GL perspective projection
+void Matrix_Perspective(GLfloat camera_separation, GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar, GLfloat matrix_out[16]);
+
+// calculate GL orthographic projection
+void Matrix_Orthographic(GLfloat left, GLfloat right, GLfloat bottom, GLfloat top, GLfloat nearVal, GLfloat farVal, GLfloat matrix_out[16]);
+
+// calculate T * Ry * Rp * Rr
+void Matrix_FromAnglesOrigin(vec3_t const angles, vec3_t const origin, GLfloat matrix_out[16]);
+
+// calculate inv(Rr) * inv(Rp) * inv(Ry) * inv(T)
+void Matrix_InverseFromAnglesOrigin(vec3_t const angles, vec3_t const origin, GLfloat matrix_out[16]);

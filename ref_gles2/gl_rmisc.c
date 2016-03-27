@@ -177,12 +177,19 @@ void GL_SetDefaultState( void )
 {
     glClearColor(1, 0, 0.5, 0.5);
     glCullFace(GL_FRONT);
+	
+	//glEnable(GL_TEXTURE_2D);
+    //glEnable(GL_ALPHA_TEST);
+    //glAlphaFunc(GL_GREATER, 0.666);
 
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
-    glDisable(GL_BLEND);
+    //glDisable(GL_BLEND);
 
-    GL_TextureMode(gl_texturemode->string);
+    //glColor4f (1,1,1,1);
+    //glPolygonMode (GL_FRONT_AND_BACK, GL_FILL);
+    //glShadeModel (GL_FLAT);
+	GL_TextureMode( gl_texturemode->string );
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
@@ -190,7 +197,9 @@ void GL_SetDefaultState( void )
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	//GL_TexEnv( GL_REPLACE );
 
 	GL_UpdateSwapInterval();
 }
