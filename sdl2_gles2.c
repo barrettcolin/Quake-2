@@ -63,7 +63,7 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
 
     SDL_GetWindowSize(window, &winWidth, &winHeight);
 
-    ri.Vid_NewWindow(winWidth, winHeight);
+    ri.Vid_NewWindow(desiredWidth, desiredHeight);
 
     *pwidth = winWidth;
     *pheight = winHeight;
