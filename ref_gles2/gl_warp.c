@@ -583,15 +583,9 @@ R_DrawSkyBox
 int	skytexorder[6] = {0,2,1,3,4,5};
 void R_DrawSkyBox (void)
 {
-#if 0
 	int		i;
+    GLfloat world_from_sky[16];
 
-#if 0
-qglEnable (GL_BLEND);
-GL_TexEnv( GL_MODULATE );
-qglColor4f (1,1,1,0.5);
-qglDisable (GL_DEPTH_TEST);
-#endif
 	if (skyrotate)
 	{	// check for no sky at all
 		for (i=0 ; i<6 ; i++)
@@ -602,9 +596,8 @@ qglDisable (GL_DEPTH_TEST);
 			return;		// nothing visible
 	}
 
-glPushMatrix ();
-glTranslatef (r_origin[0], r_origin[1], r_origin[2]);
-glRotatef (r_newrefdef.time * skyrotate, skyaxis[0], skyaxis[1], skyaxis[2]);
+    Matrix_FromAxisAngleOrigin(skyaxis, r_newrefdef.time * skyrotate, r_origin, world_from_sky);
+    Material_SetWorldFromModel(g_unlit_material, world_from_sky);
 
 	for (i=0 ; i<6 ; i++)
 	{
@@ -633,14 +626,6 @@ glRotatef (r_newrefdef.time * skyrotate, skyaxis[0], skyaxis[1], skyaxis[2]);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &verts->s);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
-glPopMatrix ();
-#if 0
-glDisable (GL_BLEND);
-glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-glColor4f (1,1,1,0.5);
-glEnable (GL_DEPTH_TEST);
-#endif
-#endif
 }
 
 

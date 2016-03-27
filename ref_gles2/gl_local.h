@@ -500,3 +500,6 @@ void Matrix_FromAnglesOrigin(vec3_t const angles, vec3_t const origin, GLfloat m
 
 // calculate inv(Rr) * inv(Rp) * inv(Ry) * inv(T)
 void Matrix_InverseFromAnglesOrigin(vec3_t const angles, vec3_t const origin, GLfloat matrix_out[16]);
+
+// calculate T * Ra
+void Matrix_FromAxisAngleOrigin(vec3_t const axis, float angle, vec3_t const origin, GLfloat matrix_out[16]);

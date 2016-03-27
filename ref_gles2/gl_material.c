@@ -521,3 +521,44 @@ void Matrix_InverseFromAnglesOrigin(vec3_t const angles, vec3_t const origin, GL
     matrix_out[14] = -matrix_out[2] * origin[0] - matrix_out[6] * origin[1] - matrix_out[10] * origin[2];
     matrix_out[15] = 1;
 }
+
+void Matrix_FromAxisAngleOrigin(vec3_t const axis, float angle, vec3_t const origin, GLfloat matrix_out[16])
+{
+    float const DEG_TO_RAD = M_PI / 180.0f;
+
+    float const c = cos(angle * DEG_TO_RAD);
+    float const c1 = 1.0f - c;
+    float const s = sin(angle * DEG_TO_RAD);
+    {
+        vec3_t normalized_axis; VectorCopy(axis, normalized_axis);
+        VectorNormalize(normalized_axis);
+
+        float const x = normalized_axis[0];
+        float const y = normalized_axis[1];
+        float const z = normalized_axis[2];
+
+        // col0
+        matrix_out[0] = x * x * c1 + c;
+        matrix_out[1] = y * x * c1 + z * s;
+        matrix_out[2] = x * z * c1 - y * s;
+        matrix_out[3] = 0;
+
+        // col1
+        matrix_out[4] = x * y * c1 - z * s;
+        matrix_out[5] = y * y * c1 + c;
+        matrix_out[6] = y * z * c1 + x * s;
+        matrix_out[7] = 0;
+
+        // col2
+        matrix_out[8] = x * z * c1 + y * s;
+        matrix_out[9] = y * z * c1 - x * s;
+        matrix_out[10] = z * z * c1 + c;
+        matrix_out[11] = 0;
+
+        // col3
+        matrix_out[12] = origin[0];
+        matrix_out[13] = origin[1];
+        matrix_out[14] = origin[2];
+        matrix_out[15] = 1;
+    }
+}
