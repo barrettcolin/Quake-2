@@ -10,6 +10,8 @@ qboolean stdin_active = true;
 
 game_export_t *GetGameAPI(game_import_t *import);
 
+#define PRINT_MSG_SIZE 4096
+
 void Sys_Init(void)
 {
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -24,7 +26,16 @@ void Sys_Quit(void)
 
 void Sys_Error(char *error, ...)
 {
+    va_list args;
+    char msg[PRINT_MSG_SIZE];
 
+    va_start(args, error);
+    vsnprintf(msg, sizeof(msg), error, args);
+    va_end(args);
+
+    fputs(msg, stderr);
+
+    exit(1);
 }
 
 void Sys_AppActivate(void)
@@ -375,11 +386,9 @@ static void VID_Restart_f(void)
     vid_ref->modified = true;
 }
 
-#define VID_MSG_SIZE 4096
-
 void VID_Printf(int print_level, char *fmt, ...)
 {
-    char msg[VID_MSG_SIZE];
+    char msg[PRINT_MSG_SIZE];
     va_list args;
 
     va_start(args, fmt);
@@ -398,7 +407,7 @@ void VID_Printf(int print_level, char *fmt, ...)
 
 void VID_Error(int err_level, char *fmt, ...)
 {
-    char msg[VID_MSG_SIZE];
+    char msg[PRINT_MSG_SIZE];
     va_list args;
 
     va_start(args, fmt);
