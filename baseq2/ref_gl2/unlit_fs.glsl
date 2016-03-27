@@ -14,11 +14,11 @@ void main()
     vec4 color = texture2D(sDiffuse, vTexCoord);
 
 #if defined (ALPHA_TEST_66)
-    if(color.a <= 0.666f)
+    if(color.a <= 0.666)
     {
         discard;
     }
 #endif
 
-    gl_FragColor = vec4(color.rgb, 1.0f) * vDiffuseColor;
+    gl_FragColor = vec4(color.rgb, 1.0) * vDiffuseColor;
 }

@@ -9,6 +9,6 @@ varying vec2 vTexCoord;
 
 void main()
 {
-    gl_Position = mClipFromView * mViewFromWorld * mWorldFromModel * vec4(a_vPosition.xyz, 1);
+    gl_Position = mClipFromView * mViewFromWorld * mWorldFromModel * vec4(a_vPosition.xyz, 1.0);
     vTexCoord = a_vTexCoord;
 }
