@@ -125,8 +125,8 @@ void Draw_Char (int x, int y, int num)
 
     GL_MBind(GL_TEXTURE0, draw_chars->texnum);
 
-    glVertexPointer(3, GL_FLOAT, sizeof(verts[0]), &verts[0].x);
-    glTexCoordPointer(2, GL_FLOAT, sizeof(verts[0]), &verts[0].s);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
@@ -224,8 +224,8 @@ void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 
     GL_MBind(GL_TEXTURE0, gl->texnum);
 
-    glVertexPointer(3, GL_FLOAT, sizeof(verts[0]), &verts[0].x);
-    glTexCoordPointer(2, GL_FLOAT, sizeof(verts[0]), &verts[0].s);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
@@ -283,8 +283,8 @@ void Draw_Pic (int x, int y, char *pic)
 
     GL_MBind(GL_TEXTURE0, gl->texnum);
 
-    glVertexPointer(3, GL_FLOAT, sizeof(verts[0]), &verts[0].x);
-    glTexCoordPointer(2, GL_FLOAT, sizeof(verts[0]), &verts[0].s);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 

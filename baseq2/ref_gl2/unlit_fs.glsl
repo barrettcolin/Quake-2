@@ -1,10 +1,13 @@
+uniform vec4 vDiffuseColor;
+
 uniform sampler2D sDiffuse;
 
-varying vec2 texCoord;
+varying vec2 vTexCoord;
 
 void main()
 {
-    vec4 color = texture2D(sDiffuse, texCoord);
+    // texture alpha only used for alpha testing
+    vec4 color = texture2D(sDiffuse, vTexCoord);
 
 #if defined (ALPHA_TEST_66)
     if(color.a <= 0.666f)
@@ -13,5 +16,5 @@ void main()
     }
 #endif
 
-    gl_FragColor = color;
+    gl_FragColor = vec4(color.rgb, 1.0f) * vDiffuseColor;
 }

@@ -1,14 +1,15 @@
 #include "gl_local.h"
 
+static const int MAX_VERTEX_ATTRIBUTES = 3;
+
 // Material array
 typedef struct material_s
 {
     materialdesc_t desc;
 
-	// GL state
-    qboolean enable_client_state_vertex_array;
-    qboolean enable_client_state_texture_coord_array_0;
-    qboolean enable_client_state_texture_coord_array_1;
+    GLuint num_vertex_attributes;
+
+    // GL state
     GLuint vertex_shader;
     GLuint fragment_shader;
     GLuint program;
@@ -192,14 +193,12 @@ static void MaterialUnlit_Create(material_t *mat)
         if(Material_CreateProgram(mat, "ref_gl2/unlit", defines) != 0)
             break;
 
-        //<todo Bind attributes here
+        mat->num_vertex_attributes = 2;
+        glBindAttribLocation(mat->program, 0, "a_vPosition");
+        glBindAttribLocation(mat->program, 1, "a_vTexCoord");
 
         if(Material_LinkProgram(mat) != 0)
             break;
-
-        mat->enable_client_state_vertex_array = true;
-        mat->enable_client_state_texture_coord_array_0 = true;
-        mat->enable_client_state_texture_coord_array_1 = false;
 
         glUseProgram(mat->program);
         mat->clip_from_view_location = glGetUniformLocation(mat->program, "mClipFromView");
@@ -224,14 +223,13 @@ static void MaterialLightmapped_Create(material_t *mat)
         if(Material_CreateProgram(mat, "ref_gl2/lightmapped", defines) != 0)
             break;
 
-        //<todo Bind attributes here
+        mat->num_vertex_attributes = 3;
+        glBindAttribLocation(mat->program, 0, "a_vPosition");
+        glBindAttribLocation(mat->program, 1, "a_vTexCoord0");
+        glBindAttribLocation(mat->program, 2, "a_vTexCoord1");
 
         if(Material_LinkProgram(mat) != 0)
             break;
-
-        mat->enable_client_state_vertex_array = true;
-        mat->enable_client_state_texture_coord_array_0 = true;
-        mat->enable_client_state_texture_coord_array_1 = true;
 
         glUseProgram(mat->program);
         mat->clip_from_view_location = glGetUniformLocation(mat->program, "mClipFromView");
@@ -309,43 +307,19 @@ material_t *Material_Find(materialdesc_t const* desc)
 
 void Material_SetCurrent(material_t *mat)
 {
+    GLuint i;
+
     if(s_current_material != mat)
     {
-        glClientActiveTexture(GL_TEXTURE1);
-        if(s_current_material->enable_client_state_texture_coord_array_1 != mat->enable_client_state_texture_coord_array_1)
+        for(i = 0; i < MAX_VERTEX_ATTRIBUTES; ++i)
         {
-            if(mat->enable_client_state_texture_coord_array_1)
+            if(i < mat->num_vertex_attributes)
             {
-                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+                glEnableVertexAttribArray(i);
             }
             else
             {
-                glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-            }
-        }
-
-        glClientActiveTexture(GL_TEXTURE0); // touch GL_TEXTURE0 last so as to leave as active
-        if(s_current_material->enable_client_state_texture_coord_array_0 != mat->enable_client_state_texture_coord_array_0)
-        {
-            if(mat->enable_client_state_texture_coord_array_0)
-            {
-                glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-            }
-            else
-            {
-                glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-            }
-        }
-
-        if(s_current_material->enable_client_state_vertex_array != mat->enable_client_state_vertex_array)
-        {
-            if(mat->enable_client_state_vertex_array)
-            {
-                glEnableClientState(GL_VERTEX_ARRAY);
-            }
-            else
-            {
-                glDisableClientState(GL_VERTEX_ARRAY);
+                glDisableVertexAttribArray(i);
             }
         }
 

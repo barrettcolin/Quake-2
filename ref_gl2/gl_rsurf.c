@@ -180,8 +180,8 @@ DrawGLPoly
 void DrawGLPoly (glpoly_t *p)
 {
     float	*v = p->verts[0];
-    glVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(float), v);
-    glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 3);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 3);
     glDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
 }
 
@@ -517,11 +517,9 @@ dynamic:
         {
             v = p->verts[0];
 
-            glVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(float), v);
-            glClientActiveTexture(GL_TEXTURE0);
-            glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 3);
-            glClientActiveTexture(GL_TEXTURE1);
-            glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 5);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 3);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 5);
             glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
@@ -530,11 +528,10 @@ dynamic:
         for ( p = surf->polys; p; p = p->chain )
         {
             v = p->verts[0];
-            glVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(float), v);
-            glClientActiveTexture(GL_TEXTURE0);
-            glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 3);
-            glClientActiveTexture(GL_TEXTURE1);
-            glTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(float), v + 5);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 3);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 5);
             glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }

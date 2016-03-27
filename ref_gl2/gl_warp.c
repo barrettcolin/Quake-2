@@ -250,8 +250,8 @@ static void EmitWaterPoly(glpoly_t const *p, float scroll)
         wv->t = t;
     }
 
-    glVertexPointer(3, GL_FLOAT, sizeof(warpvert_t), &waterverts->x);
-    glTexCoordPointer(2, GL_FLOAT, sizeof(warpvert_t), &waterverts->s);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &waterverts->x);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &waterverts->s);
     glDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
 }
 
@@ -629,8 +629,8 @@ glRotatef (r_newrefdef.time * skyrotate, skyaxis[0], skyaxis[1], skyaxis[2]);
         MakeSkyVec (skymaxs[0][i], skymins[1][i], i, verts + 2);
         MakeSkyVec (skymaxs[0][i], skymaxs[1][i], i, verts + 3);
 
-        glVertexPointer(3, GL_FLOAT, sizeof(warpvert_t), &verts->x);
-        glTexCoordPointer(2, GL_FLOAT, sizeof(warpvert_t), &verts->s);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &verts->x);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &verts->s);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
 glPopMatrix ();
