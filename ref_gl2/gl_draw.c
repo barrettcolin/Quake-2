@@ -276,6 +276,9 @@ void Draw_Pic (int x, int y, char *pic)
 
     mat = gl->has_alpha ? s_draw_alpha_material : s_draw_material;
     Material_SetCurrent(mat);
+    Material_SetClipFromView(mat, gl_state.clip_from_view);
+    Material_SetViewFromWorld(mat, g_identity_matrix);
+    Material_SetWorldFromModel(mat, g_identity_matrix);
     Material_SetDiffuseColor(mat, 1, 1, 1, 1);
 
     GL_MBind(GL_TEXTURE0, gl->texnum);
