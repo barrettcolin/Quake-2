@@ -179,9 +179,9 @@ DrawGLPoly
 */
 void DrawGLPoly (glpoly_t *p)
 {
-    float	*v = p->verts[0];
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 3);
+    glBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
     glDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
 }
 
@@ -515,11 +515,10 @@ dynamic:
 
         for ( p = surf->polys; p; p = p->chain )
         {
-            v = p->verts[0];
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 3);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 5);
+            glBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
             glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
@@ -527,11 +526,10 @@ dynamic:
     {
         for ( p = surf->polys; p; p = p->chain )
         {
-            v = p->verts[0];
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 3);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 5);
+            glBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
             glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
@@ -876,6 +874,8 @@ void R_DrawWorld (void)
     Material_SetWorldFromModel(g_unlit_material, g_identity_matrix);
     Material_SetDiffuseColor(g_unlit_material, gl_state.inverse_intensity, gl_state.inverse_intensity, gl_state.inverse_intensity, 1);
 	DrawTextureChains ();
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 	
     Material_SetDiffuseColor(g_unlit_material, 1, 1, 1, 1);
 	R_DrawSkyBox ();
@@ -1150,6 +1150,14 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 
 	poly->numverts = lnumverts;
 
+    poly->vertexbuffer = VertexBuffer_Create();
+    {
+        GLsizeiptr buf_size = sizeof(float) * VERTEXSIZE * poly->numverts;
+
+        glBindBuffer(GL_ARRAY_BUFFER, poly->vertexbuffer);
+        glBufferData(GL_ARRAY_BUFFER, buf_size, poly->verts, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
 }
 
 /*

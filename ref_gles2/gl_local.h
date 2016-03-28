@@ -503,3 +503,8 @@ void Matrix_InverseFromAnglesOrigin(vec3_t const angles, vec3_t const origin, GL
 
 // calculate T * Ra
 void Matrix_FromAxisAngleOrigin(vec3_t const axis, float angle, vec3_t const origin, GLfloat matrix_out[16]);
+
+// VertexBuffer
+GLuint VertexBuffer_Create();
+
+void VertexBuffer_Destroy(GLuint *name);

@@ -872,6 +872,8 @@ void	R_SetGL2D (void)
     //glDisable (GL_BLEND);
     //glEnable (GL_ALPHA_TEST);
     //glColor4f (1,1,1,1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 

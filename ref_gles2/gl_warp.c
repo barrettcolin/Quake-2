@@ -260,6 +260,8 @@ void EmitWaterPolys (msurface_t *fa)
     glpoly_t	*bp;
 	float		scroll;
 
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 	if (fa->texinfo->flags & SURF_FLOWING)
         scroll = -64 * ((r_newrefdef.time * 0.5f) - (int)(r_newrefdef.time * 0.5f));
 	else
