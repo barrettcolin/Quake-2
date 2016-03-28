@@ -33,7 +33,7 @@ void Sys_Error(char *error, ...)
     vsnprintf(msg, sizeof(msg), error, args);
     va_end(args);
 
-    fputs(msg, stderr);
+    fprintf(stderr, "%s\n", msg);
 
     exit(1);
 }
