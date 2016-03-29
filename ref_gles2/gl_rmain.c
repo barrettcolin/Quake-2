@@ -1050,8 +1050,6 @@ R_Init
 */
 qboolean R_Init( void *hinstance, void *hWnd )
 {	
-	char renderer_buffer[1000];
-	char vendor_buffer[1000];
 	int		err;
 	int		j;
 	extern float r_turbsin[256];
@@ -1097,32 +1095,7 @@ qboolean R_Init( void *hinstance, void *hWnd )
     gl_config.extensions_string = glGetString (GL_EXTENSIONS);
 	ri.Con_Printf (PRINT_ALL, "GL_EXTENSIONS: %s\n", gl_config.extensions_string );
 
-	strcpy( renderer_buffer, gl_config.renderer_string );
-	strcpy( vendor_buffer, gl_config.vendor_string );
-
-    if ( strcasestr( renderer_buffer, "voodoo" ) )
-	{
-        if ( !strcasestr( renderer_buffer, "rush" ) )
-			gl_config.renderer = GL_RENDERER_VOODOO;
-		else
-			gl_config.renderer = GL_RENDERER_VOODOO_RUSH;
-	}
-    else if ( strcasestr( vendor_buffer, "sgi" ) )
-		gl_config.renderer = GL_RENDERER_SGI;
-    else if ( strcasestr( renderer_buffer, "permedia" ) )
-		gl_config.renderer = GL_RENDERER_PERMEDIA2;
-    else if ( strcasestr( renderer_buffer, "glint" ) )
-		gl_config.renderer = GL_RENDERER_GLINT_MX;
-    else if ( strcasestr( renderer_buffer, "glzicd" ) )
-		gl_config.renderer = GL_RENDERER_REALIZM;
-    else if ( strcasestr( renderer_buffer, "gdi" ) )
-		gl_config.renderer = GL_RENDERER_MCD;
-    else if ( strcasestr( renderer_buffer, "pcx2" ) )
-		gl_config.renderer = GL_RENDERER_PCX2;
-    else if ( strcasestr( renderer_buffer, "verite" ) )
-		gl_config.renderer = GL_RENDERER_RENDITION;
-	else
-		gl_config.renderer = GL_RENDERER_OTHER;
+    gl_config.renderer = GL_RENDERER_OTHER;
 
 	if ( toupper( gl_monolightmap->string[1] ) != 'F' )
 	{
