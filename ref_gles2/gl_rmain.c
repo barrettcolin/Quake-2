@@ -1048,7 +1048,7 @@ qboolean R_SetMode (void)
 R_Init
 ===============
 */
-int R_Init( void *hinstance, void *hWnd )
+qboolean R_Init( void *hinstance, void *hWnd )
 {	
 	char renderer_buffer[1000];
 	char vendor_buffer[1000];
@@ -1098,31 +1098,28 @@ int R_Init( void *hinstance, void *hWnd )
 	ri.Con_Printf (PRINT_ALL, "GL_EXTENSIONS: %s\n", gl_config.extensions_string );
 
 	strcpy( renderer_buffer, gl_config.renderer_string );
-	strlwr( renderer_buffer );
-
 	strcpy( vendor_buffer, gl_config.vendor_string );
-	strlwr( vendor_buffer );
 
-	if ( strstr( renderer_buffer, "voodoo" ) )
+    if ( strcasestr( renderer_buffer, "voodoo" ) )
 	{
-		if ( !strstr( renderer_buffer, "rush" ) )
+        if ( !strcasestr( renderer_buffer, "rush" ) )
 			gl_config.renderer = GL_RENDERER_VOODOO;
 		else
 			gl_config.renderer = GL_RENDERER_VOODOO_RUSH;
 	}
-	else if ( strstr( vendor_buffer, "sgi" ) )
+    else if ( strcasestr( vendor_buffer, "sgi" ) )
 		gl_config.renderer = GL_RENDERER_SGI;
-	else if ( strstr( renderer_buffer, "permedia" ) )
+    else if ( strcasestr( renderer_buffer, "permedia" ) )
 		gl_config.renderer = GL_RENDERER_PERMEDIA2;
-	else if ( strstr( renderer_buffer, "glint" ) )
+    else if ( strcasestr( renderer_buffer, "glint" ) )
 		gl_config.renderer = GL_RENDERER_GLINT_MX;
-	else if ( strstr( renderer_buffer, "glzicd" ) )
+    else if ( strcasestr( renderer_buffer, "glzicd" ) )
 		gl_config.renderer = GL_RENDERER_REALIZM;
-	else if ( strstr( renderer_buffer, "gdi" ) )
+    else if ( strcasestr( renderer_buffer, "gdi" ) )
 		gl_config.renderer = GL_RENDERER_MCD;
-	else if ( strstr( renderer_buffer, "pcx2" ) )
+    else if ( strcasestr( renderer_buffer, "pcx2" ) )
 		gl_config.renderer = GL_RENDERER_PCX2;
-	else if ( strstr( renderer_buffer, "verite" ) )
+    else if ( strcasestr( renderer_buffer, "verite" ) )
 		gl_config.renderer = GL_RENDERER_RENDITION;
 	else
 		gl_config.renderer = GL_RENDERER_OTHER;
