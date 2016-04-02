@@ -51,12 +51,13 @@ void Draw_InitLocal (void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    desc.type = mt_unlit;
-    desc.blend = mb_opaque;
+    desc.flags.lit = ml_unlit;
+    desc.flags.src_blend = mb_one;
+    desc.flags.dst_blend = mb_zero;
 
     s_draw_material = Material_Find(&desc);
 
-    desc.alpha_test_66 = true;
+    desc.flags.use_alpha_test66 = true;
 
     s_draw_alpha_material = Material_Find(&desc);
 }

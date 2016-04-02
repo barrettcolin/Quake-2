@@ -1143,12 +1143,15 @@ qboolean R_Init( void *hinstance, void *hWnd )
     // Lightmapped material
     {
         materialdesc_t desc = { 0 };
-        desc.type = mt_lightmapped;
-        desc.blend = mb_opaque;
+        desc.flags.lit = ml_lightmapped;
+        desc.flags.src_blend = mb_one;
+        desc.flags.dst_blend = mb_zero;
 
         g_lightmapped_material = Material_Find(&desc);
 
-        desc.blend = mb_blend;
+        desc.flags.use_diffuse_color = true;
+        desc.flags.src_blend = mb_src_alpha;
+        desc.flags.dst_blend = mb_one_minus_src_alpha;
 
         g_lightmapped_alpha_material = Material_Find(&desc);
     }
@@ -1156,12 +1159,15 @@ qboolean R_Init( void *hinstance, void *hWnd )
     // Unlit material
     {
         materialdesc_t desc = { 0 };
-        desc.type = mt_unlit;
-        desc.blend = mb_opaque;
+        desc.flags.use_diffuse_color = true;
+        desc.flags.lit = ml_unlit;
+        desc.flags.src_blend = mb_one;
+        desc.flags.dst_blend = mb_zero;
 
         g_unlit_material = Material_Find(&desc);
 
-        desc.blend = mb_blend;
+        desc.flags.src_blend = mb_src_alpha;
+        desc.flags.dst_blend = mb_one_minus_src_alpha;
 
         g_unlit_alpha_material = Material_Find(&desc);
     }

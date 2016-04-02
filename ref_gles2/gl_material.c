@@ -1,5 +1,13 @@
 #include "gl_local.h"
 
+static const GLenum s_GLBlend_from_materialblend[num_materialblend] =
+{
+    GL_ZERO,
+    GL_ONE,
+    GL_SRC_ALPHA,
+    GL_ONE_MINUS_SRC_ALPHA
+};
+
 static const int MAX_VERTEX_ATTRIBUTES = 3;
 
 // Material array
@@ -42,13 +50,19 @@ GLfloat const g_identity_matrix[16] =
 
 static int MaterialDesc_Compare(materialdesc_t const *a, materialdesc_t const *b)
 {
-    if(a->type != b->type)
+    if(a->flags.use_diffuse_color != b->flags.use_diffuse_color)
         return 1;
 
-    if(a->blend != b->blend)
+    if(a->flags.use_alpha_test66 != b->flags.use_alpha_test66)
         return 1;
 
-    if(a->alpha_test_66 != b->alpha_test_66)
+    if(a->flags.lit != b->flags.lit)
+        return 1;
+
+    if(a->flags.src_blend != b->flags.src_blend)
+        return 1;
+
+    if(a->flags.dst_blend != b->flags.dst_blend)
         return 1;
 
     return 0;
@@ -188,7 +202,7 @@ static void MaterialUnlit_Create(material_t *mat)
 {
     for(;;)
     {
-        char const *defines = mat->desc.alpha_test_66 ? "#define ALPHA_TEST_66\n" : "";
+        char const *defines = mat->desc.flags.use_alpha_test66 ? "#define ALPHA_TEST_66\n" : "";
 
         if(Material_CreateProgram(mat, "ref_gl2/unlit", defines) != 0)
             break;
@@ -218,7 +232,7 @@ static void MaterialLightmapped_Create(material_t *mat)
 {
     for(;;)
     {
-        char const *defines = "";
+        char const *defines = mat->desc.flags.use_diffuse_color ? "#define DIFFUSE_COLOR\n" : "";
 
         if(Material_CreateProgram(mat, "ref_gl2/lightmapped", defines) != 0)
             break;
@@ -249,6 +263,7 @@ static void MaterialLightmapped_Create(material_t *mat)
 void Material_Init()
 {
     // init s_default_material (program 0, default state)
+    s_default_material.desc.flags.src_blend = mb_one;
 
     s_current_material = &s_default_material;
 }
@@ -291,15 +306,13 @@ material_t *Material_Find(materialdesc_t const* desc)
     mat = &s_materials[i];
     mat->desc = *desc;
 
-    switch(desc->type)
+    if(desc->flags.lit == ml_lightmapped)
     {
-    case mt_unlit:
-        MaterialUnlit_Create(mat);
-        break;
-
-    case mt_lightmapped:
         MaterialLightmapped_Create(mat);
-        break;
+    }
+    else
+    {
+        MaterialUnlit_Create(mat);
     }
 
     return mat;
@@ -323,12 +336,19 @@ void Material_SetCurrent(material_t *mat)
             }
         }
 
-        if(s_current_material->desc.blend != mat->desc.blend)
+        if((s_current_material->desc.flags.src_blend != mat->desc.flags.src_blend) ||
+                (s_current_material->desc.flags.dst_blend != mat->desc.flags.dst_blend))
         {
-            if(mat->desc.blend != mb_opaque)
+            int enable_blend = !((mat->desc.flags.src_blend == mb_one) &&
+                    (mat->desc.flags.dst_blend == mb_zero));
+
+            if(enable_blend)
             {
+                GLenum src = s_GLBlend_from_materialblend[mat->desc.flags.src_blend],
+                        dst = s_GLBlend_from_materialblend[mat->desc.flags.dst_blend];
+
                 glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                glBlendFunc(src, dst);
             }
             else
             {

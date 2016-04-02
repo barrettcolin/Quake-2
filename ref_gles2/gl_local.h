@@ -435,21 +435,32 @@ void		GLimp_LogNewFrame( void );
 // Shader material
 typedef enum
 {
-    mt_unlit,
-    mt_lightmapped
-} materialtype_t;
+    ml_unlit,
+    ml_vertexlit,
+    ml_lightmapped
+} materiallit_t;
 
 typedef enum
 {
-    mb_opaque,
-    mb_blend
+    mb_zero,
+    mb_one,
+    mb_src_alpha,
+    mb_one_minus_src_alpha,
+
+    num_materialblend
 } materialblend_t;
 
 typedef struct materialdesc_s
 {
-    materialtype_t type;
-    materialblend_t blend;
-    qboolean alpha_test_66;
+    struct
+    {
+        unsigned int use_diffuse_color : 1;
+        unsigned int use_alpha_test66 : 1;
+        unsigned int lit : 2;
+        unsigned int : 4; // padding
+        unsigned int src_blend : 4;
+        unsigned int dst_blend : 4;
+    } flags;
 } materialdesc_t;
 
 typedef struct material_s *material_id;

@@ -549,6 +549,7 @@ void R_DrawInlineBModel (void)
 	dlight_t	*lt;
     float alpha;
     GLfloat world_from_model[16];
+    int is_translucent = (currententity->flags & RF_TRANSLUCENT);
 
     Matrix_FromAnglesOrigin(currententity->angles, currententity->origin, world_from_model);
 
@@ -564,7 +565,7 @@ void R_DrawInlineBModel (void)
 
 	psurf = &currentmodel->surfaces[currentmodel->firstmodelsurface];
 
-    alpha = (currententity->flags & RF_TRANSLUCENT) ? 0.25 : 1;
+    alpha = is_translucent ? 0.25 : 1;
 
 	//
 	// draw texture
@@ -587,10 +588,13 @@ void R_DrawInlineBModel (void)
 			}
             else if ( !( psurf->flags & SURF_DRAWTURB ) )
 			{
-                material_id mat = g_lightmapped_material;
+                material_id mat = is_translucent ? g_lightmapped_alpha_material : g_lightmapped_material;
                 Material_SetCurrent(mat);
                 Material_SetWorldFromModel(mat, world_from_model); // proj + view already set when drawing world
-                Material_SetDiffuseColor(mat, 1, 1, 1, alpha);
+                if(is_translucent)
+                {
+                    Material_SetDiffuseColor(mat, 1, 1, 1, alpha);
+                }
 				GL_RenderLightmappedPoly( psurf );
 			}
 			else
