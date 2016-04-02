@@ -759,6 +759,12 @@ void R_SetupGL (void)
     //glDisable(GL_BLEND);
     //glDisable(GL_ALPHA_TEST);
     glEnable(GL_DEPTH_TEST);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrixf(gl_state.clip_from_view);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadMatrixf(gl_state.view_from_world);
 }
 
 /*

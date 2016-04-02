@@ -521,7 +521,6 @@ R_DrawAliasModel
 */
 void R_DrawAliasModel (entity_t *e)
 {
-#if 0
 	int			i;
 	dmdl_t		*paliashdr;
 	float		an;
@@ -844,7 +843,6 @@ void R_DrawAliasModel (entity_t *e)
 	}
 #endif
     glColor4f (1,1,1,1);
-#endif
 }
 
 
