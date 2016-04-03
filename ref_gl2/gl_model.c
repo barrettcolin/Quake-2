@@ -40,6 +40,20 @@ model_t	mod_inline[MAX_MOD_KNOWN];
 
 int		registration_sequence;
 
+// Indexed triangle list construction
+static struct gl_st
+{
+    float s, t;
+} s_gl_st[MAX_VERTS];
+
+static struct xyz_st
+{
+    short xyz, st;
+} s_xyz_st[MAX_VERTS];
+static int s_num_xyz_st;
+
+static short s_triangles[MAX_TRIANGLES * 3];
+
 /*
 ===============
 Mod_PointInLeaf
@@ -224,7 +238,7 @@ model_t *Mod_ForName (char *name, qboolean crash)
 	//
 	// load the file
 	//
-	modfilelen = ri.FS_LoadFile (mod->name, &buf);
+    modfilelen = ri.FS_LoadFile (mod->name, (void **)&buf);
 	if (!buf)
 	{
 		if (crash)
@@ -920,6 +934,133 @@ ALIAS MODELS
 
 ==============================================================================
 */
+static size_t GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *pheader)
+{
+    int i, num_tris = 0;
+    int *pincmd = (int *)((byte *)pinmodel + pheader->ofs_glcmds);
+    short *pouttris = s_triangles;
+
+    memset(s_gl_st, 0, sizeof(s_gl_st));
+    for(i = 0; i < MAX_VERTS; ++i)
+    {
+        s_xyz_st[i].xyz = i < pheader->num_xyz ? i : -1;
+        s_xyz_st[i].st = -1;
+    }
+    s_num_xyz_st = pheader->num_xyz;
+
+    for(;;)
+    {
+        short tri[3];
+        short tri_num_verts = 0;
+        qboolean is_strip = true, strip_flip = false;
+        int count = *pincmd++;
+
+        if(count == 0)
+            break;
+        if(count < 0)
+        {
+            is_strip = false;
+            count = -count;
+        }
+
+        do
+        {
+            int data[3];
+            float s, t;
+            short index_xyz, vert_index;
+
+            data[0] = LittleLong(pincmd[0]);
+            data[1] = LittleLong(pincmd[1]);
+            data[2] = LittleLong(pincmd[2]);
+
+            s = ((float *)data)[0];
+            t = ((float *)data)[1];
+            index_xyz = (short)data[2];
+
+            if(s_xyz_st[index_xyz].st == -1)
+            {
+                // set st for this xyz
+                s_gl_st[index_xyz].s = s;
+                s_gl_st[index_xyz].t = t;
+                s_xyz_st[index_xyz].st = index_xyz;
+
+                vert_index = index_xyz;
+            }
+            else if(s_gl_st[index_xyz].s == s && s_gl_st[index_xyz].t == t)
+            {
+                // saw this xyz before, but with same st
+                vert_index = index_xyz;
+            }
+            else
+            {
+                // saw this old xyz before, but with different st; search in new verts
+                int k;
+                for(k = pheader->num_xyz; k < s_num_xyz_st; ++k)
+                {
+                    if(s_xyz_st[k].xyz == index_xyz && s_gl_st[k].s == s && s_gl_st[k].t == t)
+                        break;
+                }
+
+                if(k == s_num_xyz_st)
+                {
+                    s_num_xyz_st++;
+
+                    if(s_num_xyz_st == MAX_VERTS)
+                    {
+                        ri.Sys_Error (ERR_DROP, "GenerateIndexedTriangles exceeded MAX_VERTS");
+                    }
+
+                    s_gl_st[k].s = s;
+                    s_gl_st[k].t = t;
+
+                    s_xyz_st[k].xyz = index_xyz;
+                    s_xyz_st[k].st = k;
+                }
+
+                vert_index = k;
+            }
+
+            tri[tri_num_verts++] = vert_index;
+
+            if(tri_num_verts == 3)
+            {
+                if(is_strip)
+                {
+                    if(strip_flip)
+                    {
+                        *pouttris++ = tri[2];
+                        *pouttris++ = tri[1];
+                        *pouttris++ = tri[0];
+                        strip_flip = false;
+                    }
+                    else
+                    {
+                        *pouttris++ = tri[0];
+                        *pouttris++ = tri[1];
+                        *pouttris++ = tri[2];
+                        strip_flip = true;
+                    }
+                }
+                else
+                {
+                    *pouttris++ = tri[0];
+                    *pouttris++ = tri[1];
+                    *pouttris++ = tri[2];
+                }
+
+                tri[0] = tri[1];
+                tri[1] = tri[2];
+                tri_num_verts--;
+                num_tris++;
+            }
+
+            // advance to next xyz/s/t
+            pincmd += 3;
+        } while(--count);
+    }
+
+    return num_tris;
+}
 
 /*
 =================
@@ -929,12 +1070,15 @@ Mod_LoadAliasModel
 void Mod_LoadAliasModel (model_t *mod, void *buffer)
 {
 	int					i, j;
-	dmdl_t				*pinmodel, *pheader;
+    dmdl_t				*pinmodel;
 	dstvert_t			*pinst, *poutst;
 	dtriangle_t			*pintri, *pouttri;
 	daliasframe_t		*pinframe, *poutframe;
 	int					*pincmd, *poutcmd;
 	int					version;
+    dmdl_t header;
+    glmdl_t *pheader;
+    int num_gl_tris;
 
 	pinmodel = (dmdl_t *)buffer;
 
@@ -943,30 +1087,50 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 		ri.Sys_Error (ERR_DROP, "%s has wrong version number (%i should be %i)",
 				 mod->name, version, ALIAS_VERSION);
 
-	pheader = Hunk_Alloc (LittleLong(pinmodel->ofs_end));
-	
 	// byte swap the header fields and sanity check
 	for (i=0 ; i<sizeof(dmdl_t)/4 ; i++)
-		((int *)pheader)[i] = LittleLong (((int *)buffer)[i]);
+        ((int *)&header)[i] = LittleLong (((int *)buffer)[i]);
 
-	if (pheader->skinheight > MAX_LBM_HEIGHT)
+    if (header.skinheight > MAX_LBM_HEIGHT)
 		ri.Sys_Error (ERR_DROP, "model %s has a skin taller than %d", mod->name,
 				   MAX_LBM_HEIGHT);
 
-	if (pheader->num_xyz <= 0)
+    if (header.num_xyz <= 0)
 		ri.Sys_Error (ERR_DROP, "model %s has no vertices", mod->name);
 
-	if (pheader->num_xyz > MAX_VERTS)
+    if (header.num_xyz > MAX_VERTS)
 		ri.Sys_Error (ERR_DROP, "model %s has too many vertices", mod->name);
 
-	if (pheader->num_st <= 0)
+    if (header.num_st <= 0)
 		ri.Sys_Error (ERR_DROP, "model %s has no st vertices", mod->name);
 
-	if (pheader->num_tris <= 0)
+    if (header.num_tris <= 0)
 		ri.Sys_Error (ERR_DROP, "model %s has no triangles", mod->name);
 
-	if (pheader->num_frames <= 0)
+    if (header.num_frames <= 0)
 		ri.Sys_Error (ERR_DROP, "model %s has no frames", mod->name);
+
+    num_gl_tris = GenerateIndexedTriangles(pinmodel, &header);
+
+    pheader = Hunk_Alloc (header.ofs_end);
+
+    pheader->ident = header.ident;
+    pheader->version = header.version;
+    pheader->skinwidth = header.skinwidth;
+    pheader->skinheight = header.skinheight;
+    pheader->framesize = header.framesize;
+    pheader->num_skins = header.num_skins;
+    pheader->num_xyz = header.num_xyz;
+    pheader->num_st = header.num_st;
+    pheader->num_tris = header.num_tris;
+    pheader->num_glcmds = header.num_glcmds;
+    pheader->num_frames = header.num_frames;
+    pheader->ofs_skins = header.ofs_skins;
+    pheader->ofs_st = header.ofs_st;
+    pheader->ofs_tris = header.ofs_tris;
+    pheader->ofs_frames = header.ofs_frames;
+    pheader->ofs_glcmds = header.ofs_glcmds;
+    pheader->ofs_end = header.ofs_end;
 
 //
 // load base s and t vertices (not used in gl version)

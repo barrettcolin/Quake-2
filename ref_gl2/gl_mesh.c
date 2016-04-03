@@ -51,7 +51,7 @@ float	r_avertexnormal_dots[SHADEDOT_QUANT][256] =
 
 float	*shadedots = r_avertexnormal_dots[0];
 
-static void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx_t *verts, float *lerp, float move[3], float frontv[3], float backv[3] )
+static void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, float *lerp, float move[3], float frontv[3], float backv[3] )
 {
 	int i;
 
@@ -60,7 +60,7 @@ static void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx
 	{
 		for (i=0 ; i < nverts; i++, v++, ov++, lerp+=4 )
 		{
-			float *normal = r_avertexnormals[verts[i].lightnormalindex];
+            float *normal = r_avertexnormals[v[i].lightnormalindex];
 
 			lerp[0] = move[0] + ov->v[0]*backv[0] + v->v[0]*frontv[0] + normal[0] * POWERSUIT_SCALE;
 			lerp[1] = move[1] + ov->v[1]*backv[1] + v->v[1]*frontv[1] + normal[1] * POWERSUIT_SCALE;
@@ -87,11 +87,11 @@ interpolates between two frames and origins
 FIXME: batch lerp all vertexes
 =============
 */
-static void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
+static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 {
 	float 	l;
 	daliasframe_t	*frame, *oldframe;
-	dtrivertx_t	*v, *ov, *verts;
+    dtrivertx_t	*v, *ov;
 	int		*order;
 	int		count;
 	float	frontlerp;
@@ -104,7 +104,7 @@ static void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 
 	frame = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames 
 		+ currententity->frame * paliashdr->framesize);
-	verts = v = frame->verts;
+    v = frame->verts;
 
 	oldframe = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames 
 		+ currententity->oldframe * paliashdr->framesize);
@@ -149,7 +149,7 @@ static void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 
 	lerp = s_lerped[0];
 
-	GL_LerpVerts( paliashdr->num_xyz, v, ov, verts, lerp, move, frontv, backv );
+    GL_LerpVerts( paliashdr->num_xyz, v, ov, lerp, move, frontv, backv );
 
 	if ( gl_vertex_arrays->value )
 	{
@@ -174,7 +174,7 @@ static void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 			//
 			for ( i = 0; i < paliashdr->num_xyz; i++ )
 			{
-				float l = shadedots[verts[i].lightnormalindex];
+                float l = shadedots[v[i].lightnormalindex];
 
 				colorArray[i*3+0] = l * shadelight[0];
 				colorArray[i*3+1] = l * shadelight[1];
@@ -278,7 +278,7 @@ static void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 					order += 3;
 
 					// normals and vertexes come from the frame list
-					l = shadedots[verts[index_xyz].lightnormalindex];
+                    l = shadedots[v[index_xyz].lightnormalindex];
 					
                     glColor4f (l* shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
                     glVertex3fv (s_lerped[index_xyz]);
@@ -304,7 +304,7 @@ GL_DrawAliasShadow
 */
 extern	vec3_t			lightspot;
 
-void GL_DrawAliasShadow (dmdl_t *paliashdr, int posenum)
+void GL_DrawAliasShadow (glmdl_t *paliashdr, int posenum)
 {
 #if 0
 	dtrivertx_t	*verts;
@@ -377,13 +377,13 @@ static qboolean R_CullAliasModel( vec3_t bbox[8], entity_t *e )
 {
 	int i;
 	vec3_t		mins, maxs;
-	dmdl_t		*paliashdr;
+    glmdl_t		*paliashdr;
 	vec3_t		vectors[3];
 	vec3_t		thismins, oldmins, thismaxs, oldmaxs;
 	daliasframe_t *pframe, *poldframe;
 	vec3_t angles;
 
-	paliashdr = (dmdl_t *)currentmodel->extradata;
+    paliashdr = (glmdl_t *)currentmodel->extradata;
 
 	if ( ( e->frame >= paliashdr->num_frames ) || ( e->frame < 0 ) )
 	{
@@ -522,7 +522,7 @@ R_DrawAliasModel
 void R_DrawAliasModel (entity_t *e)
 {
 	int			i;
-	dmdl_t		*paliashdr;
+    glmdl_t		*paliashdr;
 	float		an;
 	vec3_t		bbox[8];
 	image_t		*skin;
@@ -539,7 +539,7 @@ void R_DrawAliasModel (entity_t *e)
 			return;
 	}
 
-	paliashdr = (dmdl_t *)currentmodel->extradata;
+    paliashdr = (glmdl_t *)currentmodel->extradata;
 
 	//
 	// get lighting information

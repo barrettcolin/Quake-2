@@ -509,3 +509,24 @@ void Matrix_InverseFromAnglesOrigin(vec3_t const angles, vec3_t const origin, GL
 
 // calculate T * Ra
 void Matrix_FromAxisAngleOrigin(vec3_t const axis, float angle, vec3_t const origin, GLfloat matrix_out[16]);
+
+typedef struct
+{
+    int ident;
+    int version;
+    int skinwidth;
+    int skinheight;
+    int framesize; // byte size of each frame
+    int num_skins;
+    int num_xyz;
+    int num_st; // greater than num_xyz for seams
+    int num_tris;
+    int num_glcmds; // dwords in strip/fan command list
+    int num_frames;
+    int ofs_skins; // each skin is a MAX_SKINNAME string
+    int ofs_st; // byte offset from start for stverts
+    int ofs_tris; // offset for dtriangles
+    int ofs_frames; // offset for first frame
+    int ofs_glcmds;
+    int ofs_end; // end of file
+} glmdl_t;
