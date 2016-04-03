@@ -512,21 +512,16 @@ void Matrix_FromAxisAngleOrigin(vec3_t const axis, float angle, vec3_t const ori
 
 typedef struct
 {
-    int ident;
-    int version;
-    int skinwidth;
-    int skinheight;
     int framesize; // byte size of each frame
     int num_skins;
-    int num_xyz;
-    int num_st; // greater than num_xyz for seams
-    int num_tris;
-    int num_glcmds; // dwords in strip/fan command list
+    int num_xyz; // number of verts in each frame
+    int num_st; // number of indexed verts for rendering
+    int num_tris; // number of indexed tris (indices in range [0, num_st - 1])
+    int num_glcmds; // number of post-lerp xyz to copy (num_st - num_xyz)
     int num_frames;
     int ofs_skins; // each skin is a MAX_SKINNAME string
-    int ofs_st; // byte offset from start for stverts
-    int ofs_tris; // offset for dtriangles
+    int ofs_st; // byte offset from start for stverts (float, float)
+    int ofs_tris; // offset for indexed tris (short, short, short)
     int ofs_frames; // offset for first frame
     int ofs_glcmds;
-    int ofs_end; // end of file
 } glmdl_t;

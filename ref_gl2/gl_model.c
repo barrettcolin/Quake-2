@@ -1062,6 +1062,20 @@ static size_t GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *phe
     return num_tris;
 }
 
+static size_t CalcAllocSizeAndOffsets(dmdl_t const *pheader_in, int num_gl_verts, int num_gl_tris, glmdl_t *pheader_out)
+{
+    int num_xyz_to_copy = num_gl_verts - pheader_in->num_xyz;
+
+    size_t alloc_size = sizeof(glmdl_t) +
+            (pheader_in->num_skins * MAX_SKINNAME) + // ofs_skins
+            (num_gl_verts * sizeof(GLfloat) * 2) + // ofs_st
+            (num_gl_tris * sizeof(short) * 3) + // ofs_tris
+            (pheader_in->num_frames * pheader_in->framesize) + // ofs_frames
+            (num_xyz_to_copy * sizeof(short)); // ofs_glcmds
+
+    return alloc_size;
+}
+
 /*
 =================
 Mod_LoadAliasModel
@@ -1077,8 +1091,10 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	int					*pincmd, *poutcmd;
 	int					version;
     dmdl_t header;
+    glmdl_t glheader;
     glmdl_t *pheader;
     int num_gl_tris;
+    size_t alloc_size;
 
 	pinmodel = (dmdl_t *)buffer;
 
@@ -1110,14 +1126,14 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
     if (header.num_frames <= 0)
 		ri.Sys_Error (ERR_DROP, "model %s has no frames", mod->name);
 
+    // Call GenerateIndexedTriangles before model memory is allocated
     num_gl_tris = GenerateIndexedTriangles(pinmodel, &header);
+
+    // Calc glmdl_t alloc size
+    alloc_size = CalcAllocSizeAndOffsets(&header, s_num_xyz_st, num_gl_tris, &glheader);
 
     pheader = Hunk_Alloc (header.ofs_end);
 
-    pheader->ident = header.ident;
-    pheader->version = header.version;
-    pheader->skinwidth = header.skinwidth;
-    pheader->skinheight = header.skinheight;
     pheader->framesize = header.framesize;
     pheader->num_skins = header.num_skins;
     pheader->num_xyz = header.num_xyz;
@@ -1130,7 +1146,6 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
     pheader->ofs_tris = header.ofs_tris;
     pheader->ofs_frames = header.ofs_frames;
     pheader->ofs_glcmds = header.ofs_glcmds;
-    pheader->ofs_end = header.ofs_end;
 
 //
 // load base s and t vertices (not used in gl version)
@@ -1298,7 +1313,7 @@ struct model_s *R_RegisterModel (char *name)
 	model_t	*mod;
 	int		i;
 	dsprite_t	*sprout;
-	dmdl_t		*pheader;
+    glmdl_t		*pheader;
 
 	mod = Mod_ForName (name, false);
 	if (mod)
@@ -1314,7 +1329,7 @@ struct model_s *R_RegisterModel (char *name)
 		}
 		else if (mod->type == mod_alias)
 		{
-			pheader = (dmdl_t *)mod->extradata;
+            pheader = (glmdl_t *)mod->extradata;
 			for (i=0 ; i<pheader->num_skins ; i++)
 				mod->skins[i] = GL_FindImage ((char *)pheader + pheader->ofs_skins + i*MAX_SKINNAME, it_skin);
 //PGM
