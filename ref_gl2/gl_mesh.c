@@ -110,7 +110,7 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 		+ currententity->oldframe * paliashdr->framesize);
 	ov = oldframe->verts;
 
-	order = (int *)((byte *)paliashdr + paliashdr->ofs_glcmds);
+    //order = (int *)((byte *)paliashdr + paliashdr->ofs_glcmds);
 
 //	glTranslatef (frame->translate[0], frame->translate[1], frame->translate[2]);
 //	glScalef (frame->scale[0], frame->scale[1], frame->scale[2]);
@@ -149,7 +149,7 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 
 	lerp = s_lerped[0];
 
-    GL_LerpVerts( paliashdr->num_xyz, v, ov, lerp, move, frontv, backv );
+    GL_LerpVerts( paliashdr->num_verts, v, ov, lerp, move, frontv, backv );
 
 	if ( gl_vertex_arrays->value )
 	{
@@ -172,7 +172,7 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 			//
 			// pre light everything
 			//
-			for ( i = 0; i < paliashdr->num_xyz; i++ )
+            for ( i = 0; i < paliashdr->num_verts; i++ )
 			{
                 float l = shadedots[v[i].lightnormalindex];
 
@@ -240,6 +240,32 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 	}
 	else
 	{
+        glstvert_t *st = (glstvert_t *)((byte *)paliashdr + paliashdr->ofs_st);
+        gltriangle_t *tri = (gltriangle_t *)((byte *)paliashdr + paliashdr->ofs_tris);
+
+        glBegin(GL_TRIANGLES);
+        for(i = 0; i < paliashdr->num_tris; ++i)
+        {
+            index_xyz = tri[i].a;
+            glTexCoord2f(st[index_xyz].s, st[index_xyz].t);
+            l = shadedots[v[index_xyz].lightnormalindex];
+            glColor4f (l* shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
+            glVertex3fv (s_lerped[index_xyz]);
+
+            index_xyz = tri[i].b;
+            glTexCoord2f(st[index_xyz].s, st[index_xyz].t);
+            l = shadedots[v[index_xyz].lightnormalindex];
+            glColor4f (l* shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
+            glVertex3fv (s_lerped[index_xyz]);
+
+            index_xyz = tri[i].c;
+            glTexCoord2f(st[index_xyz].s, st[index_xyz].t);
+            l = shadedots[v[index_xyz].lightnormalindex];
+            glColor4f (l* shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
+            glVertex3fv (s_lerped[index_xyz]);
+        }
+        glEnd();
+#if 0
 		while (1)
 		{
 			// get the vertex count and primitive type
@@ -287,6 +313,7 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 
             glEnd ();
 		}
+#endif
 	}
 
 //	if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE ) )

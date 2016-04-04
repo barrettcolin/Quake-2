@@ -514,14 +514,21 @@ typedef struct
 {
     int framesize; // byte size of each frame
     int num_skins;
-    int num_xyz; // number of verts in each frame
-    int num_st; // number of indexed verts for rendering
-    int num_tris; // number of indexed tris (indices in range [0, num_st - 1])
-    int num_glcmds; // number of post-lerp xyz to copy (num_st - num_xyz)
+    int num_verts;
     int num_frames;
+    int num_tris; // number of indexed tris (indices in range [0, num_verts - 1])
     int ofs_skins; // each skin is a MAX_SKINNAME string
     int ofs_st; // byte offset from start for stverts (float, float)
-    int ofs_tris; // offset for indexed tris (short, short, short)
     int ofs_frames; // offset for first frame
-    int ofs_glcmds;
+    int ofs_tris; // offset for indexed tris (short, short, short)
 } glmdl_t;
+
+typedef struct
+{
+    GLfloat s, t;
+} glstvert_t;
+
+typedef struct
+{
+    short a, b, c;
+} gltriangle_t;

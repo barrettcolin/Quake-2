@@ -41,10 +41,7 @@ model_t	mod_inline[MAX_MOD_KNOWN];
 int		registration_sequence;
 
 // Indexed triangle list construction
-static struct gl_st
-{
-    float s, t;
-} s_gl_st[MAX_VERTS];
+static glstvert_t s_gl_stvert[MAX_VERTS];
 
 static struct xyz_st
 {
@@ -52,7 +49,8 @@ static struct xyz_st
 } s_xyz_st[MAX_VERTS];
 static int s_num_xyz_st;
 
-static short s_triangles[MAX_TRIANGLES * 3];
+static gltriangle_t s_gl_triangles[MAX_TRIANGLES];
+static int s_num_gl_triangles;
 
 /*
 ===============
@@ -934,19 +932,19 @@ ALIAS MODELS
 
 ==============================================================================
 */
-static size_t GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *pheader)
+static void GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *pheader)
 {
-    int i, num_tris = 0;
+    int i;
     int *pincmd = (int *)((byte *)pinmodel + pheader->ofs_glcmds);
-    short *pouttris = s_triangles;
 
-    memset(s_gl_st, 0, sizeof(s_gl_st));
+    memset(s_gl_stvert, 0, sizeof(s_gl_stvert));
     for(i = 0; i < MAX_VERTS; ++i)
     {
         s_xyz_st[i].xyz = i < pheader->num_xyz ? i : -1;
         s_xyz_st[i].st = -1;
     }
     s_num_xyz_st = pheader->num_xyz;
+    s_num_gl_triangles = 0;
 
     for(;;)
     {
@@ -980,13 +978,13 @@ static size_t GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *phe
             if(s_xyz_st[index_xyz].st == -1)
             {
                 // set st for this xyz
-                s_gl_st[index_xyz].s = s;
-                s_gl_st[index_xyz].t = t;
+                s_gl_stvert[index_xyz].s = s;
+                s_gl_stvert[index_xyz].t = t;
                 s_xyz_st[index_xyz].st = index_xyz;
 
                 vert_index = index_xyz;
             }
-            else if(s_gl_st[index_xyz].s == s && s_gl_st[index_xyz].t == t)
+            else if(s_gl_stvert[index_xyz].s == s && s_gl_stvert[index_xyz].t == t)
             {
                 // saw this xyz before, but with same st
                 vert_index = index_xyz;
@@ -997,7 +995,7 @@ static size_t GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *phe
                 int k;
                 for(k = pheader->num_xyz; k < s_num_xyz_st; ++k)
                 {
-                    if(s_xyz_st[k].xyz == index_xyz && s_gl_st[k].s == s && s_gl_st[k].t == t)
+                    if(s_xyz_st[k].xyz == index_xyz && s_gl_stvert[k].s == s && s_gl_stvert[k].t == t)
                         break;
                 }
 
@@ -1010,8 +1008,8 @@ static size_t GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *phe
                         ri.Sys_Error (ERR_DROP, "GenerateIndexedTriangles exceeded MAX_VERTS");
                     }
 
-                    s_gl_st[k].s = s;
-                    s_gl_st[k].t = t;
+                    s_gl_stvert[k].s = s;
+                    s_gl_stvert[k].t = t;
 
                     s_xyz_st[k].xyz = index_xyz;
                     s_xyz_st[k].st = k;
@@ -1028,52 +1026,37 @@ static size_t GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *phe
                 {
                     if(strip_flip)
                     {
-                        *pouttris++ = tri[2];
-                        *pouttris++ = tri[1];
-                        *pouttris++ = tri[0];
+                        s_gl_triangles[s_num_gl_triangles].a = tri[2];
+                        s_gl_triangles[s_num_gl_triangles].b = tri[1];
+                        s_gl_triangles[s_num_gl_triangles].c = tri[0];
                         strip_flip = false;
                     }
                     else
                     {
-                        *pouttris++ = tri[0];
-                        *pouttris++ = tri[1];
-                        *pouttris++ = tri[2];
+                        s_gl_triangles[s_num_gl_triangles].a = tri[0];
+                        s_gl_triangles[s_num_gl_triangles].b = tri[1];
+                        s_gl_triangles[s_num_gl_triangles].c = tri[2];
                         strip_flip = true;
                     }
+                    tri[0] = tri[1];
+                    tri[1] = tri[2];
                 }
                 else
                 {
-                    *pouttris++ = tri[0];
-                    *pouttris++ = tri[1];
-                    *pouttris++ = tri[2];
+                    s_gl_triangles[s_num_gl_triangles].a = tri[0];
+                    s_gl_triangles[s_num_gl_triangles].b = tri[1];
+                    s_gl_triangles[s_num_gl_triangles].c = tri[2];
+                    tri[1] = tri[2];
                 }
 
-                tri[0] = tri[1];
-                tri[1] = tri[2];
                 tri_num_verts--;
-                num_tris++;
+                s_num_gl_triangles++;
             }
 
             // advance to next xyz/s/t
             pincmd += 3;
         } while(--count);
     }
-
-    return num_tris;
-}
-
-static size_t CalcAllocSizeAndOffsets(dmdl_t const *pheader_in, int num_gl_verts, int num_gl_tris, glmdl_t *pheader_out)
-{
-    int num_xyz_to_copy = num_gl_verts - pheader_in->num_xyz;
-
-    size_t alloc_size = sizeof(glmdl_t) +
-            (pheader_in->num_skins * MAX_SKINNAME) + // ofs_skins
-            (num_gl_verts * sizeof(GLfloat) * 2) + // ofs_st
-            (num_gl_tris * sizeof(short) * 3) + // ofs_tris
-            (pheader_in->num_frames * pheader_in->framesize) + // ofs_frames
-            (num_xyz_to_copy * sizeof(short)); // ofs_glcmds
-
-    return alloc_size;
 }
 
 /*
@@ -1085,16 +1068,13 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 {
 	int					i, j;
     dmdl_t				*pinmodel;
-	dstvert_t			*pinst, *poutst;
-	dtriangle_t			*pintri, *pouttri;
 	daliasframe_t		*pinframe, *poutframe;
-	int					*pincmd, *poutcmd;
 	int					version;
     dmdl_t header;
-    glmdl_t glheader;
     glmdl_t *pheader;
-    int num_gl_tris;
-    size_t alloc_size;
+    int frame_size, skins_size, stverts_size, frames_size, tris_size, alloc_size;
+    glstvert_t *poutst;
+    gltriangle_t *pouttri;
 
 	pinmodel = (dmdl_t *)buffer;
 
@@ -1127,52 +1107,41 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 		ri.Sys_Error (ERR_DROP, "model %s has no frames", mod->name);
 
     // Call GenerateIndexedTriangles before model memory is allocated
-    num_gl_tris = GenerateIndexedTriangles(pinmodel, &header);
+    GenerateIndexedTriangles(pinmodel, &header);
 
-    // Calc glmdl_t alloc size
-    alloc_size = CalcAllocSizeAndOffsets(&header, s_num_xyz_st, num_gl_tris, &glheader);
+    frame_size = offsetof(daliasframe_t, verts) + sizeof(dtrivertx_t) * s_num_xyz_st;
 
-    pheader = Hunk_Alloc (header.ofs_end);
+    skins_size = header.num_skins * MAX_SKINNAME;
+    stverts_size = s_num_xyz_st * sizeof(glstvert_t);
+    frames_size = header.num_frames * frame_size;
+    tris_size = s_num_gl_triangles * sizeof(gltriangle_t);
+    alloc_size = sizeof(glmdl_t) + skins_size + stverts_size + frames_size + tris_size;
 
-    pheader->framesize = header.framesize;
+    pheader = Hunk_Alloc(alloc_size);
+
+    pheader->framesize = frame_size;
     pheader->num_skins = header.num_skins;
-    pheader->num_xyz = header.num_xyz;
-    pheader->num_st = header.num_st;
-    pheader->num_tris = header.num_tris;
-    pheader->num_glcmds = header.num_glcmds;
+    pheader->num_verts = s_num_xyz_st;
     pheader->num_frames = header.num_frames;
-    pheader->ofs_skins = header.ofs_skins;
-    pheader->ofs_st = header.ofs_st;
-    pheader->ofs_tris = header.ofs_tris;
-    pheader->ofs_frames = header.ofs_frames;
-    pheader->ofs_glcmds = header.ofs_glcmds;
+    pheader->num_tris = s_num_gl_triangles;
+    pheader->ofs_skins = sizeof(glmdl_t);
+    pheader->ofs_st = pheader->ofs_skins + skins_size;
+    pheader->ofs_frames = pheader->ofs_st + stverts_size;
+    pheader->ofs_tris = pheader->ofs_frames + frames_size;
 
-//
-// load base s and t vertices (not used in gl version)
-//
-	pinst = (dstvert_t *) ((byte *)pinmodel + pheader->ofs_st);
-	poutst = (dstvert_t *) ((byte *)pheader + pheader->ofs_st);
-
-	for (i=0 ; i<pheader->num_st ; i++)
+    // st
+    poutst = (glstvert_t *) ((byte *)pheader + pheader->ofs_st);
+    for (i = 0; i < pheader->num_verts; ++i)
 	{
-		poutst[i].s = LittleShort (pinst[i].s);
-		poutst[i].t = LittleShort (pinst[i].t);
+        poutst[i] = s_gl_stvert[i];
 	}
 
-//
-// load triangle lists
-//
-	pintri = (dtriangle_t *) ((byte *)pinmodel + pheader->ofs_tris);
-	pouttri = (dtriangle_t *) ((byte *)pheader + pheader->ofs_tris);
-
-	for (i=0 ; i<pheader->num_tris ; i++)
+    // triangles
+    pouttri = (gltriangle_t *) ((byte *)pheader + pheader->ofs_tris);
+    for(i = 0; i < s_num_gl_triangles; ++i)
 	{
-		for (j=0 ; j<3 ; j++)
-		{
-			pouttri[i].index_xyz[j] = LittleShort (pintri[i].index_xyz[j]);
-			pouttri[i].index_st[j] = LittleShort (pintri[i].index_st[j]);
-		}
-	}
+        pouttri[i] = s_gl_triangles[i];
+    }
 
 //
 // load the frames
@@ -1180,7 +1149,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	for (i=0 ; i<pheader->num_frames ; i++)
 	{
 		pinframe = (daliasframe_t *) ((byte *)pinmodel 
-			+ pheader->ofs_frames + i * pheader->framesize);
+            + header.ofs_frames + i * header.framesize);
 		poutframe = (daliasframe_t *) ((byte *)pheader 
 			+ pheader->ofs_frames + i * pheader->framesize);
 
@@ -1192,23 +1161,18 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 		}
 		// verts are all 8 bit, so no swapping needed
 		memcpy (poutframe->verts, pinframe->verts, 
-			pheader->num_xyz*sizeof(dtrivertx_t));
+            header.num_xyz*sizeof(dtrivertx_t));
 
+        for(j = header.num_xyz; j < s_num_xyz_st; ++j)
+        {
+            poutframe->verts[j] = poutframe->verts[s_xyz_st[j].xyz];
+        }
 	}
 
 	mod->type = mod_alias;
 
-	//
-	// load the glcmds
-	//
-	pincmd = (int *) ((byte *)pinmodel + pheader->ofs_glcmds);
-	poutcmd = (int *) ((byte *)pheader + pheader->ofs_glcmds);
-	for (i=0 ; i<pheader->num_glcmds ; i++)
-		poutcmd[i] = LittleLong (pincmd[i]);
-
-
 	// register all skins
-	memcpy ((char *)pheader + pheader->ofs_skins, (char *)pinmodel + pheader->ofs_skins,
+    memcpy ((char *)pheader + pheader->ofs_skins, (char *)pinmodel + header.ofs_skins,
 		pheader->num_skins*MAX_SKINNAME);
 	for (i=0 ; i<pheader->num_skins ; i++)
 	{
