@@ -179,9 +179,9 @@ DrawGLPoly
 */
 void DrawGLPoly (glpoly_t *p)
 {
-    float	*v = p->verts[0];
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 3);
+    glBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
     glDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
 }
 
@@ -515,11 +515,10 @@ dynamic:
 
         for ( p = surf->polys; p; p = p->chain )
         {
-            v = p->verts[0];
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 3);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 5);
+            glBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
             glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
@@ -527,11 +526,10 @@ dynamic:
     {
         for ( p = surf->polys; p; p = p->chain )
         {
-            v = p->verts[0];
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 3);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), v + 5);
+            glBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
             glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
@@ -551,6 +549,7 @@ void R_DrawInlineBModel (void)
 	dlight_t	*lt;
     float alpha;
     GLfloat world_from_model[16];
+    int is_translucent = (currententity->flags & RF_TRANSLUCENT);
 
     Matrix_FromAnglesOrigin(currententity->angles, currententity->origin, world_from_model);
 
@@ -566,7 +565,7 @@ void R_DrawInlineBModel (void)
 
 	psurf = &currentmodel->surfaces[currentmodel->firstmodelsurface];
 
-    alpha = (currententity->flags & RF_TRANSLUCENT) ? 0.25 : 1;
+    alpha = is_translucent ? 0.25 : 1;
 
 	//
 	// draw texture
@@ -589,10 +588,13 @@ void R_DrawInlineBModel (void)
 			}
             else if ( !( psurf->flags & SURF_DRAWTURB ) )
 			{
-                material_id mat = g_lightmapped_material;
+                material_id mat = is_translucent ? g_lightmapped_alpha_material : g_lightmapped_material;
                 Material_SetCurrent(mat);
                 Material_SetWorldFromModel(mat, world_from_model); // proj + view already set when drawing world
-                Material_SetDiffuseColor(mat, 1, 1, 1, alpha);
+                if(is_translucent)
+                {
+                    Material_SetDiffuseColor(mat, 1, 1, 1, alpha);
+                }
 				GL_RenderLightmappedPoly( psurf );
 			}
 			else
@@ -878,6 +880,8 @@ void R_DrawWorld (void)
     Material_SetWorldFromModel(g_unlit_material, g_identity_matrix);
     Material_SetDiffuseColor(g_unlit_material, gl_state.inverse_intensity, gl_state.inverse_intensity, gl_state.inverse_intensity, 1);
 	DrawTextureChains ();
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 	
     Material_SetDiffuseColor(g_unlit_material, 1, 1, 1, 1);
 	R_DrawSkyBox ();
@@ -1152,6 +1156,14 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 
 	poly->numverts = lnumverts;
 
+    poly->vertexbuffer = VertexBuffer_Create();
+    {
+        GLsizeiptr buf_size = sizeof(float) * VERTEXSIZE * poly->numverts;
+
+        glBindBuffer(GL_ARRAY_BUFFER, poly->vertexbuffer);
+        glBufferData(GL_ARRAY_BUFFER, buf_size, poly->verts, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
 }
 
 /*
@@ -1265,7 +1277,7 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	}
 	else
 	{
-        gl_lms.internal_format = GL_RGB;
+        gl_lms.internal_format = GL_RGBA;
 	}
 
 	/*

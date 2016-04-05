@@ -40,6 +40,11 @@ model_t	mod_inline[MAX_MOD_KNOWN];
 
 int		registration_sequence;
 
+#define MAX_VERTEX_BUFFERS 65536
+
+static GLuint s_vertexbuffers[MAX_VERTEX_BUFFERS];
+static int s_num_vertexbuffers;
+
 // Indexed triangle list construction
 static glstvert_t s_gl_stvert[MAX_VERTS];
 
@@ -1249,7 +1254,14 @@ void R_BeginRegistration (char *model)
 {
 	char	fullname[MAX_QPATH];
 	cvar_t	*flushmap;
+    int i;
 
+    for(i = 0; i < s_num_vertexbuffers; ++i)
+    {
+        VertexBuffer_Destroy(&s_vertexbuffers[i]);
+    }
+
+    s_num_vertexbuffers = 0;
 	registration_sequence++;
 	r_oldviewcluster = -1;		// force markleafs
 
@@ -1363,4 +1375,36 @@ void Mod_FreeAll (void)
 		if (mod_known[i].extradatasize)
 			Mod_Free (&mod_known[i]);
 	}
+}
+
+GLuint VertexBuffer_Create()
+{
+    int i;
+    GLuint *vb;
+    for(i = 0; i < s_num_vertexbuffers; ++i)
+    {
+        if(s_vertexbuffers[i] == 0)
+            break;
+    }
+
+    if(i == s_num_vertexbuffers)
+    {
+        if(s_num_vertexbuffers == MAX_VERTEX_BUFFERS)
+            ri.Sys_Error(ERR_DROP, "MAX_VERTEX_BUFFERS");
+
+        s_num_vertexbuffers++;
+    }
+
+    vb = &s_vertexbuffers[i];
+    glGenBuffers(1, vb);
+    return *vb;
+}
+
+void VertexBuffer_Destroy(GLuint *name)
+{
+    if(*name != 0)
+    {
+        glDeleteBuffers(1, name);
+        *name = 0;
+    }
 }
