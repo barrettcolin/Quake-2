@@ -494,6 +494,8 @@ extern material_id g_lightmapped_material;
 extern material_id g_lightmapped_alpha_material; // for RF_TRANSLUCENT brushmodels
 extern material_id g_unlit_material; // for opaque SURF_DRAWTURB (same material as opaque Draw_*)
 extern material_id g_unlit_alpha_material; // alpha surface, opaque SURF_DRAWTURB on RF_TRANSLUCENT brushmodels
+extern material_id g_vertexlit_material; // for alias model entities
+extern material_id g_vertexlit_alpha_material; // for RF_TRANSLUCENT alias model entities
 
 //<todo reset state for ff pipeline
 extern material_id g_default_material;
@@ -519,3 +521,39 @@ void Matrix_FromAxisAngleOrigin(vec3_t const axis, float angle, vec3_t const ori
 GLuint VertexBuffer_Create();
 
 void VertexBuffer_Destroy(GLuint *name);
+
+typedef enum
+{
+    GLMDL_BUFFER_POSITIONS,
+    GLMDL_BUFFER_TEXCOORDS,
+    GLMDL_BUFFER_COLORS,
+    GLMDL_BUFFER_TRIANGLES,
+
+    NUM_GLMDL_BUFFERS
+} glmdl_buffer_t;
+
+typedef struct
+{
+    int framesize; // byte size of each frame
+    int num_skins;
+    int num_xyz;
+    int num_st;
+    int num_frames;
+    int num_tris; // number of indexed tris (indices in range [0, num_verts - 1])
+    int ofs_skins; // each skin is a MAX_SKINNAME string
+    int ofs_st; // byte offset from start for stverts (float, float)
+    int ofs_frames; // offset for first frame
+    int ofs_tris; // offset for indexed tris (short, short, short)
+    int ofs_xyz_from_st_indices; // byte offet to (num_st - num_xyz) indices mapping st to xyz
+    GLuint buffers[NUM_GLMDL_BUFFERS];
+} glmdl_t;
+
+typedef struct
+{
+    GLfloat s, t;
+} glstvert_t;
+
+typedef struct
+{
+    short a, b, c;
+} gltriangle_t;

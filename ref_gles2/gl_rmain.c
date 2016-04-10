@@ -131,6 +131,8 @@ material_id g_lightmapped_material;
 material_id g_lightmapped_alpha_material;
 material_id g_unlit_material;
 material_id g_unlit_alpha_material;
+material_id g_vertexlit_material;
+material_id g_vertexlit_alpha_material;
 
 /*
 =================
@@ -792,7 +794,7 @@ void R_Clear (void)
         glDepthFunc (GL_LEQUAL);
 	}
 
-    //glDepthRange (gldepthmin, gldepthmax);
+    glDepthRangef(gldepthmin, gldepthmax);
 
 }
 
@@ -1170,6 +1172,22 @@ qboolean R_Init( void *hinstance, void *hWnd )
         desc.flags.dst_blend = mb_one_minus_src_alpha;
 
         g_unlit_alpha_material = Material_Find(&desc);
+    }
+
+    // Vertex lit material
+    {
+        materialdesc_t desc = { 0 };
+        desc.flags.use_diffuse_color = false;
+        desc.flags.lit = ml_vertexlit;
+        desc.flags.src_blend = mb_one;
+        desc.flags.dst_blend = mb_zero;
+
+        g_vertexlit_material = Material_Find(&desc);
+
+        desc.flags.src_blend = mb_src_alpha;
+        desc.flags.dst_blend = mb_one_minus_src_alpha;
+
+        g_vertexlit_alpha_material = Material_Find(&desc);
     }
 
     err = glGetError();

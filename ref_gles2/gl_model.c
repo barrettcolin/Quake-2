@@ -45,6 +45,18 @@ int		registration_sequence;
 static GLuint s_vertexbuffers[MAX_VERTEX_BUFFERS];
 static int s_num_vertexbuffers;
 
+// Indexed triangle list construction
+static glstvert_t s_gl_stvert[MAX_VERTS];
+
+static struct xyz_st
+{
+    short xyz, st;
+} s_xyz_st[MAX_VERTS];
+static int s_num_xyz_st;
+
+static gltriangle_t s_gl_triangles[MAX_TRIANGLES];
+static int s_num_gl_triangles;
+
 /*
 ===============
 Mod_PointInLeaf
@@ -925,6 +937,132 @@ ALIAS MODELS
 
 ==============================================================================
 */
+static void GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *pheader)
+{
+    int i;
+    int *pincmd = (int *)((byte *)pinmodel + pheader->ofs_glcmds);
+
+    memset(s_gl_stvert, 0, sizeof(s_gl_stvert));
+    for(i = 0; i < MAX_VERTS; ++i)
+    {
+        s_xyz_st[i].xyz = i < pheader->num_xyz ? i : -1;
+        s_xyz_st[i].st = -1;
+    }
+    s_num_xyz_st = pheader->num_xyz;
+    s_num_gl_triangles = 0;
+
+    for(;;)
+    {
+        short tri[3];
+        short tri_num_verts = 0;
+        qboolean is_strip = true, strip_flip = false;
+        int count = *pincmd++;
+
+        if(count == 0)
+            break;
+        if(count < 0)
+        {
+            is_strip = false;
+            count = -count;
+        }
+
+        do
+        {
+            int data[3];
+            float s, t;
+            short index_xyz, vert_index;
+
+            data[0] = LittleLong(pincmd[0]);
+            data[1] = LittleLong(pincmd[1]);
+            data[2] = LittleLong(pincmd[2]);
+
+            s = ((float *)data)[0];
+            t = ((float *)data)[1];
+            index_xyz = (short)data[2];
+
+            if(s_xyz_st[index_xyz].st == -1)
+            {
+                // set st for this xyz
+                s_gl_stvert[index_xyz].s = s;
+                s_gl_stvert[index_xyz].t = t;
+                s_xyz_st[index_xyz].st = index_xyz;
+
+                vert_index = index_xyz;
+            }
+            else if(s_gl_stvert[index_xyz].s == s && s_gl_stvert[index_xyz].t == t)
+            {
+                // saw this xyz before, but with same st
+                vert_index = index_xyz;
+            }
+            else
+            {
+                // saw this old xyz before, but with different st; search in new verts
+                int k;
+                for(k = pheader->num_xyz; k < s_num_xyz_st; ++k)
+                {
+                    if(s_xyz_st[k].xyz == index_xyz && s_gl_stvert[k].s == s && s_gl_stvert[k].t == t)
+                        break;
+                }
+
+                if(k == s_num_xyz_st)
+                {
+                    s_num_xyz_st++;
+
+                    if(s_num_xyz_st == MAX_VERTS)
+                    {
+                        ri.Sys_Error (ERR_DROP, "GenerateIndexedTriangles exceeded MAX_VERTS");
+                    }
+
+                    s_gl_stvert[k].s = s;
+                    s_gl_stvert[k].t = t;
+
+                    s_xyz_st[k].xyz = index_xyz;
+                    s_xyz_st[k].st = k;
+                }
+
+                vert_index = k;
+            }
+
+            tri[tri_num_verts++] = vert_index;
+
+            if(tri_num_verts == 3)
+            {
+                if(is_strip)
+                {
+                    if(strip_flip)
+                    {
+                        s_gl_triangles[s_num_gl_triangles].a = tri[2];
+                        s_gl_triangles[s_num_gl_triangles].b = tri[1];
+                        s_gl_triangles[s_num_gl_triangles].c = tri[0];
+                        strip_flip = false;
+                    }
+                    else
+                    {
+                        s_gl_triangles[s_num_gl_triangles].a = tri[0];
+                        s_gl_triangles[s_num_gl_triangles].b = tri[1];
+                        s_gl_triangles[s_num_gl_triangles].c = tri[2];
+                        strip_flip = true;
+                    }
+                    tri[0] = tri[1];
+                    tri[1] = tri[2];
+                }
+                else
+                {
+                    s_gl_triangles[s_num_gl_triangles].a = tri[0];
+                    s_gl_triangles[s_num_gl_triangles].b = tri[1];
+                    s_gl_triangles[s_num_gl_triangles].c = tri[2];
+                    tri[1] = tri[2];
+                }
+
+                tri_num_verts--;
+                s_num_gl_triangles++;
+            }
+
+            // advance to next xyz/s/t
+            pincmd += 3;
+        } while(--count);
+    }
+}
 
 /*
 =================
@@ -934,12 +1072,17 @@ Mod_LoadAliasModel
 void Mod_LoadAliasModel (model_t *mod, void *buffer)
 {
 	int					i, j;
-	dmdl_t				*pinmodel, *pheader;
-	dstvert_t			*pinst, *poutst;
-	dtriangle_t			*pintri, *pouttri;
+    dmdl_t				*pinmodel;
 	daliasframe_t		*pinframe, *poutframe;
-	int					*pincmd, *poutcmd;
 	int					version;
+    dmdl_t header;
+    glmdl_t *pheader;
+    int num_xyz_from_st_indices;
+    int skins_size, stverts_size, frames_size, xyz_from_st_indices_size, tris_size;
+    int alloc_size;
+    glstvert_t *pout_st;
+    short *pout_xyz_from_st;
+    gltriangle_t *pout_tri;
 
 	pinmodel = (dmdl_t *)buffer;
 
@@ -948,57 +1091,82 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 		ri.Sys_Error (ERR_DROP, "%s has wrong version number (%i should be %i)",
 				 mod->name, version, ALIAS_VERSION);
 
-	pheader = Hunk_Alloc (LittleLong(pinmodel->ofs_end));
-	
 	// byte swap the header fields and sanity check
 	for (i=0 ; i<sizeof(dmdl_t)/4 ; i++)
-		((int *)pheader)[i] = LittleLong (((int *)buffer)[i]);
+        ((int *)&header)[i] = LittleLong (((int *)buffer)[i]);
 
-	if (pheader->skinheight > MAX_LBM_HEIGHT)
+    if (header.skinheight > MAX_LBM_HEIGHT)
 		ri.Sys_Error (ERR_DROP, "model %s has a skin taller than %d", mod->name,
 				   MAX_LBM_HEIGHT);
 
-	if (pheader->num_xyz <= 0)
+    if (header.num_xyz <= 0)
 		ri.Sys_Error (ERR_DROP, "model %s has no vertices", mod->name);
 
-	if (pheader->num_xyz > MAX_VERTS)
+    if (header.num_xyz > MAX_VERTS)
 		ri.Sys_Error (ERR_DROP, "model %s has too many vertices", mod->name);
 
-	if (pheader->num_st <= 0)
+    if (header.num_st <= 0)
 		ri.Sys_Error (ERR_DROP, "model %s has no st vertices", mod->name);
 
-	if (pheader->num_tris <= 0)
+    if (header.num_tris <= 0)
 		ri.Sys_Error (ERR_DROP, "model %s has no triangles", mod->name);
 
-	if (pheader->num_frames <= 0)
+    if (header.num_frames <= 0)
 		ri.Sys_Error (ERR_DROP, "model %s has no frames", mod->name);
 
-//
-// load base s and t vertices (not used in gl version)
-//
-	pinst = (dstvert_t *) ((byte *)pinmodel + pheader->ofs_st);
-	poutst = (dstvert_t *) ((byte *)pheader + pheader->ofs_st);
+    // Call GenerateIndexedTriangles before model memory is allocated
+    GenerateIndexedTriangles(pinmodel, &header);
 
-	for (i=0 ; i<pheader->num_st ; i++)
+    num_xyz_from_st_indices = s_num_xyz_st - header.num_xyz;
+
+    skins_size = header.num_skins * MAX_SKINNAME;
+    stverts_size = s_num_xyz_st * sizeof(glstvert_t);
+    frames_size = header.num_frames * header.framesize;
+    tris_size = s_num_gl_triangles * sizeof(gltriangle_t) + (s_num_gl_triangles & 1) * sizeof(short); // pad to even number of shorts
+    xyz_from_st_indices_size = (num_xyz_from_st_indices + (num_xyz_from_st_indices & 1)) * sizeof(short); // pad to even number of shorts
+    alloc_size = sizeof(glmdl_t) + skins_size + stverts_size + frames_size + xyz_from_st_indices_size + tris_size;
+
+    pheader = Hunk_Alloc(alloc_size);
+
+    pheader->framesize = header.framesize;
+    pheader->num_skins = header.num_skins;
+    pheader->num_xyz = header.num_xyz;
+    pheader->num_st = s_num_xyz_st;
+    pheader->num_frames = header.num_frames;
+    pheader->num_tris = s_num_gl_triangles;
+    pheader->ofs_skins = sizeof(glmdl_t);
+    assert((pheader->ofs_skins & 3) == 0);
+    pheader->ofs_st = pheader->ofs_skins + skins_size;
+    assert((pheader->ofs_st & 3) == 0);
+    pheader->ofs_frames = pheader->ofs_st + stverts_size;
+    assert((pheader->ofs_frames & 3) == 0);
+    pheader->ofs_tris = pheader->ofs_frames + frames_size;
+    assert((pheader->ofs_tris & 3) == 0);
+    pheader->ofs_xyz_from_st_indices = pheader->ofs_tris + tris_size;
+    assert((pheader->ofs_xyz_from_st_indices & 3) == 0);
+
+    glGenBuffers(NUM_GLMDL_BUFFERS, pheader->buffers);
+
+    // st
+    pout_st = (glstvert_t *) ((byte *)pheader + pheader->ofs_st);
+    for (i = 0; i < pheader->num_st; ++i)
 	{
-		poutst[i].s = LittleShort (pinst[i].s);
-		poutst[i].t = LittleShort (pinst[i].t);
+        pout_st[i] = s_gl_stvert[i];
 	}
 
-//
-// load triangle lists
-//
-	pintri = (dtriangle_t *) ((byte *)pinmodel + pheader->ofs_tris);
-	pouttri = (dtriangle_t *) ((byte *)pheader + pheader->ofs_tris);
+    // xyz_from_st
+    pout_xyz_from_st = (short *) ((byte *)pheader + pheader->ofs_xyz_from_st_indices);
+    for (i = pheader->num_xyz; i < pheader->num_st; ++i)
+    {
+        pout_xyz_from_st[i - pheader->num_xyz] = s_xyz_st[i].xyz;
+    }
 
-	for (i=0 ; i<pheader->num_tris ; i++)
+    // triangles
+    pout_tri = (gltriangle_t *) ((byte *)pheader + pheader->ofs_tris);
+    for(i = 0; i < s_num_gl_triangles; ++i)
 	{
-		for (j=0 ; j<3 ; j++)
-		{
-			pouttri[i].index_xyz[j] = LittleShort (pintri[i].index_xyz[j]);
-			pouttri[i].index_st[j] = LittleShort (pintri[i].index_st[j]);
-		}
-	}
+        pout_tri[i] = s_gl_triangles[i];
+    }
 
 //
 // load the frames
@@ -1006,7 +1174,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	for (i=0 ; i<pheader->num_frames ; i++)
 	{
 		pinframe = (daliasframe_t *) ((byte *)pinmodel 
-			+ pheader->ofs_frames + i * pheader->framesize);
+            + header.ofs_frames + i * header.framesize);
 		poutframe = (daliasframe_t *) ((byte *)pheader 
 			+ pheader->ofs_frames + i * pheader->framesize);
 
@@ -1018,23 +1186,13 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 		}
 		// verts are all 8 bit, so no swapping needed
 		memcpy (poutframe->verts, pinframe->verts, 
-			pheader->num_xyz*sizeof(dtrivertx_t));
-
+            header.num_xyz*sizeof(dtrivertx_t));
 	}
 
 	mod->type = mod_alias;
 
-	//
-	// load the glcmds
-	//
-	pincmd = (int *) ((byte *)pinmodel + pheader->ofs_glcmds);
-	poutcmd = (int *) ((byte *)pheader + pheader->ofs_glcmds);
-	for (i=0 ; i<pheader->num_glcmds ; i++)
-		poutcmd[i] = LittleLong (pincmd[i]);
-
-
 	// register all skins
-	memcpy ((char *)pheader + pheader->ofs_skins, (char *)pinmodel + pheader->ofs_skins,
+    memcpy ((char *)pheader + pheader->ofs_skins, (char *)pinmodel + header.ofs_skins,
 		pheader->num_skins*MAX_SKINNAME);
 	for (i=0 ; i<pheader->num_skins ; i++)
 	{
@@ -1146,7 +1304,7 @@ struct model_s *R_RegisterModel (char *name)
 	model_t	*mod;
 	int		i;
 	dsprite_t	*sprout;
-	dmdl_t		*pheader;
+    glmdl_t		*pheader;
 
 	mod = Mod_ForName (name, false);
 	if (mod)
@@ -1162,7 +1320,7 @@ struct model_s *R_RegisterModel (char *name)
 		}
 		else if (mod->type == mod_alias)
 		{
-			pheader = (dmdl_t *)mod->extradata;
+            pheader = (glmdl_t *)mod->extradata;
 			for (i=0 ; i<pheader->num_skins ; i++)
 				mod->skins[i] = GL_FindImage ((char *)pheader + pheader->ofs_skins + i*MAX_SKINNAME, it_skin);
 //PGM
@@ -1214,6 +1372,13 @@ Mod_Free
 */
 void Mod_Free (model_t *mod)
 {
+    switch(mod->type)
+    {
+    case mod_alias:
+        glDeleteBuffers(NUM_GLMDL_BUFFERS, ((glmdl_t *)mod->extradata)->buffers);
+        break;
+    }
+
 	Hunk_Free (mod->extradata);
 	memset (mod, 0, sizeof(*mod));
 }

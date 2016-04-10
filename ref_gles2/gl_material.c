@@ -257,7 +257,37 @@ static void MaterialLightmapped_Create(material_t *mat)
     }
 
     Material_Destroy(mat);
-    ri.Sys_Error(ERR_DROP, "MaterialUnlit_Create");
+    ri.Sys_Error(ERR_DROP, "MaterialLightmapped_Create");
+}
+
+static void MaterialVertexlit_Create(material_t *mat)
+{
+    for(;;)
+    {
+        char const *defines = "";
+
+        if(Material_CreateProgram(mat, "ref_gl2/vertexlit", defines) != 0)
+            break;
+
+        mat->num_vertex_attributes = 3;
+        glBindAttribLocation(mat->program, 0, "a_vPosition");
+        glBindAttribLocation(mat->program, 1, "a_vColor");
+        glBindAttribLocation(mat->program, 2, "a_vTexCoord");
+
+        if(Material_LinkProgram(mat) != 0)
+            break;
+
+        glUseProgram(mat->program);
+        mat->clip_from_view_location = glGetUniformLocation(mat->program, "mClipFromView");
+        mat->view_from_world_location = glGetUniformLocation(mat->program, "mViewFromWorld");
+        mat->world_from_model_location = glGetUniformLocation(mat->program, "mWorldFromModel");
+        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
+        glUseProgram(0);
+        return;
+    }
+
+    Material_Destroy(mat);
+    ri.Sys_Error(ERR_DROP, "MaterialVertexlit_Create");
 }
 
 void Material_Init()
@@ -310,7 +340,11 @@ material_t *Material_Find(materialdesc_t const* desc)
     {
         MaterialLightmapped_Create(mat);
     }
-    else
+    else if(desc->flags.lit == ml_vertexlit)
+	{
+        MaterialVertexlit_Create(mat);
+	}
+	else
     {
         MaterialUnlit_Create(mat);
     }
