@@ -868,7 +868,6 @@ void R_DrawWorld (void)
     Material_SetClipFromView(g_lightmapped_material, gl_state.clip_from_view);
     Material_SetViewFromWorld(g_lightmapped_material, gl_state.view_from_world);
     Material_SetWorldFromModel(g_lightmapped_material, g_identity_matrix);
-    Material_SetDiffuseColor(g_lightmapped_material, 1, 1, 1, 1);
     R_RecursiveWorldNode (r_worldmodel->nodes);
 
     // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by R_RecursiveWorldNode
