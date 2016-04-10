@@ -1134,6 +1134,8 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
     pheader->ofs_frames = pheader->ofs_st + stverts_size;
     pheader->ofs_tris = pheader->ofs_frames + frames_size;
 
+    glGenBuffers(NUM_GLMDL_BUFFERS, &pheader->buffers);
+
     // st
     poutst = (glstvert_t *) ((byte *)pheader + pheader->ofs_st);
     for (i = 0; i < pheader->num_verts; ++i)
@@ -1357,6 +1359,13 @@ Mod_Free
 */
 void Mod_Free (model_t *mod)
 {
+    switch(mod->type)
+    {
+    case mod_alias:
+        glDeleteBuffers(NUM_GLMDL_BUFFERS, ((glmdl_t *)mod->extradata)->buffers);
+        break;
+    }
+
 	Hunk_Free (mod->extradata);
 	memset (mod, 0, sizeof(*mod));
 }

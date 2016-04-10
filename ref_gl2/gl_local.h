@@ -515,6 +515,16 @@ GLuint VertexBuffer_Create();
 
 void VertexBuffer_Destroy(GLuint *name);
 
+typedef enum
+{
+    GLMDL_BUFFER_POSITIONS,
+    GLMDL_BUFFER_TEXCOORDS,
+    GLMDL_BUFFER_COLORS,
+    GLMDL_BUFFER_TRIANGLES,
+
+    NUM_GLMDL_BUFFERS
+} glmdl_buffer_t;
+
 typedef struct
 {
     int framesize; // byte size of each frame
@@ -526,6 +536,7 @@ typedef struct
     int ofs_st; // byte offset from start for stverts (float, float)
     int ofs_frames; // offset for first frame
     int ofs_tris; // offset for indexed tris (short, short, short)
+    GLuint buffers[NUM_GLMDL_BUFFERS];
 } glmdl_t;
 
 typedef struct
