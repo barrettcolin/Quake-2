@@ -101,6 +101,8 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 	int		i;
 	int		index_xyz;
 	float	*lerp;
+    short *xyz_from_st_indices;
+    int index_xyz_st;
 
 	frame = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames 
 		+ currententity->frame * paliashdr->framesize);
@@ -149,7 +151,13 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 
 	lerp = s_lerped[0];
 
-    GL_LerpVerts( paliashdr->num_verts, v, ov, lerp, move, frontv, backv );
+    GL_LerpVerts( paliashdr->num_xyz, v, ov, lerp, move, frontv, backv );
+
+    xyz_from_st_indices = (short *)((byte *)paliashdr + paliashdr->ofs_xyz_from_st_indices);
+    for(i = paliashdr->num_xyz; i < paliashdr->num_st; ++i)
+    {
+        memcpy(s_lerped[i], s_lerped[xyz_from_st_indices[i - paliashdr->num_xyz]], sizeof(vec4_t));
+    }
 
 	if ( gl_vertex_arrays->value )
 	{
@@ -172,7 +180,7 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 			//
 			// pre light everything
 			//
-            for ( i = 0; i < paliashdr->num_verts; i++ )
+            for ( i = 0; i < paliashdr->num_xyz; i++ )
 			{
                 float l = shadedots[v[i].lightnormalindex];
 
@@ -240,29 +248,44 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 	}
 	else
 	{
+        GLfloat colorArray[MAX_VERTS*4];
+        for(i = 0; i < paliashdr->num_xyz; ++i)
+        {
+            float l = shadedots[v[i].lightnormalindex];
+            colorArray[i * 4] = l * shadelight[0];
+            colorArray[i * 4 + 1] = l * shadelight[1];
+            colorArray[i * 4 + 2] = l * shadelight[2];
+            colorArray[i * 4 + 3] = alpha;
+        }
+        for(i = paliashdr->num_xyz; i < paliashdr->num_st; ++i)
+        {
+            float l = shadedots[v[xyz_from_st_indices[i - paliashdr->num_xyz]].lightnormalindex];
+            colorArray[i * 4] = l * shadelight[0];
+            colorArray[i * 4 + 1] = l * shadelight[1];
+            colorArray[i * 4 + 2] = l * shadelight[2];
+            colorArray[i * 4 + 3] = alpha;
+        }
+
         glstvert_t *st = (glstvert_t *)((byte *)paliashdr + paliashdr->ofs_st);
         gltriangle_t *tri = (gltriangle_t *)((byte *)paliashdr + paliashdr->ofs_tris);
 
         glBegin(GL_TRIANGLES);
         for(i = 0; i < paliashdr->num_tris; ++i)
         {
-            index_xyz = tri[i].a;
-            glTexCoord2f(st[index_xyz].s, st[index_xyz].t);
-            l = shadedots[v[index_xyz].lightnormalindex];
-            glColor4f (l* shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
-            glVertex3fv (s_lerped[index_xyz]);
+            index_xyz_st = tri[i].a;
+            glTexCoord2fv(&st[index_xyz_st].s);
+            glColor4fv(colorArray + index_xyz_st * 4);
+            glVertex3fv(s_lerped[index_xyz_st]);
 
-            index_xyz = tri[i].b;
-            glTexCoord2f(st[index_xyz].s, st[index_xyz].t);
-            l = shadedots[v[index_xyz].lightnormalindex];
-            glColor4f (l* shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
-            glVertex3fv (s_lerped[index_xyz]);
+            index_xyz_st = tri[i].b;
+            glTexCoord2fv(&st[index_xyz_st].s);
+            glColor4fv(colorArray + index_xyz_st * 4);
+            glVertex3fv(s_lerped[index_xyz_st]);
 
-            index_xyz = tri[i].c;
-            glTexCoord2f(st[index_xyz].s, st[index_xyz].t);
-            l = shadedots[v[index_xyz].lightnormalindex];
-            glColor4f (l* shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
-            glVertex3fv (s_lerped[index_xyz]);
+            index_xyz_st = tri[i].c;
+            glTexCoord2fv(&st[index_xyz_st].s);
+            glColor4fv(colorArray + index_xyz_st * 4);
+            glVertex3fv(s_lerped[index_xyz_st]);
         }
         glEnd();
 #if 0

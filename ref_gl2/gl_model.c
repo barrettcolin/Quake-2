@@ -1077,9 +1077,12 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	int					version;
     dmdl_t header;
     glmdl_t *pheader;
-    int frame_size, skins_size, stverts_size, frames_size, tris_size, alloc_size;
-    glstvert_t *poutst;
-    gltriangle_t *pouttri;
+    int num_xyz_from_st_indices;
+    int skins_size, stverts_size, frames_size, xyz_from_st_indices_size, tris_size;
+    int alloc_size;
+    glstvert_t *pout_st;
+    short *pout_xyz_from_st;
+    gltriangle_t *pout_tri;
 
 	pinmodel = (dmdl_t *)buffer;
 
@@ -1114,40 +1117,55 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
     // Call GenerateIndexedTriangles before model memory is allocated
     GenerateIndexedTriangles(pinmodel, &header);
 
-    frame_size = offsetof(daliasframe_t, verts) + sizeof(dtrivertx_t) * s_num_xyz_st;
+    num_xyz_from_st_indices = s_num_xyz_st - header.num_xyz;
 
     skins_size = header.num_skins * MAX_SKINNAME;
     stverts_size = s_num_xyz_st * sizeof(glstvert_t);
-    frames_size = header.num_frames * frame_size;
-    tris_size = s_num_gl_triangles * sizeof(gltriangle_t);
-    alloc_size = sizeof(glmdl_t) + skins_size + stverts_size + frames_size + tris_size;
+    frames_size = header.num_frames * header.framesize;
+    tris_size = s_num_gl_triangles * sizeof(gltriangle_t) + (s_num_gl_triangles & 1) * sizeof(short); // pad to even number of shorts
+    xyz_from_st_indices_size = (num_xyz_from_st_indices + (num_xyz_from_st_indices & 1)) * sizeof(short); // pad to even number of shorts
+    alloc_size = sizeof(glmdl_t) + skins_size + stverts_size + frames_size + xyz_from_st_indices_size + tris_size;
 
     pheader = Hunk_Alloc(alloc_size);
 
-    pheader->framesize = frame_size;
+    pheader->framesize = header.framesize;
     pheader->num_skins = header.num_skins;
-    pheader->num_verts = s_num_xyz_st;
+    pheader->num_xyz = header.num_xyz;
+    pheader->num_st = s_num_xyz_st;
     pheader->num_frames = header.num_frames;
     pheader->num_tris = s_num_gl_triangles;
     pheader->ofs_skins = sizeof(glmdl_t);
+    assert((pheader->ofs_skins & 3) == 0);
     pheader->ofs_st = pheader->ofs_skins + skins_size;
+    assert((pheader->ofs_st & 3) == 0);
     pheader->ofs_frames = pheader->ofs_st + stverts_size;
+    assert((pheader->ofs_frames & 3) == 0);
     pheader->ofs_tris = pheader->ofs_frames + frames_size;
+    assert((pheader->ofs_tris & 3) == 0);
+    pheader->ofs_xyz_from_st_indices = pheader->ofs_tris + tris_size;
+    assert((pheader->ofs_xyz_from_st_indices & 3) == 0);
 
-    glGenBuffers(NUM_GLMDL_BUFFERS, &pheader->buffers);
+    glGenBuffers(NUM_GLMDL_BUFFERS, pheader->buffers);
 
     // st
-    poutst = (glstvert_t *) ((byte *)pheader + pheader->ofs_st);
-    for (i = 0; i < pheader->num_verts; ++i)
+    pout_st = (glstvert_t *) ((byte *)pheader + pheader->ofs_st);
+    for (i = 0; i < pheader->num_st; ++i)
 	{
-        poutst[i] = s_gl_stvert[i];
+        pout_st[i] = s_gl_stvert[i];
 	}
 
+    // xyz_from_st
+    pout_xyz_from_st = (short *) ((byte *)pheader + pheader->ofs_xyz_from_st_indices);
+    for (i = pheader->num_xyz; i < pheader->num_st; ++i)
+    {
+        pout_xyz_from_st[i - pheader->num_xyz] = s_xyz_st[i].xyz;
+    }
+
     // triangles
-    pouttri = (gltriangle_t *) ((byte *)pheader + pheader->ofs_tris);
+    pout_tri = (gltriangle_t *) ((byte *)pheader + pheader->ofs_tris);
     for(i = 0; i < s_num_gl_triangles; ++i)
 	{
-        pouttri[i] = s_gl_triangles[i];
+        pout_tri[i] = s_gl_triangles[i];
     }
 
 //
@@ -1169,11 +1187,6 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 		// verts are all 8 bit, so no swapping needed
 		memcpy (poutframe->verts, pinframe->verts, 
             header.num_xyz*sizeof(dtrivertx_t));
-
-        for(j = header.num_xyz; j < s_num_xyz_st; ++j)
-        {
-            poutframe->verts[j] = poutframe->verts[s_xyz_st[j].xyz];
-        }
 	}
 
 	mod->type = mod_alias;

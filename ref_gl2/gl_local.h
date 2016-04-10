@@ -529,13 +529,15 @@ typedef struct
 {
     int framesize; // byte size of each frame
     int num_skins;
-    int num_verts;
+    int num_xyz;
+    int num_st;
     int num_frames;
     int num_tris; // number of indexed tris (indices in range [0, num_verts - 1])
     int ofs_skins; // each skin is a MAX_SKINNAME string
     int ofs_st; // byte offset from start for stverts (float, float)
     int ofs_frames; // offset for first frame
     int ofs_tris; // offset for indexed tris (short, short, short)
+    int ofs_xyz_from_st_indices; // byte offet to (num_st - num_xyz) indices mapping st to xyz
     GLuint buffers[NUM_GLMDL_BUFFERS];
 } glmdl_t;
 
