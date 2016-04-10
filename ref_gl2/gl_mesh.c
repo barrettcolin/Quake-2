@@ -51,6 +51,8 @@ float	r_avertexnormal_dots[SHADEDOT_QUANT][256] =
 
 float	*shadedots = r_avertexnormal_dots[0];
 
+static GLfloat s_color_array[MAX_VERTS*4];
+
 static void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, float *lerp, float move[3], float frontv[3], float backv[3] )
 {
 	int i;
@@ -103,6 +105,7 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 	float	*lerp;
     short *xyz_from_st_indices;
     int index_xyz_st;
+    int render_shell;
 
 	frame = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames 
 		+ currententity->frame * paliashdr->framesize);
@@ -112,18 +115,16 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 		+ currententity->oldframe * paliashdr->framesize);
 	ov = oldframe->verts;
 
-    //order = (int *)((byte *)paliashdr + paliashdr->ofs_glcmds);
-
-//	glTranslatef (frame->translate[0], frame->translate[1], frame->translate[2]);
-//	glScalef (frame->scale[0], frame->scale[1], frame->scale[2]);
-
 	if (currententity->flags & RF_TRANSLUCENT)
 		alpha = currententity->alpha;
 	else
 		alpha = 1.0;
 
+    // render_shell: no texture, color(shadelight[0], shadelight[1], shadelight[2], alpha)
+    render_shell = currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM);
+
 	// PMM - added double shell
-	if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM) )
+    if ( render_shell )
         glDisable( GL_TEXTURE_2D );
 
 	frontlerp = 1.0 - backlerp;
@@ -153,195 +154,72 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 
     GL_LerpVerts( paliashdr->num_xyz, v, ov, lerp, move, frontv, backv );
 
+    // write vertex positions (from num_xyz to num_st - 1)
     xyz_from_st_indices = (short *)((byte *)paliashdr + paliashdr->ofs_xyz_from_st_indices);
     for(i = paliashdr->num_xyz; i < paliashdr->num_st; ++i)
     {
         memcpy(s_lerped[i], s_lerped[xyz_from_st_indices[i - paliashdr->num_xyz]], sizeof(vec4_t));
     }
 
-	if ( gl_vertex_arrays->value )
-	{
-		float colorArray[MAX_VERTS*4];
-
-        glEnableClientState( GL_VERTEX_ARRAY );
-        glVertexPointer( 3, GL_FLOAT, 16, s_lerped );	// padded for SIMD
-
-//		if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE ) )
-		// PMM - added double damage shell
-		if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM) )
-		{
-            glColor4f( shadelight[0], shadelight[1], shadelight[2], alpha );
-		}
-		else
-		{
-            glEnableClientState( GL_COLOR_ARRAY );
-            glColorPointer( 3, GL_FLOAT, 0, colorArray );
-
-			//
-			// pre light everything
-			//
-            for ( i = 0; i < paliashdr->num_xyz; i++ )
-			{
-                float l = shadedots[v[i].lightnormalindex];
-
-				colorArray[i*3+0] = l * shadelight[0];
-				colorArray[i*3+1] = l * shadelight[1];
-				colorArray[i*3+2] = l * shadelight[2];
-			}
-		}
-#if 0
-		if ( qglLockArraysEXT != 0 )
-			qglLockArraysEXT( 0, paliashdr->num_xyz );
-#endif
-		while (1)
-		{
-			// get the vertex count and primitive type
-			count = *order++;
-			if (!count)
-				break;		// done
-			if (count < 0)
-			{
-				count = -count;
-                glBegin (GL_TRIANGLE_FAN);
-			}
-			else
-			{
-                glBegin (GL_TRIANGLE_STRIP);
-			}
-
-			// PMM - added double damage shell
-			if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM) )
-			{
-				do
-				{
-					index_xyz = order[2];
-					order += 3;
-
-                    glVertex3fv( s_lerped[index_xyz] );
-
-				} while (--count);
-			}
-			else
-			{
-				do
-				{
-					// texture coordinates come from the draw list
-                    glTexCoord2f (((float *)order)[0], ((float *)order)[1]);
-					index_xyz = order[2];
-
-					order += 3;
-
-					// normals and vertexes come from the frame list
-//					l = shadedots[verts[index_xyz].lightnormalindex];
-					
-//					qglColor4f (l* shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
-                    glArrayElement( index_xyz );
-
-				} while (--count);
-			}
-            glEnd ();
-		}
-#if 0
-		if ( qglUnlockArraysEXT != 0 )
-			qglUnlockArraysEXT();
-#endif
-	}
-	else
-	{
-        GLfloat colorArray[MAX_VERTS*4];
+    // write vertex colors (from 0 to num_xyz - 1, then from num_xyz to num_st - 1)
+    if(render_shell)
+    {
+        //<todo.cb every vertex has constant color, do this another way
+        for(i = 0; i < paliashdr->num_st; ++i)
+        {
+            s_color_array[i * 4] = shadelight[0];
+            s_color_array[i * 4 + 1] = shadelight[1];
+            s_color_array[i * 4 + 2] = shadelight[2];
+            s_color_array[i * 4 + 3] = alpha;
+        }
+    }
+    else
+    {
         for(i = 0; i < paliashdr->num_xyz; ++i)
         {
             float l = shadedots[v[i].lightnormalindex];
-            colorArray[i * 4] = l * shadelight[0];
-            colorArray[i * 4 + 1] = l * shadelight[1];
-            colorArray[i * 4 + 2] = l * shadelight[2];
-            colorArray[i * 4 + 3] = alpha;
+            s_color_array[i * 4] = l * shadelight[0];
+            s_color_array[i * 4 + 1] = l * shadelight[1];
+            s_color_array[i * 4 + 2] = l * shadelight[2];
+            s_color_array[i * 4 + 3] = alpha;
         }
         for(i = paliashdr->num_xyz; i < paliashdr->num_st; ++i)
         {
             float l = shadedots[v[xyz_from_st_indices[i - paliashdr->num_xyz]].lightnormalindex];
-            colorArray[i * 4] = l * shadelight[0];
-            colorArray[i * 4 + 1] = l * shadelight[1];
-            colorArray[i * 4 + 2] = l * shadelight[2];
-            colorArray[i * 4 + 3] = alpha;
+            s_color_array[i * 4] = l * shadelight[0];
+            s_color_array[i * 4 + 1] = l * shadelight[1];
+            s_color_array[i * 4 + 2] = l * shadelight[2];
+            s_color_array[i * 4 + 3] = alpha;
         }
+    }
 
-        glstvert_t *st = (glstvert_t *)((byte *)paliashdr + paliashdr->ofs_st);
-        gltriangle_t *tri = (gltriangle_t *)((byte *)paliashdr + paliashdr->ofs_tris);
+	{
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(3, GL_FLOAT, sizeof(vec4_t), s_lerped);
 
-        glBegin(GL_TRIANGLES);
-        for(i = 0; i < paliashdr->num_tris; ++i)
+        glEnableClientState(GL_COLOR_ARRAY);
+        glColorPointer(4, GL_FLOAT, 0, s_color_array);
+
+        if(!render_shell)
         {
-            index_xyz_st = tri[i].a;
-            glTexCoord2fv(&st[index_xyz_st].s);
-            glColor4fv(colorArray + index_xyz_st * 4);
-            glVertex3fv(s_lerped[index_xyz_st]);
-
-            index_xyz_st = tri[i].b;
-            glTexCoord2fv(&st[index_xyz_st].s);
-            glColor4fv(colorArray + index_xyz_st * 4);
-            glVertex3fv(s_lerped[index_xyz_st]);
-
-            index_xyz_st = tri[i].c;
-            glTexCoord2fv(&st[index_xyz_st].s);
-            glColor4fv(colorArray + index_xyz_st * 4);
-            glVertex3fv(s_lerped[index_xyz_st]);
+            glstvert_t *st = (glstvert_t *)((byte *)paliashdr + paliashdr->ofs_st);
+            glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+            glTexCoordPointer(2, GL_FLOAT, 0, st);
         }
-        glEnd();
-#if 0
-		while (1)
-		{
-			// get the vertex count and primitive type
-			count = *order++;
-			if (!count)
-				break;		// done
-			if (count < 0)
-			{
-				count = -count;
-                glBegin (GL_TRIANGLE_FAN);
-			}
-			else
-			{
-                glBegin (GL_TRIANGLE_STRIP);
-			}
 
-			if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE ) )
-			{
-				do
-				{
-					index_xyz = order[2];
-					order += 3;
+        gltriangle_t *tri = (gltriangle_t *)((byte *)paliashdr + paliashdr->ofs_tris);
+        glDrawElements(GL_TRIANGLES, paliashdr->num_tris * 3, GL_UNSIGNED_SHORT, tri);
 
-                    glColor4f( shadelight[0], shadelight[1], shadelight[2], alpha);
-                    glVertex3fv (s_lerped[index_xyz]);
+        if(!render_shell)
+        {
+            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        }
 
-				} while (--count);
-			}
-			else
-			{
-				do
-				{
-					// texture coordinates come from the draw list
-                    glTexCoord2f (((float *)order)[0], ((float *)order)[1]);
-					index_xyz = order[2];
-					order += 3;
+        glDisableClientState(GL_COLOR_ARRAY);
+        glDisableClientState(GL_VERTEX_ARRAY);
+    }
 
-					// normals and vertexes come from the frame list
-                    l = shadedots[v[index_xyz].lightnormalindex];
-					
-                    glColor4f (l* shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
-                    glVertex3fv (s_lerped[index_xyz]);
-				} while (--count);
-			}
-
-            glEnd ();
-		}
-#endif
-	}
-
-//	if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE ) )
-	// PMM - added double damage shell
-	if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM) )
+    if ( render_shell )
         glEnable( GL_TEXTURE_2D );
 }
 
@@ -577,6 +455,9 @@ void R_DrawAliasModel (entity_t *e)
 	vec3_t		bbox[8];
 	image_t		*skin;
 
+    //<todo.cb inline bmodels don't unbind their buffers
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 	if ( !( e->flags & RF_WEAPONMODEL ) )
 	{
 		if ( R_CullAliasModel( bbox, e ) )
@@ -764,7 +645,7 @@ void R_DrawAliasModel (entity_t *e)
 	// draw all the triangles
 	//
 	if (currententity->flags & RF_DEPTHHACK) // hack the depth range to prevent view model from poking into walls
-        glDepthRange (gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
+        glDepthRangef(gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
 
 	if ( ( currententity->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
 	{
@@ -876,7 +757,7 @@ void R_DrawAliasModel (entity_t *e)
 	}
 
 	if (currententity->flags & RF_DEPTHHACK)
-        glDepthRange (gldepthmin, gldepthmax);
+        glDepthRangef(gldepthmin, gldepthmax);
 
 #if 0
 	if (gl_shadows->value && !(currententity->flags & (RF_TRANSLUCENT | RF_WEAPONMODEL)))
