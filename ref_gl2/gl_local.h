@@ -442,7 +442,8 @@ void		GLimp_LogNewFrame( void );
 typedef enum
 {
     mt_unlit,
-    mt_lightmapped
+    mt_lightmapped,
+    mt_vertexlit
 } materialtype_t;
 
 typedef enum
@@ -489,6 +490,8 @@ extern material_id g_lightmapped_material;
 extern material_id g_lightmapped_alpha_material; // for RF_TRANSLUCENT brushmodels
 extern material_id g_unlit_material; // for opaque SURF_DRAWTURB (same material as opaque Draw_*)
 extern material_id g_unlit_alpha_material; // alpha surface, opaque SURF_DRAWTURB on RF_TRANSLUCENT brushmodels
+extern material_id g_vertexlit_material; // for alias model entities
+extern material_id g_vertexlit_alpha_material; // for RF_TRANSLUCENT alias model entities
 
 //<todo reset state for ff pipeline
 extern material_id g_default_material;

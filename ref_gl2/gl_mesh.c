@@ -104,7 +104,6 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 	int		index_xyz;
 	float	*lerp;
     short *xyz_from_st_indices;
-    int index_xyz_st;
     int render_shell;
 
 	frame = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames 
@@ -122,11 +121,11 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 
     // render_shell: no texture, color(shadelight[0], shadelight[1], shadelight[2], alpha)
     render_shell = currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM);
-
+#if 0
 	// PMM - added double shell
     if ( render_shell )
         glDisable( GL_TEXTURE_2D );
-
+#endif
 	frontlerp = 1.0 - backlerp;
 
 	// move should be the delta back to the previous frame * backlerp
@@ -194,33 +193,23 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
     }
 
 	{
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glVertexPointer(3, GL_FLOAT, sizeof(vec4_t), s_lerped);
-
-        glEnableClientState(GL_COLOR_ARRAY);
-        glColorPointer(4, GL_FLOAT, 0, s_color_array);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec4_t), s_lerped);
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, s_color_array);
 
         if(!render_shell)
         {
             glstvert_t *st = (glstvert_t *)((byte *)paliashdr + paliashdr->ofs_st);
-            glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-            glTexCoordPointer(2, GL_FLOAT, 0, st);
+            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, st);
         }
 
         gltriangle_t *tri = (gltriangle_t *)((byte *)paliashdr + paliashdr->ofs_tris);
         glDrawElements(GL_TRIANGLES, paliashdr->num_tris * 3, GL_UNSIGNED_SHORT, tri);
-
-        if(!render_shell)
-        {
-            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-        }
-
-        glDisableClientState(GL_COLOR_ARRAY);
-        glDisableClientState(GL_VERTEX_ARRAY);
     }
 
+#if 0
     if ( render_shell )
         glEnable( GL_TEXTURE_2D );
+#endif
 }
 
 
@@ -454,9 +443,8 @@ void R_DrawAliasModel (entity_t *e)
 	float		an;
 	vec3_t		bbox[8];
 	image_t		*skin;
-
-    //<todo.cb inline bmodels don't unbind their buffers
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    material_id mat;
+    GLfloat world_from_entity[16];
 
 	if ( !( e->flags & RF_WEAPONMODEL ) )
 	{
@@ -641,7 +629,11 @@ void R_DrawAliasModel (entity_t *e)
 
 	c_alias_polys += paliashdr->num_tris;
 
-	//
+    mat = (e->flags & RF_TRANSLUCENT) ? g_vertexlit_alpha_material : g_vertexlit_material;
+
+    Material_SetCurrent(mat);
+
+    //
 	// draw all the triangles
 	//
 	if (currententity->flags & RF_DEPTHHACK) // hack the depth range to prevent view model from poking into walls
@@ -650,10 +642,6 @@ void R_DrawAliasModel (entity_t *e)
 	if ( ( currententity->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
 	{
         GLfloat clip_from_view[16];
-        glMatrixMode( GL_PROJECTION );
-
-        glPushMatrix();
-
         Matrix_Perspective(gl_state.camera_separation, r_newrefdef.fov_y, (float)r_newrefdef.width / r_newrefdef.height, 4, 4096, clip_from_view);
 
         // premultiply by scale (-x, y, z)
@@ -661,16 +649,19 @@ void R_DrawAliasModel (entity_t *e)
         clip_from_view[4] = -clip_from_view[4];
         clip_from_view[8] = -clip_from_view[8];
 
-        glLoadMatrixf(clip_from_view);
-
-        glMatrixMode( GL_MODELVIEW );
+        Material_SetClipFromView(mat, clip_from_view);
 
         glCullFace( GL_BACK );
 	}
+    else
+    {
+        Material_SetClipFromView(mat, gl_state.clip_from_view);
+    }
 
-    glPushMatrix ();
+    Material_SetViewFromWorld(mat, gl_state.view_from_world);
 
-    R_RotateForEntity (e);
+    Matrix_FromAnglesOrigin(e->angles, e->origin, world_from_entity);
+    Material_SetWorldFromModel(mat, world_from_entity);
 
 	// select skin
 	if (currententity->skin)
@@ -691,16 +682,6 @@ void R_DrawAliasModel (entity_t *e)
     GL_MBind(GL_TEXTURE0, skin->texnum);
 
 	// draw it
-
-    glShadeModel (GL_SMOOTH);
-
-	GL_TexEnv( GL_MODULATE );
-	if ( currententity->flags & RF_TRANSLUCENT )
-	{
-        glEnable (GL_BLEND);
-	}
-
-
 	if ( (currententity->frame >= paliashdr->num_frames) 
 		|| (currententity->frame < 0) )
 	{
@@ -721,12 +702,11 @@ void R_DrawAliasModel (entity_t *e)
 
 	if ( !r_lerpmodels->value )
 		currententity->backlerp = 0;
-	GL_DrawAliasFrameLerp (paliashdr, currententity->backlerp);
 
-	GL_TexEnv( GL_REPLACE );
-    glShadeModel (GL_FLAT);
+    //<todo.cb inline bmodels don't unbind their buffers
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    glPopMatrix ();
+    GL_DrawAliasFrameLerp (paliashdr, currententity->backlerp);
 
 #if 0
 	qglDisable( GL_CULL_FACE );
@@ -742,19 +722,6 @@ void R_DrawAliasModel (entity_t *e)
 	qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 	qglEnable( GL_CULL_FACE );
 #endif
-
-	if ( ( currententity->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
-	{
-        glMatrixMode( GL_PROJECTION );
-        glPopMatrix();
-        glMatrixMode( GL_MODELVIEW );
-        glCullFace( GL_FRONT );
-	}
-
-	if ( currententity->flags & RF_TRANSLUCENT )
-	{
-        glDisable (GL_BLEND);
-	}
 
 	if (currententity->flags & RF_DEPTHHACK)
         glDepthRangef(gldepthmin, gldepthmax);
@@ -773,7 +740,6 @@ void R_DrawAliasModel (entity_t *e)
 		qglPopMatrix ();
 	}
 #endif
-    glColor4f (1,1,1,1);
 }
 
 
