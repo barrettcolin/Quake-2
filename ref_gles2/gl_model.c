@@ -1271,12 +1271,6 @@ void R_BeginRegistration (char *model)
 	cvar_t	*flushmap;
     int i;
 
-    for(i = 0; i < s_num_vertexbuffers; ++i)
-    {
-        VertexBuffer_Destroy(&s_vertexbuffers[i]);
-    }
-
-    s_num_vertexbuffers = 0;
 	registration_sequence++;
 	r_oldviewcluster = -1;		// force markleafs
 
@@ -1286,7 +1280,17 @@ void R_BeginRegistration (char *model)
 	// this guarantees that mod_known[0] is the world map
 	flushmap = ri.Cvar_Get ("flushmap", "0", 0);
 	if ( strcmp(mod_known[0].name, fullname) || flushmap->value)
+    {
+        //<todo.cb free model buffers the way alias buffers are freed (see Mod_Free)
+        for(i = 0; i < s_num_vertexbuffers; ++i)
+        {
+            VertexBuffer_Destroy(&s_vertexbuffers[i]);
+        }
+
+        s_num_vertexbuffers = 0;
+
 		Mod_Free (&mod_known[0]);
+    }
 	r_worldmodel = Mod_ForName(fullname, true);
 
 	r_viewcluster = -1;
