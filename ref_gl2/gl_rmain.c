@@ -155,14 +155,6 @@ qboolean R_CullBox (vec3_t mins, vec3_t maxs)
 }
 
 
-void R_RotateForEntity (entity_t *e)
-{
-    GLfloat world_from_entity[16];
-
-    Matrix_FromAnglesOrigin(e->angles, e->origin, world_from_entity);
-    glMultMatrixf(world_from_entity);
-}
-
 /*
 =============================================================
 
@@ -802,7 +794,7 @@ void R_Clear (void)
         glDepthFunc (GL_LEQUAL);
 	}
 
-    glDepthRange (gldepthmin, gldepthmax);
+    glDepthRangef(gldepthmin, gldepthmax);
 
 }
 
@@ -1058,10 +1050,8 @@ qboolean R_SetMode (void)
 R_Init
 ===============
 */
-int R_Init( void *hinstance, void *hWnd )
+qboolean R_Init( void *hinstance, void *hWnd )
 {	
-	char renderer_buffer[1000];
-	char vendor_buffer[1000];
 	int		err;
 	int		j;
 	extern float r_turbsin[256];
@@ -1107,35 +1097,7 @@ int R_Init( void *hinstance, void *hWnd )
     gl_config.extensions_string = glGetString (GL_EXTENSIONS);
 	ri.Con_Printf (PRINT_ALL, "GL_EXTENSIONS: %s\n", gl_config.extensions_string );
 
-	strcpy( renderer_buffer, gl_config.renderer_string );
-	strlwr( renderer_buffer );
-
-	strcpy( vendor_buffer, gl_config.vendor_string );
-	strlwr( vendor_buffer );
-
-	if ( strstr( renderer_buffer, "voodoo" ) )
-	{
-		if ( !strstr( renderer_buffer, "rush" ) )
-			gl_config.renderer = GL_RENDERER_VOODOO;
-		else
-			gl_config.renderer = GL_RENDERER_VOODOO_RUSH;
-	}
-	else if ( strstr( vendor_buffer, "sgi" ) )
-		gl_config.renderer = GL_RENDERER_SGI;
-	else if ( strstr( renderer_buffer, "permedia" ) )
-		gl_config.renderer = GL_RENDERER_PERMEDIA2;
-	else if ( strstr( renderer_buffer, "glint" ) )
-		gl_config.renderer = GL_RENDERER_GLINT_MX;
-	else if ( strstr( renderer_buffer, "glzicd" ) )
-		gl_config.renderer = GL_RENDERER_REALIZM;
-	else if ( strstr( renderer_buffer, "gdi" ) )
-		gl_config.renderer = GL_RENDERER_MCD;
-	else if ( strstr( renderer_buffer, "pcx2" ) )
-		gl_config.renderer = GL_RENDERER_PCX2;
-	else if ( strstr( renderer_buffer, "verite" ) )
-		gl_config.renderer = GL_RENDERER_RENDITION;
-	else
-		gl_config.renderer = GL_RENDERER_OTHER;
+    gl_config.renderer = GL_RENDERER_OTHER;
 
 	if ( toupper( gl_monolightmap->string[1] ) != 'F' )
 	{
@@ -1146,7 +1108,7 @@ int R_Init( void *hinstance, void *hWnd )
 		}
 		else if ( gl_config.renderer & GL_RENDERER_POWERVR ) 
 		{
-			ri.Cvar_Set( "gl_monolightmap", "0" );
+            ri.Cvar_Set( "gl_monolightmap", "0" );
 		}
 		else
 		{
