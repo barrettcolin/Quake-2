@@ -51,7 +51,7 @@ void Draw_InitLocal (void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    desc.flags.lit = ml_unlit;
+    desc.flags.type = mt_unlit;
     desc.flags.src_blend = mb_one;
     desc.flags.dst_blend = mb_zero;
 

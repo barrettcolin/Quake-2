@@ -50,13 +50,13 @@ GLfloat const g_identity_matrix[16] =
 
 static int MaterialDesc_Compare(materialdesc_t const *a, materialdesc_t const *b)
 {
+    if(a->flags.type != b->flags.type)
+        return 1;
+
     if(a->flags.use_diffuse_color != b->flags.use_diffuse_color)
         return 1;
 
     if(a->flags.use_alpha_test66 != b->flags.use_alpha_test66)
-        return 1;
-
-    if(a->flags.lit != b->flags.lit)
         return 1;
 
     if(a->flags.src_blend != b->flags.src_blend)
@@ -336,11 +336,11 @@ material_t *Material_Find(materialdesc_t const* desc)
     mat = &s_materials[i];
     mat->desc = *desc;
 
-    if(desc->flags.lit == ml_lightmapped)
+    if(desc->flags.type == mt_lightmapped)
     {
         MaterialLightmapped_Create(mat);
     }
-    else if(desc->flags.lit == ml_vertexlit)
+    else if(desc->flags.type == mt_vertexlit)
 	{
         MaterialVertexlit_Create(mat);
 	}

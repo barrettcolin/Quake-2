@@ -435,10 +435,10 @@ void		GLimp_LogNewFrame( void );
 // Shader material
 typedef enum
 {
-    ml_unlit,
-    ml_vertexlit,
-    ml_lightmapped
-} materiallit_t;
+    mt_unlit,
+    mt_lightmapped,
+    mt_vertexlit
+} materialtype_t;
 
 typedef enum
 {
@@ -454,10 +454,10 @@ typedef struct materialdesc_s
 {
     struct
     {
+        unsigned int type : 4;
         unsigned int use_diffuse_color : 1;
         unsigned int use_alpha_test66 : 1;
-        unsigned int lit : 2;
-        unsigned int : 4; // padding
+        unsigned int : 2; // padding
         unsigned int src_blend : 4;
         unsigned int dst_blend : 4;
     } flags;

@@ -1145,7 +1145,7 @@ qboolean R_Init( void *hinstance, void *hWnd )
     // Lightmapped material
     {
         materialdesc_t desc = { 0 };
-        desc.flags.lit = ml_lightmapped;
+        desc.flags.type = mt_lightmapped;
         desc.flags.src_blend = mb_one;
         desc.flags.dst_blend = mb_zero;
 
@@ -1161,8 +1161,8 @@ qboolean R_Init( void *hinstance, void *hWnd )
     // Unlit material
     {
         materialdesc_t desc = { 0 };
+        desc.flags.type = mt_unlit;
         desc.flags.use_diffuse_color = true;
-        desc.flags.lit = ml_unlit;
         desc.flags.src_blend = mb_one;
         desc.flags.dst_blend = mb_zero;
 
@@ -1177,8 +1177,8 @@ qboolean R_Init( void *hinstance, void *hWnd )
     // Vertex lit material
     {
         materialdesc_t desc = { 0 };
+        desc.flags.type = mt_vertexlit;
         desc.flags.use_diffuse_color = false;
-        desc.flags.lit = ml_vertexlit;
         desc.flags.src_blend = mb_one;
         desc.flags.dst_blend = mb_zero;
 
