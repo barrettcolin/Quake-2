@@ -330,6 +330,7 @@ dynamic:
 			R_BuildLightMap( fa, (void *)temp, smax*4 );
 			R_SetCacheState( fa );
 
+            GL_SelectTexture(GL_TEXTURE1);
 			GL_Bind( gl_state.lightmap_textures + fa->lightmaptexturenum );
 
             glTexSubImage2D( GL_TEXTURE_2D, 0,
@@ -491,7 +492,8 @@ dynamic:
             lmtex = 0;
 		}
 
-        GL_MBind( GL_TEXTURE1, gl_state.lightmap_textures + lmtex );
+        GL_SelectTexture(GL_TEXTURE1);
+        GL_Bind(gl_state.lightmap_textures + lmtex);
 
         glTexSubImage2D( GL_TEXTURE_2D, 0,
                           surf->light_s, surf->light_t,
@@ -1005,7 +1007,8 @@ static void LM_UploadBlock( qboolean dynamic )
 		texture = gl_lms.current_lightmap_texture;
 	}
 
-    GL_MBind( GL_TEXTURE1, gl_state.lightmap_textures + texture );
+    GL_SelectTexture(GL_TEXTURE1);
+    GL_Bind(gl_state.lightmap_textures + texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 

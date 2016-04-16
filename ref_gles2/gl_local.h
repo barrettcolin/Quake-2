@@ -232,6 +232,7 @@ extern	int		c_visible_lightmaps;
 extern	int		c_visible_textures;
 
 void R_TranslatePlayerSkin (int playernum);
+void GL_SelectTexture(GLenum texture);
 void GL_Bind (int texnum);
 void GL_MBind( GLenum target, int texnum );
 

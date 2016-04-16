@@ -61,7 +61,7 @@ void GL_SetTexturePalette( unsigned palette[256] )
 #endif
 }
 
-static void GL_SelectTexture( GLenum texture )
+void GL_SelectTexture( GLenum texture )
 {
 	int tmu;
 
@@ -91,7 +91,6 @@ void GL_Bind (int texnum)
 
 void GL_MBind( GLenum target, int texnum )
 {
-	GL_SelectTexture( target );
 	if ( target == GL_TEXTURE0 )
 	{
 		if ( gl_state.currenttextures[0] == texnum )
@@ -102,6 +101,7 @@ void GL_MBind( GLenum target, int texnum )
 		if ( gl_state.currenttextures[1] == texnum )
 			return;
 	}
+    GL_SelectTexture( target );
 	GL_Bind( texnum );
 }
 
