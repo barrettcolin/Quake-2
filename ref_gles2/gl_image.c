@@ -61,23 +61,7 @@ void GL_SetTexturePalette( unsigned palette[256] )
 #endif
 }
 
-void GL_EnableMultitexture( qboolean enable )
-{
-	if ( enable )
-	{
-        GL_SelectTexture( GL_TEXTURE1 );
-		GL_TexEnv( GL_REPLACE );
-	}
-	else
-	{
-        GL_SelectTexture( GL_TEXTURE1 );
-		GL_TexEnv( GL_REPLACE );
-	}
-    GL_SelectTexture( GL_TEXTURE0 );
-	GL_TexEnv( GL_REPLACE );
-}
-
-void GL_SelectTexture( GLenum texture )
+static void GL_SelectTexture( GLenum texture )
 {
 	int tmu;
 
@@ -95,19 +79,6 @@ void GL_SelectTexture( GLenum texture )
         glActiveTexture( GL_TEXTURE0 );
 	else
         glActiveTexture( GL_TEXTURE1 );
-}
-
-void GL_TexEnv( GLenum mode )
-{
-#if 0
-	static int lastmodes[2] = { -1, -1 };
-
-	if ( mode != lastmodes[gl_state.currenttmu] )
-	{
-		qglTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, mode );
-		lastmodes[gl_state.currenttmu] = mode;
-	}
-#endif
 }
 
 void GL_Bind (int texnum)

@@ -1005,7 +1005,7 @@ static void LM_UploadBlock( qboolean dynamic )
 		texture = gl_lms.current_lightmap_texture;
 	}
 
-	GL_Bind( gl_state.lightmap_textures + texture );
+    GL_MBind( GL_TEXTURE1, gl_state.lightmap_textures + texture );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -1215,9 +1215,6 @@ void GL_BeginBuildingLightmaps (model_t *m)
 
 	r_framecount = 1;		// no dlightcache
 
-	GL_EnableMultitexture( true );
-    GL_SelectTexture( GL_TEXTURE1 );
-
 	/*
 	** setup the base lightstyles so the lightmaps won't have to be regenerated
 	** the first time they're seen
@@ -1280,7 +1277,7 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	/*
 	** initialize the dynamic lightmap texture
 	*/
-	GL_Bind( gl_state.lightmap_textures + 0 );
+    GL_MBind( GL_TEXTURE1, gl_state.lightmap_textures + 0 );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D( GL_TEXTURE_2D,
@@ -1301,6 +1298,5 @@ GL_EndBuildingLightmaps
 void GL_EndBuildingLightmaps (void)
 {
 	LM_UploadBlock( false );
-	GL_EnableMultitexture( false );
 }
 
