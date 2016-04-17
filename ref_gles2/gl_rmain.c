@@ -77,9 +77,6 @@ cvar_t	*r_lefthand;
 
 cvar_t	*r_lightlevel;	// FIXME: This is a HACK to get the client's light level
 
-cvar_t	*gl_nosubimage;
-cvar_t	*gl_allow_software;
-
 cvar_t	*gl_vertex_arrays;
 
 cvar_t	*gl_particle_min_size;
@@ -97,7 +94,6 @@ cvar_t	*gl_ext_compiled_vertex_array;
 
 cvar_t	*gl_log;
 cvar_t	*gl_bitdepth;
-cvar_t	*gl_drawbuffer;
 cvar_t  *gl_driver;
 cvar_t	*gl_lightmap;
 cvar_t	*gl_shadows;
@@ -120,8 +116,6 @@ cvar_t  *gl_saturatelighting;
 cvar_t	*gl_swapinterval;
 cvar_t	*gl_texturemode;
 cvar_t	*gl_lockpvs;
-
-cvar_t	*gl_3dlabs_broken;
 
 cvar_t	*vid_fullscreen;
 cvar_t	*vid_gamma;
@@ -352,10 +346,10 @@ void R_DrawEntitiesOnList (void)
 			}
 		}
 	}
-#if 0
+
 	// draw transparent entities
 	// we could sort these if it ever becomes a problem...
-	qglDepthMask (0);		// no z writes
+	glDepthMask (0);		// no z writes
 	for (i=0 ; i<r_newrefdef.num_entities ; i++)
 	{
 		currententity = &r_newrefdef.entities[i];
@@ -392,8 +386,8 @@ void R_DrawEntitiesOnList (void)
 			}
 		}
 	}
-	qglDepthMask (1);		// back to writing
-#endif
+	glDepthMask (1);		// back to writing
+
 }
 
 /*
@@ -507,14 +501,13 @@ void R_DrawParticles (void)
 R_PolyBlend
 ============
 */
-void R_PolyBlend (void)
+static void R_PolyBlend (void)
 {
-#if 0
 	if (!gl_polyblend->value)
 		return;
 	if (!v_blend[3])
 		return;
-
+#if 0
 	qglDisable (GL_ALPHA_TEST);
 	qglEnable (GL_BLEND);
 	qglDisable (GL_DEPTH_TEST);
@@ -546,7 +539,7 @@ void R_PolyBlend (void)
 
 //=======================================================================
 
-int SignbitsForPlane (cplane_t *out)
+static int SignbitsForPlane (cplane_t *out)
 {
 	int	bits, j;
 
@@ -562,7 +555,7 @@ int SignbitsForPlane (cplane_t *out)
 }
 
 
-void R_SetFrustum (void)
+static void R_SetFrustum (void)
 {
 	int		i;
 
@@ -609,7 +602,7 @@ void R_SetFrustum (void)
 R_SetupFrame
 ===============
 */
-void R_SetupFrame (void)
+static void R_SetupFrame (void)
 {
 	int i;
 	mleaf_t	*leaf;
@@ -659,18 +652,17 @@ void R_SetupFrame (void)
 
 	c_brush_polys = 0;
 	c_alias_polys = 0;
-#if 0
+
 	// clear out the portion of the screen that the NOWORLDMODEL defines
 	if ( r_newrefdef.rdflags & RDF_NOWORLDMODEL )
 	{
-		qglEnable( GL_SCISSOR_TEST );
-		qglClearColor( 0.3, 0.3, 0.3, 1 );
-		qglScissor( r_newrefdef.x, vid.height - r_newrefdef.height - r_newrefdef.y, r_newrefdef.width, r_newrefdef.height );
-		qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-		qglClearColor( 1, 0, 0.5, 0.5 );
-		qglDisable( GL_SCISSOR_TEST );
+        glEnable( GL_SCISSOR_TEST );
+        glClearColor( 0.3, 0.3, 0.3, 1 );
+        glScissor( r_newrefdef.x, vid.height - r_newrefdef.height - r_newrefdef.y, r_newrefdef.width, r_newrefdef.height );
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        glClearColor( 1, 0, 0.5, 0.5 );
+        glDisable( GL_SCISSOR_TEST );
 	}
-#endif
 }
 
 
@@ -827,10 +819,7 @@ void R_RenderView (refdef_t *fd)
 	}
 
 	R_PushDlights ();
-#if 0
-	if (gl_finish->value)
-		qglFinish ();
-#endif
+
 	R_SetupFrame ();
 
 	R_SetFrustum ();
@@ -859,6 +848,8 @@ void R_RenderView (refdef_t *fd)
 			c_visible_textures, 
 			c_visible_lightmaps); 
 	}
+
+    Material_SetCurrent(g_default_material);
 }
 
 
@@ -875,6 +866,7 @@ void	R_SetGL2D (void)
     //glEnable (GL_ALPHA_TEST);
     //glColor4f (1,1,1,1);
 
+    //<todo.cb technically this should precede draw calls that don't bind a buffer, but that's all of 2D
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -943,9 +935,6 @@ void R_Register( void )
 
 	r_lightlevel = ri.Cvar_Get ("r_lightlevel", "0", 0);
 
-	gl_nosubimage = ri.Cvar_Get( "gl_nosubimage", "0", 0 );
-	gl_allow_software = ri.Cvar_Get( "gl_allow_software", "0", 0 );
-
 	gl_particle_min_size = ri.Cvar_Get( "gl_particle_min_size", "2", CVAR_ARCHIVE );
 	gl_particle_max_size = ri.Cvar_Get( "gl_particle_max_size", "40", CVAR_ARCHIVE );
 	gl_particle_size = ri.Cvar_Get( "gl_particle_size", "40", CVAR_ARCHIVE );
@@ -965,7 +954,6 @@ void R_Register( void )
 	gl_skymip = ri.Cvar_Get ("gl_skymip", "0", 0);
 	gl_showtris = ri.Cvar_Get ("gl_showtris", "0", 0);
 	gl_ztrick = ri.Cvar_Get ("gl_ztrick", "0", 0);
-	gl_finish = ri.Cvar_Get ("gl_finish", "0", CVAR_ARCHIVE);
 	gl_clear = ri.Cvar_Get ("gl_clear", "0", 0);
 	gl_cull = ri.Cvar_Get ("gl_cull", "1", 0);
 	gl_polyblend = ri.Cvar_Get ("gl_polyblend", "1", 0);
@@ -984,12 +972,9 @@ void R_Register( void )
 	gl_ext_pointparameters = ri.Cvar_Get( "gl_ext_pointparameters", "1", CVAR_ARCHIVE );
 	gl_ext_compiled_vertex_array = ri.Cvar_Get( "gl_ext_compiled_vertex_array", "1", CVAR_ARCHIVE );
 
-	gl_drawbuffer = ri.Cvar_Get( "gl_drawbuffer", "GL_BACK", 0 );
 	gl_swapinterval = ri.Cvar_Get( "gl_swapinterval", "1", CVAR_ARCHIVE );
 
 	gl_saturatelighting = ri.Cvar_Get( "gl_saturatelighting", "0", 0 );
-
-	gl_3dlabs_broken = ri.Cvar_Get( "gl_3dlabs_broken", "1", CVAR_ARCHIVE );
 
 	vid_fullscreen = ri.Cvar_Get( "vid_fullscreen", "0", CVAR_ARCHIVE );
 	vid_gamma = ri.Cvar_Get( "vid_gamma", "1.0", CVAR_ARCHIVE );
@@ -1063,8 +1048,6 @@ qboolean R_Init( void *hinstance, void *hWnd )
 
 	ri.Con_Printf (PRINT_ALL, "ref_gl version: "REF_VERSION"\n");
 
-	Draw_GetPalette ();
-
 	R_Register();
 
 	// initialize OS-specific parts of OpenGL
@@ -1125,12 +1108,6 @@ qboolean R_Init( void *hinstance, void *hWnd )
 	else
 	{
 		ri.Cvar_Set( "scr_drawall", "0" );
-	}
-
-	// MCD has buffering issues
-	if ( gl_config.renderer == GL_RENDERER_MCD )
-	{
-		ri.Cvar_SetValue( "gl_finish", 1 );
 	}
 
 	GL_SetDefaultState();
@@ -1253,51 +1230,14 @@ void R_BeginFrame( float camera_separation )
 		GLimp_LogNewFrame();
 	}
 
-	/*
-	** update 3Dfx gamma -- it is expected that a user will do a vid_restart
-	** after tweaking this value
-	*/
-	if ( vid_gamma->modified )
-	{
-		vid_gamma->modified = false;
-
-		if ( gl_config.renderer & ( GL_RENDERER_VOODOO ) )
-		{
-			char envbuffer[1024];
-			float g;
-
-			g = 2.00 * ( 0.8 - ( vid_gamma->value - 0.5 ) ) + 1.0F;
-			Com_sprintf( envbuffer, sizeof(envbuffer), "SSTV2_GAMMA=%f", g );
-			putenv( envbuffer );
-			Com_sprintf( envbuffer, sizeof(envbuffer), "SST_GAMMA=%f", g );
-			putenv( envbuffer );
-		}
-	}
-
 	GLimp_BeginFrame( camera_separation );
 
     //<todo hack until all drawing is through Material
     Material_SetCurrent(g_default_material);
 
     R_SetGL2D();
-#if 0
-	/*
-	** draw buffer stuff
-	*/
-	if ( gl_drawbuffer->modified )
-	{
-		gl_drawbuffer->modified = false;
 
-		if ( gl_state.camera_separation == 0 || !gl_state.stereo_enabled )
-		{
-			if ( Q_stricmp( gl_drawbuffer->string, "GL_FRONT" ) == 0 )
-				qglDrawBuffer( GL_FRONT );
-			else
-				qglDrawBuffer( GL_BACK );
-		}
-	}
-#endif
-	/*
+    /*
 	** texturemode stuff
 	*/
 	if ( gl_texturemode->modified )

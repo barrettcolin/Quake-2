@@ -192,7 +192,6 @@ extern cvar_t	*gl_particle_att_a;
 extern cvar_t	*gl_particle_att_b;
 extern cvar_t	*gl_particle_att_c;
 
-extern	cvar_t	*gl_nosubimage;
 extern	cvar_t	*gl_bitdepth;
 extern	cvar_t	*gl_mode;
 extern	cvar_t	*gl_log;
@@ -215,7 +214,6 @@ extern	cvar_t	*gl_flashblend;
 extern	cvar_t	*gl_lightmaptype;
 extern	cvar_t	*gl_modulate;
 extern	cvar_t	*gl_playermip;
-extern	cvar_t	*gl_drawbuffer;
 extern	cvar_t	*gl_3dlabs_broken;
 extern  cvar_t  *gl_driver;
 extern	cvar_t	*gl_swapinterval;
@@ -455,7 +453,7 @@ typedef struct materialdesc_s
         unsigned int type : 4;
         unsigned int use_diffuse_color : 1;
         unsigned int use_alpha_test66 : 1;
-        unsigned int : 2; // padding
+        unsigned int : 2; // padding; todo- depth_mask (0 for transparent ents), cull_face (switched for lefthand)
         unsigned int src_blend : 4;
         unsigned int dst_blend : 4;
     } flags;

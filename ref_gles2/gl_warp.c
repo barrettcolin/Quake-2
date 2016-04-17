@@ -406,7 +406,7 @@ return;
 
 #define	ON_EPSILON		0.1			// point on plane side epsilon
 #define	MAX_CLIP_VERTS	64
-void ClipSkyPolygon (int nump, vec3_t vecs, int stage)
+static void ClipSkyPolygon (int nump, vec3_t vecs, int stage)
 {
 	float	*norm;
 	float	*v;
@@ -537,7 +537,7 @@ void R_ClearSkyBox (void)
 }
 
 
-void MakeSkyVec (float s, float t, int axis, warpvert_t *vert_out)
+static void MakeSkyVec (float s, float t, int axis, warpvert_t *vert_out)
 {
 	vec3_t		v, b;
 	int			j, k;
@@ -600,6 +600,7 @@ void R_DrawSkyBox (void)
 
     Matrix_FromAxisAngleOrigin(skyaxis, r_newrefdef.time * skyrotate, r_origin, world_from_sky);
     Material_SetWorldFromModel(g_unlit_material, world_from_sky);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	for (i=0 ; i<6 ; i++)
 	{

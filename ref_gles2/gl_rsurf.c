@@ -403,9 +403,6 @@ void R_DrawAlphaSurfaces (void)
 	}
 
 	r_alpha_surfaces = NULL;
-
-    //<todo
-    Material_SetCurrent(g_default_material);
 }
 
 /*
@@ -609,9 +606,6 @@ void R_DrawInlineBModel (void)
 			}
 		}
 	}
-
-    //<todo
-    Material_SetCurrent(g_default_material);
 }
 
 /*
@@ -879,13 +873,9 @@ void R_DrawWorld (void)
     Material_SetWorldFromModel(g_unlit_material, g_identity_matrix);
     Material_SetDiffuseColor(g_unlit_material, gl_state.inverse_intensity, gl_state.inverse_intensity, gl_state.inverse_intensity, 1);
 	DrawTextureChains ();
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 	
     Material_SetDiffuseColor(g_unlit_material, 1, 1, 1, 1);
 	R_DrawSkyBox ();
-
-    Material_SetCurrent(g_default_material);
 
 	R_DrawTriangleOutlines ();
 }
