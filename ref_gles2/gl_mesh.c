@@ -706,7 +706,7 @@ void R_DrawAliasModel (entity_t *e)
     //<todo.cb inline bmodels don't unbind their buffers
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    GL_DrawAliasFrameLerp (paliashdr, currententity->backlerp);
+	GL_DrawAliasFrameLerp (paliashdr, currententity->backlerp);
 
 #if 0
 	qglDisable( GL_CULL_FACE );
@@ -722,6 +722,11 @@ void R_DrawAliasModel (entity_t *e)
 	qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 	qglEnable( GL_CULL_FACE );
 #endif
+
+	if ( ( currententity->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
+	{
+        glCullFace( GL_FRONT );
+	}
 
 	if (currententity->flags & RF_DEPTHHACK)
         glDepthRangef(gldepthmin, gldepthmax);
