@@ -221,7 +221,11 @@ static void EmitWaterPoly(glpoly_t const *p, float scroll)
     int i;
     float s, t, os, ot;
     warpvert_t *wv;
+#ifdef _WIN32
+    warpvert_t *waterverts = _alloca(p->numverts * sizeof(warpvert_t));
+#else
     warpvert_t *waterverts = alloca(p->numverts * sizeof(warpvert_t));
+#endif
 
     for (i = 0, v = p->verts[0], wv = waterverts; i < p->numverts; ++i, v += VERTEXSIZE, ++wv)
     {

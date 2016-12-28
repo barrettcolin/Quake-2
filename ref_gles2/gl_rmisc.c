@@ -19,6 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // r_misc.c
 
+#include "SDL.h"
+
 #include "gl_local.h"
 
 /*
@@ -212,10 +214,7 @@ void GL_UpdateSwapInterval( void )
 
 		if ( !gl_state.stereo_enabled ) 
 		{
-#ifdef _WIN32
-			if ( qwglSwapIntervalEXT )
-				qwglSwapIntervalEXT( gl_swapinterval->value );
-#endif
+			SDL_GL_SetSwapInterval(gl_swapinterval->value);
 		}
 	}
 }
