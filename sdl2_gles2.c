@@ -7,6 +7,8 @@ static SDL_GLContext GLcontext;
 
 int GLimp_Init(void *hinstance, void *hWnd)
 {
+    //<note.cb will not use d3dcompiler_47.dll from Quake-2 directory unless exe is also there
+    SDL_SetHint(SDL_HINT_VIDEO_WIN_D3DCOMPILER, "d3dcompiler_47.dll");
     return 1;
 }
 
@@ -42,16 +44,17 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
         flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     }
 
+    //<note.cb must be set before SDL_CreateWindow on Windows
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
     window = SDL_CreateWindow("Quake 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, desiredWidth, desiredHeight, flags);
     if(!window)
     {
         return rserr_unknown;
     }
-
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
     GLcontext = SDL_GL_CreateContext(window);
     if(!GLcontext)
