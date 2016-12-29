@@ -91,17 +91,13 @@ FIXME: batch lerp all vertexes
 */
 static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 {
-	float 	l;
 	daliasframe_t	*frame, *oldframe;
     dtrivertx_t	*v, *ov;
-	int		*order;
-	int		count;
 	float	frontlerp;
 	float	alpha;
 	vec3_t	move, delta, vectors[3];
 	vec3_t	frontv, backv;
 	int		i;
-	int		index_xyz;
 	float	*lerp;
     short *xyz_from_st_indices;
     int render_shell;

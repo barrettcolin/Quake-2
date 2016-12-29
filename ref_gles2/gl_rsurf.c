@@ -441,9 +441,8 @@ void DrawTextureChains (void)
 
 static void GL_RenderLightmappedPoly( msurface_t *surf )
 {
-	int		i, nv = surf->polys->numverts;
+	int		nv = surf->polys->numverts;
 	int		map;
-	float	*v;
 	image_t *image = R_TextureAnimation( surf->texinfo );
 	qboolean is_dynamic = false;
 	unsigned lmtex = surf->lightmaptexturenum;
