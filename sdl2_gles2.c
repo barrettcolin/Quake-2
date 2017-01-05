@@ -7,7 +7,7 @@ static SDL_GLContext GLcontext;
 
 int GLimp_Init(void *hinstance, void *hWnd)
 {
-    //<note.cb will not use d3dcompiler_47.dll from Quake-2 directory unless exe is also there
+    //<note.cb may pick up d3dcompiler_47.dll from somewhere other than working dir
     SDL_SetHint(SDL_HINT_VIDEO_WIN_D3DCOMPILER, "d3dcompiler_47.dll");
     return 1;
 }
