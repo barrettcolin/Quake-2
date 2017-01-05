@@ -112,10 +112,10 @@ set(Q2_INCS
 
 if(WIN32)
   add_executable(Quake2 WIN32 ${Q2_SRCS} ${Q2_INCS} win32/q2.rc win32/q2.ico)
-  target_link_libraries(Quake2 game_static ref_gles2_static shared ${SDL2_LIBRARIES} ${CMAKE_SOURCE_DIR}/win32/libGLESv2.lib ${CMAKE_SOURCE_DIR}/win32/libEGL.lib wsock32 winmm)
+  target_link_libraries(Quake2 game_static ref_gles2_static shared ${SDL2_LIBRARIES} wsock32 winmm)
 else()
   add_executable(Quake2 ${Q2_SRCS} ${Q2_INCS})
-  target_link_libraries(Quake2 game_static ref_gles2_static shared ${SDL2_LIBRARIES} GLESv2 m)
+  target_link_libraries(Quake2 game_static ref_gles2_static shared ${SDL2_LIBRARIES} m)
   #target_link_libraries(Quake2 game_static ref_gl2_static shared ${SDL2_LIBRARIES} GL m)
 endif()
 

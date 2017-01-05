@@ -189,17 +189,17 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
     }
 
 	{
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec4_t), s_lerped);
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, s_color_array);
+        qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec4_t), s_lerped);
+        qglVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, s_color_array);
 
         if(!render_shell)
         {
             glstvert_t *st = (glstvert_t *)((byte *)paliashdr + paliashdr->ofs_st);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, st);
+            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, st);
         }
 
         gltriangle_t *tri = (gltriangle_t *)((byte *)paliashdr + paliashdr->ofs_tris);
-        glDrawElements(GL_TRIANGLES, paliashdr->num_tris * 3, GL_UNSIGNED_SHORT, tri);
+        qglDrawElements(GL_TRIANGLES, paliashdr->num_tris * 3, GL_UNSIGNED_SHORT, tri);
     }
 
 #if 0
@@ -633,7 +633,7 @@ void R_DrawAliasModel (entity_t *e)
 	// draw all the triangles
 	//
 	if (currententity->flags & RF_DEPTHHACK) // hack the depth range to prevent view model from poking into walls
-        glDepthRangef(gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
+        qglDepthRangef(gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
 
 	if ( ( currententity->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
 	{
@@ -647,7 +647,7 @@ void R_DrawAliasModel (entity_t *e)
 
         Material_SetClipFromView(mat, clip_from_view);
 
-        glCullFace( GL_BACK );
+        qglCullFace( GL_BACK );
 	}
     else
     {
@@ -700,7 +700,7 @@ void R_DrawAliasModel (entity_t *e)
 		currententity->backlerp = 0;
 
     //<todo.cb inline bmodels don't unbind their buffers
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    qglBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	GL_DrawAliasFrameLerp (paliashdr, currententity->backlerp);
 
@@ -721,11 +721,11 @@ void R_DrawAliasModel (entity_t *e)
 
 	if ( ( currententity->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
 	{
-        glCullFace( GL_FRONT );
+        qglCullFace( GL_FRONT );
 	}
 
 	if (currententity->flags & RF_DEPTHHACK)
-        glDepthRangef(gldepthmin, gldepthmax);
+        qglDepthRangef(gldepthmin, gldepthmax);
 
 #if 0
 	if (gl_shadows->value && !(currententity->flags & (RF_TRANSLUCENT | RF_WEAPONMODEL)))

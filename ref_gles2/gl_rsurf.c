@@ -179,10 +179,10 @@ DrawGLPoly
 */
 void DrawGLPoly (glpoly_t *p)
 {
-    glBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
+    qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+    qglDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
 }
 
 //============
@@ -333,7 +333,7 @@ dynamic:
             GL_SelectTexture(GL_TEXTURE1);
 			GL_Bind( gl_state.lightmap_textures + fa->lightmaptexturenum );
 
-            glTexSubImage2D( GL_TEXTURE_2D, 0,
+            qglTexSubImage2D( GL_TEXTURE_2D, 0,
 							  fa->light_s, fa->light_t, 
 							  smax, tmax, 
 							  GL_LIGHTMAP_FORMAT, 
@@ -491,7 +491,7 @@ dynamic:
         GL_SelectTexture(GL_TEXTURE1);
         GL_Bind(gl_state.lightmap_textures + lmtex);
 
-        glTexSubImage2D( GL_TEXTURE_2D, 0,
+        qglTexSubImage2D( GL_TEXTURE_2D, 0,
                           surf->light_s, surf->light_t,
                           smax, tmax,
                           GL_LIGHTMAP_FORMAT,
@@ -513,22 +513,22 @@ dynamic:
 
         for ( p = surf->polys; p; p = p->chain )
         {
-            glBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
-            glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
+            qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
+            qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
     else
     {
         for ( p = surf->polys; p; p = p->chain )
         {
-            glBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
-            glDrawArrays(GL_TRIANGLE_FAN, 0, nv);
+            qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
+            qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
 }
@@ -998,8 +998,8 @@ static void LM_UploadBlock( qboolean dynamic )
 
     GL_SelectTexture(GL_TEXTURE1);
     GL_Bind(gl_state.lightmap_textures + texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	if ( dynamic )
 	{
@@ -1011,7 +1011,7 @@ static void LM_UploadBlock( qboolean dynamic )
 				height = gl_lms.allocated[i];
 		}
 
-        glTexSubImage2D( GL_TEXTURE_2D,
+        qglTexSubImage2D( GL_TEXTURE_2D,
 						  0,
 						  0, 0,
 						  BLOCK_WIDTH, height,
@@ -1021,7 +1021,7 @@ static void LM_UploadBlock( qboolean dynamic )
 	}
 	else
 	{
-        glTexImage2D( GL_TEXTURE_2D,
+        qglTexImage2D( GL_TEXTURE_2D,
 					   0, 
 					   gl_lms.internal_format,
 					   BLOCK_WIDTH, BLOCK_HEIGHT, 
@@ -1149,9 +1149,9 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
     {
         GLsizeiptr buf_size = sizeof(float) * VERTEXSIZE * poly->numverts;
 
-        glBindBuffer(GL_ARRAY_BUFFER, poly->vertexbuffer);
-        glBufferData(GL_ARRAY_BUFFER, buf_size, poly->verts, GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        qglBindBuffer(GL_ARRAY_BUFFER, poly->vertexbuffer);
+        qglBufferData(GL_ARRAY_BUFFER, buf_size, poly->verts, GL_STATIC_DRAW);
+        qglBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 }
 
@@ -1270,9 +1270,9 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	** initialize the dynamic lightmap texture
 	*/
     GL_MBind( GL_TEXTURE1, gl_state.lightmap_textures + 0 );
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D( GL_TEXTURE_2D,
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    qglTexImage2D( GL_TEXTURE_2D,
 				   0, 
 				   gl_lms.internal_format,
 				   BLOCK_WIDTH, BLOCK_HEIGHT, 

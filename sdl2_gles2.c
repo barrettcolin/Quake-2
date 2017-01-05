@@ -2,6 +2,54 @@
 
 #include "ref_gles2/gl_local.h"
 
+void (GL_APIENTRY *qglActiveTexture)(GLenum texture);
+void (GL_APIENTRY *qglAttachShader)(GLuint program, GLuint shader);
+void (GL_APIENTRY *qglBindBuffer)(GLenum target, GLuint buffer);
+void (GL_APIENTRY *qglBindAttribLocation)(GLuint program, GLuint index, const GLchar* name);
+void (GL_APIENTRY *qglBindTexture)(GLenum target, GLuint texture);
+void (GL_APIENTRY *qglBlendFunc)(GLenum sfactor, GLenum dfactor);
+void (GL_APIENTRY *qglBufferData)(GLenum target, GLsizeiptr size, const GLvoid* data, GLenum usage);
+void (GL_APIENTRY *qglClear)(GLbitfield mask);
+void (GL_APIENTRY *qglClearColor)(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
+void (GL_APIENTRY *qglCompileShader)(GLuint shader);
+GLuint(GL_APIENTRY *qglCreateProgram)(void);
+GLuint(GL_APIENTRY *qglCreateShader)(GLenum type);
+void (GL_APIENTRY *qglCullFace)(GLenum mode);
+void (GL_APIENTRY *qglDeleteBuffers)(GLsizei n, const GLuint* buffers);
+void (GL_APIENTRY *qglDeleteProgram)(GLuint program);
+void (GL_APIENTRY *qglDeleteShader)(GLuint shader);
+void (GL_APIENTRY *qglDeleteTextures)(GLsizei n, const GLuint* textures);
+void (GL_APIENTRY *qglDepthFunc)(GLenum func);
+void (GL_APIENTRY *qglDepthMask)(GLboolean flag);
+void (GL_APIENTRY *qglDepthRangef)(GLclampf zNear, GLclampf zFar);
+void (GL_APIENTRY *qglDisable)(GLenum cap);
+void (GL_APIENTRY *qglDisableVertexAttribArray)(GLuint index);
+void (GL_APIENTRY *qglDrawArrays)(GLenum mode, GLint first, GLsizei count);
+void (GL_APIENTRY *qglDrawElements)(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices);
+void (GL_APIENTRY *qglEnable)(GLenum cap);
+void (GL_APIENTRY *qglEnableVertexAttribArray)(GLuint index);
+void (GL_APIENTRY *qglGenBuffers)(GLsizei n, GLuint* buffers);
+GLenum(GL_APIENTRY *qglGetError)(void);
+void (GL_APIENTRY *qglGetProgramiv)(GLuint program, GLenum pname, GLint* params);
+void (GL_APIENTRY *qglGetProgramInfoLog)(GLuint program, GLsizei bufsize, GLsizei* length, GLchar* infolog);
+void (GL_APIENTRY *qglGetShaderiv)(GLuint shader, GLenum pname, GLint* params);
+void (GL_APIENTRY *qglGetShaderInfoLog)(GLuint shader, GLsizei bufsize, GLsizei* length, GLchar* infolog);
+const GLubyte* (GL_APIENTRY *qglGetString)(GLenum name);
+GLint(GL_APIENTRY *qglGetUniformLocation)(GLuint program, const GLchar* name);
+void (GL_APIENTRY *qglLinkProgram)(GLuint program);
+void (GL_APIENTRY *qglReadPixels)(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid* pixels);
+void (GL_APIENTRY *qglScissor)(GLint x, GLint y, GLsizei width, GLsizei height);
+void (GL_APIENTRY *qglShaderSource)(GLuint shader, GLsizei count, const GLchar* const* string, const GLint* length);
+void (GL_APIENTRY *qglTexImage2D)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid* pixels);
+void (GL_APIENTRY *qglTexParameteri)(GLenum target, GLenum pname, GLint param);
+void (GL_APIENTRY *qglTexSubImage2D)(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
+void (GL_APIENTRY *qglUniform1i)(GLint location, GLint x);
+void (GL_APIENTRY *qglUniform4f)(GLint location, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
+void (GL_APIENTRY *qglUniformMatrix4fv)(GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
+void (GL_APIENTRY *qglUseProgram)(GLuint program);
+void (GL_APIENTRY *qglVertexAttribPointer)(GLuint indx, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* ptr);
+void (GL_APIENTRY *qglViewport)(GLint x, GLint y, GLsizei width, GLsizei height);
+
 static SDL_Window *window;
 static SDL_GLContext GLcontext;
 
@@ -63,6 +111,55 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
         window = NULL;
         return rserr_unknown;
     }
+
+    // QGL
+    qglActiveTexture = SDL_GL_GetProcAddress("glActiveTexture");
+    qglAttachShader = SDL_GL_GetProcAddress("glAttachShader");
+    qglBindBuffer = SDL_GL_GetProcAddress("glBindBuffer");
+    qglBindAttribLocation = SDL_GL_GetProcAddress("glBindAttribLocation");
+    qglBindTexture = SDL_GL_GetProcAddress("glBindTexture");
+    qglBlendFunc = SDL_GL_GetProcAddress("glBlendFunc");
+    qglBufferData = SDL_GL_GetProcAddress("glBufferData");
+    qglClear = SDL_GL_GetProcAddress("glClear");
+    qglClearColor = SDL_GL_GetProcAddress("glClearColor");
+    qglCompileShader = SDL_GL_GetProcAddress("glCompileShader");
+    qglCreateProgram = SDL_GL_GetProcAddress("glCreateProgram");
+    qglCreateShader = SDL_GL_GetProcAddress("glCreateShader");
+    qglCullFace = SDL_GL_GetProcAddress("glCullFace");
+    qglDeleteBuffers = SDL_GL_GetProcAddress("glDeleteBuffers");
+    qglDeleteProgram = SDL_GL_GetProcAddress("glDeleteProgram");
+    qglDeleteShader = SDL_GL_GetProcAddress("glDeleteShader");
+    qglDeleteTextures = SDL_GL_GetProcAddress("glDeleteTextures");
+    qglDepthFunc = SDL_GL_GetProcAddress("glDepthFunc");
+    qglDepthMask = SDL_GL_GetProcAddress("glDepthMask");
+    qglDepthRangef = SDL_GL_GetProcAddress("glDepthRangef");
+    qglDisable = SDL_GL_GetProcAddress("glDisable");
+    qglDisableVertexAttribArray = SDL_GL_GetProcAddress("glDisableVertexAttribArray");
+    qglDrawArrays = SDL_GL_GetProcAddress("glDrawArrays");
+    qglDrawElements = SDL_GL_GetProcAddress("glDrawElements");
+    qglEnable = SDL_GL_GetProcAddress("glEnable");
+    qglEnableVertexAttribArray = SDL_GL_GetProcAddress("glEnableVertexAttribArray");
+    qglGenBuffers = SDL_GL_GetProcAddress("glGenBuffers");
+    qglGetError = SDL_GL_GetProcAddress("glGetError");
+    qglGetProgramiv = SDL_GL_GetProcAddress("glGetProgramiv");
+    qglGetProgramInfoLog = SDL_GL_GetProcAddress("glGetProgramInfoLog");
+    qglGetShaderiv = SDL_GL_GetProcAddress("glGetShaderiv");
+    qglGetShaderInfoLog = SDL_GL_GetProcAddress("glGetShaderInfoLog");
+    qglGetString = SDL_GL_GetProcAddress("glGetString");
+    qglGetUniformLocation = SDL_GL_GetProcAddress("glGetUniformLocation");
+    qglLinkProgram = SDL_GL_GetProcAddress("glLinkProgram");
+    qglReadPixels = SDL_GL_GetProcAddress("glReadPixels");
+    qglScissor = SDL_GL_GetProcAddress("glScissor");
+    qglShaderSource = SDL_GL_GetProcAddress("glShaderSource");
+    qglTexImage2D = SDL_GL_GetProcAddress("glTexImage2D");
+    qglTexParameteri = SDL_GL_GetProcAddress("glTexParameteri");
+    qglTexSubImage2D = SDL_GL_GetProcAddress("glTexSubImage2D");
+    qglUniform1i = SDL_GL_GetProcAddress("glUniform1i");
+    qglUniform4f = SDL_GL_GetProcAddress("glUniform4f");
+    qglUniformMatrix4fv = SDL_GL_GetProcAddress("glUniformMatrix4fv");
+    qglUseProgram = SDL_GL_GetProcAddress("glUseProgram");
+    qglVertexAttribPointer = SDL_GL_GetProcAddress("glVertexAttribPointer");
+    qglViewport = SDL_GL_GetProcAddress("glViewport");
 
     SDL_GetWindowSize(window, &winWidth, &winHeight);
 

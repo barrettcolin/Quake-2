@@ -72,19 +72,19 @@ static void Material_Destroy(material_t *mat)
 {
     if(mat->program)
     {
-        glDeleteProgram(mat->program);
+        qglDeleteProgram(mat->program);
         mat->program = 0;
     }
 
     if(mat->fragment_shader)
     {
-        glDeleteShader(mat->fragment_shader);
+        qglDeleteShader(mat->fragment_shader);
         mat->fragment_shader = 0;
     }
 
     if(mat->vertex_shader)
     {
-        glDeleteShader(mat->vertex_shader);
+        qglDeleteShader(mat->vertex_shader);
         mat->vertex_shader = 0;
     }
 }
@@ -99,7 +99,7 @@ static GLuint Material_LoadShader(GLenum type, char const *pathname, char const 
         GLchar const *strs[2] = { defines };
         GLint str_lens[2] = { strlen(defines) };
 
-        shader = glCreateShader(type);
+        shader = qglCreateShader(type);
         if (shader == 0)
             break;
 
@@ -108,25 +108,25 @@ static GLuint Material_LoadShader(GLenum type, char const *pathname, char const 
             break;
 
         // Load the shader source
-        glShaderSource(shader, 2, strs, str_lens);
+        qglShaderSource(shader, 2, strs, str_lens);
 
         ri.FS_FreeFile((void *)strs[1]);
 
         // Compile the shader
-        glCompileShader(shader);
+        qglCompileShader(shader);
 
         // Check the compile status
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+        qglGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 
         if(compiled == GL_FALSE)
         {
             GLint info_len = 0;
-            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_len);
+            qglGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_len);
 
             if (info_len > 1)
             {
                 char* info_log = malloc(sizeof(char) * info_len);
-                glGetShaderInfoLog(shader, info_len, NULL, info_log);
+                qglGetShaderInfoLog(shader, info_len, NULL, info_log);
                 ri.Con_Printf(PRINT_DEVELOPER, "Error compiling shader:\n%s\n", info_log);
                 free(info_log);
             }
@@ -139,7 +139,7 @@ static GLuint Material_LoadShader(GLenum type, char const *pathname, char const 
 
     if(shader)
     {
-        glDeleteShader(shader);
+        qglDeleteShader(shader);
         shader = 0;
     }
 
@@ -160,12 +160,12 @@ static int Material_CreateProgram(material_t *mat, char const *pathname, char co
     if(mat->fragment_shader == 0)
         return -1;
 
-    mat->program = glCreateProgram();
+    mat->program = qglCreateProgram();
     if(mat->program == 0)
         return -1;
 
-    glAttachShader(mat->program, mat->vertex_shader);
-    glAttachShader(mat->program, mat->fragment_shader);
+    qglAttachShader(mat->program, mat->vertex_shader);
+    qglAttachShader(mat->program, mat->fragment_shader);
     return 0;
 }
 
@@ -174,20 +174,20 @@ static int Material_LinkProgram(material_t *mat)
     GLint linked;
 
     // Link program
-    glLinkProgram(mat->program);
+    qglLinkProgram(mat->program);
 
     // Check the link status
-    glGetProgramiv(mat->program, GL_LINK_STATUS, &linked);
+    qglGetProgramiv(mat->program, GL_LINK_STATUS, &linked);
 
     if (linked == GL_FALSE)
     {
         GLint info_len = 0;
-        glGetProgramiv(mat->program, GL_INFO_LOG_LENGTH, &info_len);
+        qglGetProgramiv(mat->program, GL_INFO_LOG_LENGTH, &info_len);
 
         if (info_len > 1)
         {
             char* info_log = malloc(sizeof(char) * info_len);
-            glGetProgramInfoLog(mat->program, info_len, NULL, info_log);
+            qglGetProgramInfoLog(mat->program, info_len, NULL, info_log);
             ri.Con_Printf(PRINT_DEVELOPER, "Error linking program:\n%s\n", info_log);
             free(info_log);
         }
@@ -208,19 +208,19 @@ static void MaterialUnlit_Create(material_t *mat)
             break;
 
         mat->num_vertex_attributes = 2;
-        glBindAttribLocation(mat->program, 0, "a_vPosition");
-        glBindAttribLocation(mat->program, 1, "a_vTexCoord");
+        qglBindAttribLocation(mat->program, 0, "a_vPosition");
+        qglBindAttribLocation(mat->program, 1, "a_vTexCoord");
 
         if(Material_LinkProgram(mat) != 0)
             break;
 
-        glUseProgram(mat->program);
-        mat->clip_from_view_location = glGetUniformLocation(mat->program, "mClipFromView");
-        mat->view_from_world_location = glGetUniformLocation(mat->program, "mViewFromWorld");
-        mat->world_from_model_location = glGetUniformLocation(mat->program, "mWorldFromModel");
-        mat->diffuse_color_location = glGetUniformLocation(mat->program, "vDiffuseColor");
-        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
-        glUseProgram(0);
+        qglUseProgram(mat->program);
+        mat->clip_from_view_location = qglGetUniformLocation(mat->program, "mClipFromView");
+        mat->view_from_world_location = qglGetUniformLocation(mat->program, "mViewFromWorld");
+        mat->world_from_model_location = qglGetUniformLocation(mat->program, "mWorldFromModel");
+        mat->diffuse_color_location = qglGetUniformLocation(mat->program, "vDiffuseColor");
+        qglUniform1i(qglGetUniformLocation(mat->program, "sDiffuse"), 0);
+        qglUseProgram(0);
         return;
     }
 
@@ -238,21 +238,21 @@ static void MaterialLightmapped_Create(material_t *mat)
             break;
 
         mat->num_vertex_attributes = 3;
-        glBindAttribLocation(mat->program, 0, "a_vPosition");
-        glBindAttribLocation(mat->program, 1, "a_vTexCoord0");
-        glBindAttribLocation(mat->program, 2, "a_vTexCoord1");
+        qglBindAttribLocation(mat->program, 0, "a_vPosition");
+        qglBindAttribLocation(mat->program, 1, "a_vTexCoord0");
+        qglBindAttribLocation(mat->program, 2, "a_vTexCoord1");
 
         if(Material_LinkProgram(mat) != 0)
             break;
 
-        glUseProgram(mat->program);
-        mat->clip_from_view_location = glGetUniformLocation(mat->program, "mClipFromView");
-        mat->view_from_world_location = glGetUniformLocation(mat->program, "mViewFromWorld");
-        mat->world_from_model_location = glGetUniformLocation(mat->program, "mWorldFromModel");
-        mat->diffuse_color_location = glGetUniformLocation(mat->program, "vDiffuseColor");
-        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
-        glUniform1i(glGetUniformLocation(mat->program, "sLightmap"), 1);
-        glUseProgram(0);
+        qglUseProgram(mat->program);
+        mat->clip_from_view_location = qglGetUniformLocation(mat->program, "mClipFromView");
+        mat->view_from_world_location = qglGetUniformLocation(mat->program, "mViewFromWorld");
+        mat->world_from_model_location = qglGetUniformLocation(mat->program, "mWorldFromModel");
+        mat->diffuse_color_location = qglGetUniformLocation(mat->program, "vDiffuseColor");
+        qglUniform1i(qglGetUniformLocation(mat->program, "sDiffuse"), 0);
+        qglUniform1i(qglGetUniformLocation(mat->program, "sLightmap"), 1);
+        qglUseProgram(0);
         return;
     }
 
@@ -270,19 +270,19 @@ static void MaterialVertexlit_Create(material_t *mat)
             break;
 
         mat->num_vertex_attributes = 3;
-        glBindAttribLocation(mat->program, 0, "a_vPosition");
-        glBindAttribLocation(mat->program, 1, "a_vColor");
-        glBindAttribLocation(mat->program, 2, "a_vTexCoord");
+        qglBindAttribLocation(mat->program, 0, "a_vPosition");
+        qglBindAttribLocation(mat->program, 1, "a_vColor");
+        qglBindAttribLocation(mat->program, 2, "a_vTexCoord");
 
         if(Material_LinkProgram(mat) != 0)
             break;
 
-        glUseProgram(mat->program);
-        mat->clip_from_view_location = glGetUniformLocation(mat->program, "mClipFromView");
-        mat->view_from_world_location = glGetUniformLocation(mat->program, "mViewFromWorld");
-        mat->world_from_model_location = glGetUniformLocation(mat->program, "mWorldFromModel");
-        glUniform1i(glGetUniformLocation(mat->program, "sDiffuse"), 0);
-        glUseProgram(0);
+        qglUseProgram(mat->program);
+        mat->clip_from_view_location = qglGetUniformLocation(mat->program, "mClipFromView");
+        mat->view_from_world_location = qglGetUniformLocation(mat->program, "mViewFromWorld");
+        mat->world_from_model_location = qglGetUniformLocation(mat->program, "mWorldFromModel");
+        qglUniform1i(qglGetUniformLocation(mat->program, "sDiffuse"), 0);
+        qglUseProgram(0);
         return;
     }
 
@@ -362,11 +362,11 @@ void Material_SetCurrent(material_t *mat)
         {
             if(i < mat->num_vertex_attributes)
             {
-                glEnableVertexAttribArray(i);
+                qglEnableVertexAttribArray(i);
             }
             else
             {
-                glDisableVertexAttribArray(i);
+                qglDisableVertexAttribArray(i);
             }
         }
 
@@ -381,16 +381,16 @@ void Material_SetCurrent(material_t *mat)
                 GLenum src = s_GLBlend_from_materialblend[mat->desc.flags.src_blend],
                         dst = s_GLBlend_from_materialblend[mat->desc.flags.dst_blend];
 
-                glEnable(GL_BLEND);
-                glBlendFunc(src, dst);
+                qglEnable(GL_BLEND);
+                qglBlendFunc(src, dst);
             }
             else
             {
-                glDisable(GL_BLEND);
+                qglDisable(GL_BLEND);
             }
         }
 
-        glUseProgram(mat->program);
+        qglUseProgram(mat->program);
 
         s_current_material = mat;
     }
@@ -398,22 +398,22 @@ void Material_SetCurrent(material_t *mat)
 
 void Material_SetClipFromView(material_id mat, GLfloat const clip_from_view[16])
 {
-    glUniformMatrix4fv(mat->clip_from_view_location, 1, GL_FALSE, clip_from_view);
+    qglUniformMatrix4fv(mat->clip_from_view_location, 1, GL_FALSE, clip_from_view);
 }
 
 void Material_SetViewFromWorld(material_id mat, GLfloat const view_from_world[16])
 {
-    glUniformMatrix4fv(mat->view_from_world_location, 1, GL_FALSE, view_from_world);
+    qglUniformMatrix4fv(mat->view_from_world_location, 1, GL_FALSE, view_from_world);
 }
 
 void Material_SetWorldFromModel(material_id mat, GLfloat const world_from_model[16])
 {
-    glUniformMatrix4fv(mat->world_from_model_location, 1, GL_FALSE, world_from_model);
+    qglUniformMatrix4fv(mat->world_from_model_location, 1, GL_FALSE, world_from_model);
 }
 
 void Material_SetDiffuseColor(material_id mat, GLfloat r, GLfloat g, GLfloat b, GLfloat a)
 {
-    glUniform4f(mat->diffuse_color_location, r, g, b, a);
+    qglUniform4f(mat->diffuse_color_location, r, g, b, a);
 }
 
 void Material_Render(material_t *mat, void const *data, GLuint textures[num_texture_units])

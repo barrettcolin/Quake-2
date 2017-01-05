@@ -1145,7 +1145,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
     pheader->ofs_xyz_from_st_indices = pheader->ofs_tris + tris_size;
     assert((pheader->ofs_xyz_from_st_indices & 3) == 0);
 
-    glGenBuffers(NUM_GLMDL_BUFFERS, pheader->buffers);
+    qglGenBuffers(NUM_GLMDL_BUFFERS, pheader->buffers);
 
     // st
     pout_st = (glstvert_t *) ((byte *)pheader + pheader->ofs_st);
@@ -1379,7 +1379,7 @@ void Mod_Free (model_t *mod)
     switch(mod->type)
     {
     case mod_alias:
-        glDeleteBuffers(NUM_GLMDL_BUFFERS, ((glmdl_t *)mod->extradata)->buffers);
+        qglDeleteBuffers(NUM_GLMDL_BUFFERS, ((glmdl_t *)mod->extradata)->buffers);
         break;
     }
 
@@ -1422,7 +1422,7 @@ GLuint VertexBuffer_Create()
     }
 
     vb = &s_vertexbuffers[i];
-    glGenBuffers(1, vb);
+    qglGenBuffers(1, vb);
     return *vb;
 }
 
@@ -1430,7 +1430,7 @@ void VertexBuffer_Destroy(GLuint *name)
 {
     if(*name != 0)
     {
-        glDeleteBuffers(1, name);
+        qglDeleteBuffers(1, name);
         *name = 0;
     }
 }

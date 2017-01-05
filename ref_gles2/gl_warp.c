@@ -254,9 +254,9 @@ static void EmitWaterPoly(glpoly_t const *p, float scroll)
         wv->t = t;
     }
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &waterverts->x);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &waterverts->s);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
+    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &waterverts->x);
+    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &waterverts->s);
+    qglDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
 }
 
 void EmitWaterPolys (msurface_t *fa)
@@ -264,7 +264,7 @@ void EmitWaterPolys (msurface_t *fa)
     glpoly_t	*bp;
 	float		scroll;
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    qglBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	if (fa->texinfo->flags & SURF_FLOWING)
         scroll = -64 * ((r_newrefdef.time * 0.5f) - (int)(r_newrefdef.time * 0.5f));
@@ -604,7 +604,7 @@ void R_DrawSkyBox (void)
 
     Matrix_FromAxisAngleOrigin(skyaxis, r_newrefdef.time * skyrotate, r_origin, world_from_sky);
     Material_SetWorldFromModel(g_unlit_material, world_from_sky);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    qglBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	for (i=0 ; i<6 ; i++)
 	{
@@ -629,9 +629,9 @@ void R_DrawSkyBox (void)
         MakeSkyVec (skymaxs[0][i], skymins[1][i], i, verts + 2);
         MakeSkyVec (skymaxs[0][i], skymaxs[1][i], i, verts + 3);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &verts->x);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &verts->s);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &verts->x);
+        qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(warpvert_t), &verts->s);
+        qglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
 }
 

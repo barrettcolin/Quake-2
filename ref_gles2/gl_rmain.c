@@ -349,7 +349,7 @@ void R_DrawEntitiesOnList (void)
 
 	// draw transparent entities
 	// we could sort these if it ever becomes a problem...
-	glDepthMask (0);		// no z writes
+	qglDepthMask (0);		// no z writes
 	for (i=0 ; i<r_newrefdef.num_entities ; i++)
 	{
 		currententity = &r_newrefdef.entities[i];
@@ -386,7 +386,7 @@ void R_DrawEntitiesOnList (void)
 			}
 		}
 	}
-	glDepthMask (1);		// back to writing
+	qglDepthMask (1);		// back to writing
 
 }
 
@@ -656,12 +656,12 @@ static void R_SetupFrame (void)
 	// clear out the portion of the screen that the NOWORLDMODEL defines
 	if ( r_newrefdef.rdflags & RDF_NOWORLDMODEL )
 	{
-        glEnable( GL_SCISSOR_TEST );
-        glClearColor( 0.3, 0.3, 0.3, 1 );
-        glScissor( r_newrefdef.x, vid.height - r_newrefdef.height - r_newrefdef.y, r_newrefdef.width, r_newrefdef.height );
-        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-        glClearColor( 1, 0, 0.5, 0.5 );
-        glDisable( GL_SCISSOR_TEST );
+        qglEnable( GL_SCISSOR_TEST );
+        qglClearColor( 0.3, 0.3, 0.3, 1 );
+        qglScissor( r_newrefdef.x, vid.height - r_newrefdef.height - r_newrefdef.y, r_newrefdef.width, r_newrefdef.height );
+        qglClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        qglClearColor( 1, 0, 0.5, 0.5 );
+        qglDisable( GL_SCISSOR_TEST );
 	}
 }
 
@@ -697,7 +697,7 @@ void R_SetupGL (void)
 	w = x2 - x;
 	h = y - y2;
 
-    glViewport (x, y2, w, h);
+    qglViewport (x, y2, w, h);
 
 	//
 	// set up projection matrix
@@ -707,7 +707,7 @@ void R_SetupGL (void)
 
     Matrix_Perspective(gl_state.camera_separation, r_newrefdef.fov_y, screenaspect, 4, 4096, gl_state.clip_from_view);
 
-    glCullFace(GL_FRONT);
+    qglCullFace(GL_FRONT);
 
     // view_from_world (== world_matrix)
     Matrix_InverseFromAnglesOrigin(r_newrefdef.viewangles, r_newrefdef.vieworg, ref_from_world);
@@ -738,13 +738,13 @@ void R_SetupGL (void)
 	// set drawing parms
 	//
 	if (gl_cull->value)
-        glEnable(GL_CULL_FACE);
+        qglEnable(GL_CULL_FACE);
 	else
-        glDisable(GL_CULL_FACE);
+        qglDisable(GL_CULL_FACE);
 
     //glDisable(GL_BLEND);
     //glDisable(GL_ALPHA_TEST);
-    glEnable(GL_DEPTH_TEST);
+    qglEnable(GL_DEPTH_TEST);
 }
 
 /*
@@ -759,34 +759,34 @@ void R_Clear (void)
 		static int trickframe;
 
 		if (gl_clear->value)
-            glClear (GL_COLOR_BUFFER_BIT);
+            qglClear (GL_COLOR_BUFFER_BIT);
 
 		trickframe++;
 		if (trickframe & 1)
 		{
 			gldepthmin = 0;
 			gldepthmax = 0.49999;
-            glDepthFunc (GL_LEQUAL);
+            qglDepthFunc (GL_LEQUAL);
 		}
 		else
 		{
 			gldepthmin = 1;
 			gldepthmax = 0.5;
-            glDepthFunc (GL_GEQUAL);
+            qglDepthFunc (GL_GEQUAL);
 		}
 	}
 	else
 	{
 		if (gl_clear->value)
-            glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            qglClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		else
-            glClear (GL_DEPTH_BUFFER_BIT);
+            qglClear (GL_DEPTH_BUFFER_BIT);
 		gldepthmin = 0;
 		gldepthmax = 1;
-        glDepthFunc (GL_LEQUAL);
+        qglDepthFunc (GL_LEQUAL);
 	}
 
-    glDepthRangef(gldepthmin, gldepthmax);
+    qglDepthRangef(gldepthmin, gldepthmax);
 
 }
 
@@ -856,18 +856,18 @@ void R_RenderView (refdef_t *fd)
 void	R_SetGL2D (void)
 {
 	// set 2D virtual screen size
-    glViewport (0,0, vid.width, vid.height);
+    qglViewport (0,0, vid.width, vid.height);
 
     Matrix_Orthographic(0, vid.width, vid.height, 0, -99999, 99999, gl_state.clip_from_view);
 
-    glDisable (GL_DEPTH_TEST);
-    glDisable (GL_CULL_FACE);
+    qglDisable (GL_DEPTH_TEST);
+    qglDisable (GL_CULL_FACE);
     //glDisable (GL_BLEND);
     //glEnable (GL_ALPHA_TEST);
     //glColor4f (1,1,1,1);
 
     //<todo.cb technically this should precede draw calls that don't bind a buffer, but that's all of 2D
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    qglBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 
@@ -1071,13 +1071,13 @@ qboolean R_Init( void *hinstance, void *hWnd )
 	/*
 	** get our various GL strings
 	*/
-    gl_config.vendor_string = glGetString (GL_VENDOR);
+    gl_config.vendor_string = qglGetString (GL_VENDOR);
 	ri.Con_Printf (PRINT_ALL, "GL_VENDOR: %s\n", gl_config.vendor_string );
-    gl_config.renderer_string = glGetString (GL_RENDERER);
+    gl_config.renderer_string = qglGetString (GL_RENDERER);
 	ri.Con_Printf (PRINT_ALL, "GL_RENDERER: %s\n", gl_config.renderer_string );
-    gl_config.version_string = glGetString (GL_VERSION);
+    gl_config.version_string = qglGetString (GL_VERSION);
 	ri.Con_Printf (PRINT_ALL, "GL_VERSION: %s\n", gl_config.version_string );
-    gl_config.extensions_string = glGetString (GL_EXTENSIONS);
+    gl_config.extensions_string = qglGetString (GL_EXTENSIONS);
 	ri.Con_Printf (PRINT_ALL, "GL_EXTENSIONS: %s\n", gl_config.extensions_string );
 
     gl_config.renderer = GL_RENDERER_OTHER;
@@ -1167,7 +1167,7 @@ qboolean R_Init( void *hinstance, void *hWnd )
         g_vertexlit_alpha_material = Material_Find(&desc);
     }
 
-    err = glGetError();
+    err = qglGetError();
 	if ( err != GL_NO_ERROR )
 		ri.Con_Printf (PRINT_ALL, "glGetError() = 0x%x\n", err);
 
@@ -1294,9 +1294,9 @@ void R_SetPalette ( const unsigned char *palette)
 	}
 	GL_SetTexturePalette( r_rawpalette );
 
-    glClearColor (0,0,0,0);
-    glClear (GL_COLOR_BUFFER_BIT);
-    glClearColor (1,0, 0.5 , 0.5);
+    qglClearColor (0,0,0,0);
+    qglClear (GL_COLOR_BUFFER_BIT);
+    qglClearColor (1,0, 0.5 , 0.5);
 }
 
 /*

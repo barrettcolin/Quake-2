@@ -142,7 +142,7 @@ void GL_ScreenShot_f (void)
 	buffer[15] = vid.height>>8;
 	buffer[16] = 24;	// pixel size
 
-    glReadPixels (0, 0, vid.width, vid.height, GL_RGB, GL_UNSIGNED_BYTE, buffer+18 );
+    qglReadPixels (0, 0, vid.width, vid.height, GL_RGB, GL_UNSIGNED_BYTE, buffer+18 );
 
 	// swap rgb to bgr
 	c = 18+vid.width*vid.height*3;
@@ -177,15 +177,15 @@ void GL_Strings_f( void )
 */
 void GL_SetDefaultState( void )
 {
-    glClearColor(1, 0, 0.5, 0.5);
-    glCullFace(GL_FRONT);
+    qglClearColor(1, 0, 0.5, 0.5);
+    qglCullFace(GL_FRONT);
 	
 	//glEnable(GL_TEXTURE_2D);
     //glEnable(GL_ALPHA_TEST);
     //glAlphaFunc(GL_GREATER, 0.666);
 
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
+    qglDisable(GL_DEPTH_TEST);
+    qglDisable(GL_CULL_FACE);
     //glDisable(GL_BLEND);
 
     //glColor4f (1,1,1,1);
@@ -193,11 +193,11 @@ void GL_SetDefaultState( void )
     //glShadeModel (GL_FLAT);
 	GL_TextureMode( gl_texturemode->string );
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 

@@ -76,9 +76,9 @@ void GL_SelectTexture( GLenum texture )
 	gl_state.currenttmu = tmu;
 
 	if ( tmu == 0 )
-        glActiveTexture( GL_TEXTURE0 );
+        qglActiveTexture( GL_TEXTURE0 );
 	else
-        glActiveTexture( GL_TEXTURE1 );
+        qglActiveTexture( GL_TEXTURE1 );
 }
 
 void GL_Bind (int texnum)
@@ -86,7 +86,7 @@ void GL_Bind (int texnum)
     if(gl_state.currenttextures[gl_state.currenttmu] == texnum)
 		return;
 	gl_state.currenttextures[gl_state.currenttmu] = texnum;
-    glBindTexture(GL_TEXTURE_2D, texnum);
+    qglBindTexture(GL_TEXTURE_2D, texnum);
 }
 
 void GL_MBind( GLenum target, int texnum )
@@ -168,8 +168,8 @@ void GL_TextureMode( char *string )
 		if (glt->type != it_pic && glt->type != it_sky )
 		{
 			GL_Bind (glt->texnum);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
+            qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
+            qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
 		}
 	}
 }
@@ -937,7 +937,7 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 			else
 #endif
 			{
-                glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+                qglTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 			}
 			goto done;
 		}
@@ -965,7 +965,7 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 	else
 #endif
 	{
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled );
+        qglTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled );
 	}
 
 	if (mipmap)
@@ -1001,7 +1001,7 @@ qboolean GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap)
 			else
 #endif
 			{
-                glTexImage2D (GL_TEXTURE_2D, miplevel, GL_RGBA, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
+                qglTexImage2D (GL_TEXTURE_2D, miplevel, GL_RGBA, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
 			}
 		}
 	}
@@ -1011,13 +1011,13 @@ done: ;
 
 	if (mipmap)
 	{
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
+        qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
+        qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
 	}
 	else
 	{
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_max);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
+        qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_max);
+        qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
 	}
 
     return has_alpha;
@@ -1329,7 +1329,7 @@ void GL_FreeUnusedImages (void)
 		if (image->type == it_pic)
 			continue;		// don't free pics
 		// free it
-        glDeleteTextures (1, &image->texnum);
+        qglDeleteTextures (1, &image->texnum);
 		memset (image, 0, sizeof(*image));
 	}
 }
@@ -1446,7 +1446,7 @@ void	GL_ShutdownImages (void)
 		if (!image->registration_sequence)
 			continue;		// free image_t slot
 		// free it
-        glDeleteTextures (1, &image->texnum);
+        qglDeleteTextures (1, &image->texnum);
 		memset (image, 0, sizeof(*image));
 	}
 }

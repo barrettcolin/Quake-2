@@ -48,8 +48,8 @@ void Draw_InitLocal (void)
 	// load console characters (don't bilerp characters)
 	draw_chars = GL_FindImage ("pics/conchars.pcx", it_pic);
 	GL_Bind( draw_chars->texnum );
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     desc.flags.type = mt_unlit;
     desc.flags.src_blend = mb_one;
@@ -126,9 +126,9 @@ void Draw_Char (int x, int y, int num)
 
     GL_MBind(GL_TEXTURE0, draw_chars->texnum);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
+    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
+    qglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 /*
@@ -225,9 +225,9 @@ void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 
     GL_MBind(GL_TEXTURE0, gl->texnum);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
+    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
+    qglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 
@@ -284,9 +284,9 @@ void Draw_Pic (int x, int y, char *pic)
 
     GL_MBind(GL_TEXTURE0, gl->texnum);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].x);
+    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(verts[0]), &verts[0].s);
+    qglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 /*

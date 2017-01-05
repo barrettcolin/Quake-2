@@ -31,6 +31,55 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "SDL_opengles2.h"
 
+// QGL
+extern void (GL_APIENTRY *qglActiveTexture)(GLenum texture);
+extern void (GL_APIENTRY *qglAttachShader)(GLuint program, GLuint shader);
+extern void (GL_APIENTRY *qglBindBuffer)(GLenum target, GLuint buffer);
+extern void (GL_APIENTRY *qglBindAttribLocation)(GLuint program, GLuint index, const GLchar* name);
+extern void (GL_APIENTRY *qglBindTexture)(GLenum target, GLuint texture);
+extern void (GL_APIENTRY *qglBlendFunc)(GLenum sfactor, GLenum dfactor);
+extern void (GL_APIENTRY *qglBufferData)(GLenum target, GLsizeiptr size, const GLvoid* data, GLenum usage);
+extern void (GL_APIENTRY *qglClear)(GLbitfield mask);
+extern void (GL_APIENTRY *qglClearColor)(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha);
+extern void (GL_APIENTRY *qglCompileShader)(GLuint shader);
+extern GLuint (GL_APIENTRY *qglCreateProgram)(void);
+extern GLuint (GL_APIENTRY *qglCreateShader)(GLenum type);
+extern void (GL_APIENTRY *qglCullFace)(GLenum mode);
+extern void (GL_APIENTRY *qglDeleteBuffers)(GLsizei n, const GLuint* buffers);
+extern void (GL_APIENTRY *qglDeleteProgram)(GLuint program);
+extern void (GL_APIENTRY *qglDeleteShader)(GLuint shader);
+extern void (GL_APIENTRY *qglDeleteTextures)(GLsizei n, const GLuint* textures);
+extern void (GL_APIENTRY *qglDepthFunc)(GLenum func);
+extern void (GL_APIENTRY *qglDepthMask)(GLboolean flag);
+extern void (GL_APIENTRY *qglDepthRangef)(GLclampf zNear, GLclampf zFar);
+extern void (GL_APIENTRY *qglDisable)(GLenum cap);
+extern void (GL_APIENTRY *qglDisableVertexAttribArray)(GLuint index);
+extern void (GL_APIENTRY *qglDrawArrays)(GLenum mode, GLint first, GLsizei count);
+extern void (GL_APIENTRY *qglDrawElements)(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices);
+extern void (GL_APIENTRY *qglEnable)(GLenum cap);
+extern void (GL_APIENTRY *qglEnableVertexAttribArray)(GLuint index);
+extern void (GL_APIENTRY *qglGenBuffers)(GLsizei n, GLuint* buffers);
+extern GLenum (GL_APIENTRY *qglGetError)(void);
+extern void (GL_APIENTRY *qglGetProgramiv)(GLuint program, GLenum pname, GLint* params);
+extern void (GL_APIENTRY *qglGetProgramInfoLog)(GLuint program, GLsizei bufsize, GLsizei* length, GLchar* infolog);
+extern void (GL_APIENTRY *qglGetShaderiv)(GLuint shader, GLenum pname, GLint* params);
+extern void (GL_APIENTRY *qglGetShaderInfoLog)(GLuint shader, GLsizei bufsize, GLsizei* length, GLchar* infolog);
+extern const GLubyte* (GL_APIENTRY *qglGetString)(GLenum name);
+extern GLint (GL_APIENTRY *qglGetUniformLocation)(GLuint program, const GLchar* name);
+extern void (GL_APIENTRY *qglLinkProgram)(GLuint program);
+extern void (GL_APIENTRY *qglReadPixels)(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid* pixels);
+extern void (GL_APIENTRY *qglScissor)(GLint x, GLint y, GLsizei width, GLsizei height);
+extern void (GL_APIENTRY *qglShaderSource)(GLuint shader, GLsizei count, const GLchar* const* string, const GLint* length);
+extern void (GL_APIENTRY *qglTexImage2D)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid* pixels);
+extern void (GL_APIENTRY *qglTexParameteri)(GLenum target, GLenum pname, GLint param);
+extern void (GL_APIENTRY *qglTexSubImage2D)(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
+extern void (GL_APIENTRY *qglUniform1i)(GLint location, GLint x);
+extern void (GL_APIENTRY *qglUniform4f)(GLint location, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
+extern void (GL_APIENTRY *qglUniformMatrix4fv)(GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
+extern void (GL_APIENTRY *qglUseProgram)(GLuint program);
+extern void (GL_APIENTRY *qglVertexAttribPointer)(GLuint indx, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* ptr);
+extern void (GL_APIENTRY *qglViewport)(GLint x, GLint y, GLsizei width, GLsizei height);
+
 #include "../client/ref.h"
 
 
