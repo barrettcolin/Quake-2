@@ -166,7 +166,6 @@ R_DrawSpriteModel
 */
 void R_DrawSpriteModel (entity_t *e)
 {
-#if 0
 	float alpha = 1.0F;
 	vec3_t	point;
 	dsprframe_t	*frame;
@@ -210,7 +209,7 @@ void R_DrawSpriteModel (entity_t *e)
 
 	if ( alpha != 1.0F )
 		qglEnable( GL_BLEND );
-
+#if 0
 	qglColor4f( 1, 1, 1, alpha );
 
     GL_Bind(currentmodel->skins[e->frame]->texnum);
@@ -1304,7 +1303,6 @@ void R_SetPalette ( const unsigned char *palette)
 */
 void R_DrawBeam( entity_t *e )
 {
-#if 0
 #define NUM_BEAM_SEGS 6
 
 	int	i;
@@ -1339,7 +1337,7 @@ void R_DrawBeam( entity_t *e )
 		VectorAdd( start_points[i], origin, start_points[i] );
 		VectorAdd( start_points[i], direction, end_points[i] );
 	}
-
+#if 0
 	qglDisable( GL_TEXTURE_2D );
 	qglEnable( GL_BLEND );
 	qglDepthMask( GL_FALSE );
