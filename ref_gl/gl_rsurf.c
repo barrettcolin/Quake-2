@@ -41,26 +41,34 @@ int		c_visible_textures;
 
 #define GL_LIGHTMAP_FORMAT GL_RGBA
 
+typedef enum
+{
+	lmt_static,
+	lmt_dynamic,
+
+	num_lightmaptypes
+} lightmaptype_t;
+
 typedef struct
 {
 	int internal_format;
-	int	current_lightmap_texture;
+	int	current_lightmap_texture[num_lightmaptypes];
 
 	msurface_t	*lightmap_surfaces[MAX_LIGHTMAPS];
 
-	int			allocated[BLOCK_WIDTH];
+	int			allocated[num_lightmaptypes][BLOCK_WIDTH];
 
 	// the lightmap texture data needs to be kept in
 	// main memory so texsubimage can update properly
-	byte		lightmap_buffer[4*BLOCK_WIDTH*BLOCK_HEIGHT];
+	byte		lightmap_buffer[num_lightmaptypes][4*BLOCK_WIDTH*BLOCK_HEIGHT];
 } gllightmapstate_t;
 
 static gllightmapstate_t gl_lms;
 
 
-static void		LM_InitBlock( void );
-static void		LM_UploadBlock( qboolean dynamic );
-static qboolean	LM_AllocBlock (int w, int h, int *x, int *y);
+static void		LM_InitBlock( lightmaptype_t type );
+static void		LM_UploadBlock( lightmaptype_t type, qboolean dynamic );
+static qboolean	LM_AllocBlock (lightmaptype_t type, int w, int h, int *x, int *y);
 
 extern void R_SetCacheState( msurface_t *surf );
 extern void R_BuildLightMap (msurface_t *surf, byte *dest, int stride);
@@ -390,7 +398,7 @@ void R_BlendLightmaps (void)
 	*/
 	if ( gl_dynamic->value )
 	{
-		LM_InitBlock();
+		LM_InitBlock(lmt_dynamic); //<note.cb either will do, modifying lightmap 0 regardless
 
 		GL_Bind( gl_state.lightmap_textures+0 );
 
@@ -407,9 +415,9 @@ void R_BlendLightmaps (void)
 			smax = (surf->extents[0]>>4)+1;
 			tmax = (surf->extents[1]>>4)+1;
 
-			if ( LM_AllocBlock( smax, tmax, &surf->dlight_s, &surf->dlight_t ) )
+			if ( LM_AllocBlock( lmt_dynamic, smax, tmax, &surf->dlight_s, &surf->dlight_t ) )
 			{
-				base = gl_lms.lightmap_buffer;
+				base = gl_lms.lightmap_buffer[lmt_dynamic];
 				base += ( surf->dlight_t * BLOCK_WIDTH + surf->dlight_s ) * LIGHTMAP_BYTES;
 
 				R_BuildLightMap (surf, base, BLOCK_WIDTH*LIGHTMAP_BYTES);
@@ -419,7 +427,7 @@ void R_BlendLightmaps (void)
 				msurface_t *drawsurf;
 
 				// upload what we have so far
-				LM_UploadBlock( true );
+				LM_UploadBlock( lmt_dynamic, true );
 
 				// draw all surfaces that use this lightmap
 				for ( drawsurf = newdrawsurf; drawsurf != surf; drawsurf = drawsurf->lightmapchain )
@@ -433,15 +441,15 @@ void R_BlendLightmaps (void)
 				newdrawsurf = drawsurf;
 
 				// clear the block
-				LM_InitBlock();
+				LM_InitBlock(lmt_dynamic);
 
 				// try uploading the block now
-				if ( !LM_AllocBlock( smax, tmax, &surf->dlight_s, &surf->dlight_t ) )
+				if ( !LM_AllocBlock( lmt_dynamic, smax, tmax, &surf->dlight_s, &surf->dlight_t ) )
 				{
 					ri.Sys_Error( ERR_FATAL, "Consecutive calls to LM_AllocBlock(%d,%d) failed (dynamic)\n", smax, tmax );
 				}
 
-				base = gl_lms.lightmap_buffer;
+				base = gl_lms.lightmap_buffer[lmt_dynamic];
 				base += ( surf->dlight_t * BLOCK_WIDTH + surf->dlight_s ) * LIGHTMAP_BYTES;
 
 				R_BuildLightMap (surf, base, BLOCK_WIDTH*LIGHTMAP_BYTES);
@@ -452,7 +460,7 @@ void R_BlendLightmaps (void)
 		** draw remainder of dynamic lightmaps that haven't been uploaded yet
 		*/
 		if ( newdrawsurf )
-			LM_UploadBlock( true );
+			LM_UploadBlock( lmt_dynamic, true );
 
 		for ( surf = newdrawsurf; surf != 0; surf = surf->lightmapchain )
 		{
@@ -1348,12 +1356,12 @@ void R_MarkLeaves (void)
 =============================================================================
 */
 
-static void LM_InitBlock( void )
+static void LM_InitBlock( lightmaptype_t type )
 {
-	memset( gl_lms.allocated, 0, sizeof( gl_lms.allocated ) );
+	memset( gl_lms.allocated[type], 0, sizeof( gl_lms.allocated[type] ) );
 }
 
-static void LM_UploadBlock( qboolean dynamic )
+static void LM_UploadBlock( lightmaptype_t type, qboolean dynamic )
 {
 	int texture;
 	int height = 0;
@@ -1364,7 +1372,7 @@ static void LM_UploadBlock( qboolean dynamic )
 	}
 	else
 	{
-		texture = gl_lms.current_lightmap_texture;
+		texture = gl_lms.current_lightmap_texture[type];
 	}
 
 	GL_Bind( gl_state.lightmap_textures + texture );
@@ -1377,8 +1385,8 @@ static void LM_UploadBlock( qboolean dynamic )
 
 		for ( i = 0; i < BLOCK_WIDTH; i++ )
 		{
-			if ( gl_lms.allocated[i] > height )
-				height = gl_lms.allocated[i];
+			if ( gl_lms.allocated[type][i] > height )
+				height = gl_lms.allocated[type][i];
 		}
 
 		qglTexSubImage2D( GL_TEXTURE_2D, 
@@ -1387,10 +1395,16 @@ static void LM_UploadBlock( qboolean dynamic )
 						  BLOCK_WIDTH, height,
 						  GL_LIGHTMAP_FORMAT,
 						  GL_UNSIGNED_BYTE,
-						  gl_lms.lightmap_buffer );
+						  gl_lms.lightmap_buffer[type] );
 	}
 	else
 	{
+        int next_texture =
+                ((gl_lms.current_lightmap_texture[lmt_static] >
+                gl_lms.current_lightmap_texture[lmt_dynamic])
+                ? gl_lms.current_lightmap_texture[lmt_static]
+                  : gl_lms.current_lightmap_texture[lmt_dynamic]) + 1;
+
 		qglTexImage2D( GL_TEXTURE_2D, 
 					   0, 
 					   gl_lms.internal_format,
@@ -1398,14 +1412,17 @@ static void LM_UploadBlock( qboolean dynamic )
 					   0, 
 					   GL_LIGHTMAP_FORMAT, 
 					   GL_UNSIGNED_BYTE, 
-					   gl_lms.lightmap_buffer );
-		if ( ++gl_lms.current_lightmap_texture == MAX_LIGHTMAPS )
+					   gl_lms.lightmap_buffer[type] );
+
+        if ( next_texture == MAX_LIGHTMAPS )
 			ri.Sys_Error( ERR_DROP, "LM_UploadBlock() - MAX_LIGHTMAPS exceeded\n" );
+        else
+            gl_lms.current_lightmap_texture[type] = next_texture;
 	}
 }
 
 // returns a texture number and the position inside it
-static qboolean LM_AllocBlock (int w, int h, int *x, int *y)
+static qboolean LM_AllocBlock (lightmaptype_t type, int w, int h, int *x, int *y)
 {
 	int		i, j;
 	int		best, best2;
@@ -1418,10 +1435,10 @@ static qboolean LM_AllocBlock (int w, int h, int *x, int *y)
 
 		for (j=0 ; j<w ; j++)
 		{
-			if (gl_lms.allocated[i+j] >= best)
+			if (gl_lms.allocated[type][i+j] >= best)
 				break;
-			if (gl_lms.allocated[i+j] > best2)
-				best2 = gl_lms.allocated[i+j];
+			if (gl_lms.allocated[type][i+j] > best2)
+				best2 = gl_lms.allocated[type][i+j];
 		}
 		if (j == w)
 		{	// this is a valid spot
@@ -1434,7 +1451,7 @@ static qboolean LM_AllocBlock (int w, int h, int *x, int *y)
 		return false;
 
 	for (i=0 ; i<w ; i++)
-		gl_lms.allocated[*x + i] = best + h;
+		gl_lms.allocated[type][*x + i] = best + h;
 
 	return true;
 }
@@ -1522,10 +1539,11 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 GL_CreateSurfaceLightmap
 ========================
 */
-void GL_CreateSurfaceLightmap (msurface_t *surf)
+void GL_CreateSurfaceLightmap (msurface_t *surf, qboolean is_dynamic)
 {
 	int		smax, tmax;
 	byte	*base;
+	lightmaptype_t type = is_dynamic ? lmt_dynamic : lmt_static;
 
 	if (surf->flags & (SURF_DRAWSKY|SURF_DRAWTURB))
 		return;
@@ -1533,19 +1551,19 @@ void GL_CreateSurfaceLightmap (msurface_t *surf)
 	smax = (surf->extents[0]>>4)+1;
 	tmax = (surf->extents[1]>>4)+1;
 
-	if ( !LM_AllocBlock( smax, tmax, &surf->light_s, &surf->light_t ) )
+	if ( !LM_AllocBlock( type, smax, tmax, &surf->light_s, &surf->light_t ) )
 	{
-		LM_UploadBlock( false );
-		LM_InitBlock();
-		if ( !LM_AllocBlock( smax, tmax, &surf->light_s, &surf->light_t ) )
+		LM_UploadBlock( type, false );
+		LM_InitBlock(type);
+		if ( !LM_AllocBlock( type, smax, tmax, &surf->light_s, &surf->light_t ) )
 		{
 			ri.Sys_Error( ERR_FATAL, "Consecutive calls to LM_AllocBlock(%d,%d) failed\n", smax, tmax );
 		}
 	}
 
-	surf->lightmaptexturenum = gl_lms.current_lightmap_texture;
+	surf->lightmaptexturenum = gl_lms.current_lightmap_texture[type];
 
-	base = gl_lms.lightmap_buffer;
+	base = gl_lms.lightmap_buffer[type];
 	base += (surf->light_t * BLOCK_WIDTH + surf->light_s) * LIGHTMAP_BYTES;
 
 	R_SetCacheState( surf );
@@ -1592,7 +1610,8 @@ void GL_BeginBuildingLightmaps (model_t *m)
 //		gl_state.texture_extension_number = gl_state.lightmap_textures + MAX_LIGHTMAPS;
 	}
 
-	gl_lms.current_lightmap_texture = 1;
+	gl_lms.current_lightmap_texture[lmt_static] = 1;
+	gl_lms.current_lightmap_texture[lmt_dynamic] = 2;
 
 	/*
 	** if mono lightmaps are enabled and we want to use alpha
@@ -1654,7 +1673,8 @@ GL_EndBuildingLightmaps
 */
 void GL_EndBuildingLightmaps (void)
 {
-	LM_UploadBlock( false );
+	LM_UploadBlock( lmt_static, false );
+	LM_UploadBlock( lmt_dynamic, false );
 	GL_EnableMultitexture( false );
 }
 

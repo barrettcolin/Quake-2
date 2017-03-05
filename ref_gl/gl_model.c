@@ -543,7 +543,7 @@ void CalcSurfaceExtents (msurface_t *s)
 
 
 void GL_BuildPolygonFromSurface(msurface_t *fa);
-void GL_CreateSurfaceLightmap (msurface_t *surf);
+void GL_CreateSurfaceLightmap (msurface_t *surf, qboolean is_dynamic);
 void GL_EndBuildingLightmaps (void);
 void GL_BeginBuildingLightmaps (model_t *m);
 
@@ -575,6 +575,7 @@ void Mod_LoadFaces (lump_t *l)
 
 	for ( surfnum=0 ; surfnum<count ; surfnum++, in++, out++)
 	{
+		qboolean is_dynamic = false;
 		out->firstedge = LittleLong(in->firstedge);
 		out->numedges = LittleShort(in->numedges);		
 		out->flags = 0;
@@ -597,7 +598,11 @@ void Mod_LoadFaces (lump_t *l)
 	// lighting info
 
 		for (i=0 ; i<MAXLIGHTMAPS ; i++)
+		{
 			out->styles[i] = in->styles[i];
+			if(out->styles[i] != 0 && out->styles[i] != 255)
+				is_dynamic = true;
+		}
 		i = LittleLong(in->lightofs);
 		if (i == -1)
 			out->samples = NULL;
@@ -619,7 +624,7 @@ void Mod_LoadFaces (lump_t *l)
 
 		// create lightmaps and polygons
 		if ( !(out->texinfo->flags & (SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP) ) )
-			GL_CreateSurfaceLightmap (out);
+			GL_CreateSurfaceLightmap (out, is_dynamic);
 
 		if (! (out->texinfo->flags & SURF_WARP) ) 
 			GL_BuildPolygonFromSurface(out);
