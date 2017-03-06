@@ -836,9 +836,13 @@ void R_RenderView (refdef_t *fd)
 
 	R_MarkLeaves ();	// done here so we know if we're in water
 
+    rmt_BeginCPUSample(R_DrawWorld, 0);
 	R_DrawWorld ();
+    rmt_EndCPUSample();
 
+    rmt_BeginCPUSample(R_DrawEntitiesOnList, 0);
 	R_DrawEntitiesOnList ();
+    rmt_EndCPUSample();
 
 	R_RenderDlights ();
 

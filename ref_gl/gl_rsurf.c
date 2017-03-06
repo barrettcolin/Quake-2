@@ -739,6 +739,7 @@ dynamic:
 		unsigned	temp[128*128];
 		int			smax, tmax;
 
+        rmt_BeginCPUSample(TexSubImage, RMTSF_Aggregate);
 		if ( ( surf->styles[map] >= 32 || surf->styles[map] == 0 ) && ( surf->dlightframe != r_framecount ) )
 		{
 			smax = (surf->extents[0]>>4)+1;
@@ -776,9 +777,11 @@ dynamic:
 							  GL_UNSIGNED_BYTE, temp );
 
 		}
+        rmt_EndCPUSample();
 
 		c_brush_polys++;
 
+        rmt_BeginCPUSample(DrawPoly, RMTSF_Aggregate);
 		GL_MBind( GL_TEXTURE0_SGIS, image->texnum );
 		GL_MBind( GL_TEXTURE1_SGIS, gl_state.lightmap_textures + lmtex );
 
@@ -822,6 +825,7 @@ dynamic:
 		}
 //PGM
 //==========
+        rmt_EndCPUSample();
 	}
 	else
 	{
