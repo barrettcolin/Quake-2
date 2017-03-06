@@ -14,7 +14,9 @@ add_library(shared
   game/q_shared.c
   linux/glob.c
   linux/q_shlinux.c
+  Remotery/lib/Remotery.c
   game/q_shared.h
+  Remotery/lib/Remotery.h
   )
 
 add_subdirectory(game)
@@ -97,7 +99,7 @@ set(Q2_INCS
 #add_executable(Quake2 WIN32 ${Q2_SRCS} ${Q2_INCS} win32/q2.rc win32/q2.ico)
 #target_link_libraries(Quake2 shared winmm wsock32)
 add_executable(Quake2 ${Q2_SRCS} ${Q2_INCS})
-target_link_libraries(Quake2 game_static ref_gl_static shared ${SDL2_LIBRARIES} GL m)
+target_link_libraries(Quake2 game_static ref_gl_static shared ${SDL2_LIBRARIES} GL m pthread)
 
 #add_custom_command(TARGET Quake2 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETPATH)\" ${PROJECT_SOURCE_DIR})
 #add_custom_command(TARGET Quake2 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETDIR)$(TARGETNAME).pdb\" ${PROJECT_SOURCE_DIR})
