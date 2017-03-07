@@ -739,7 +739,7 @@ dynamic:
 		unsigned	temp[128*128];
 		int			smax, tmax;
 
-        rmt_BeginCPUSample(TexSubImage, RMTSF_Aggregate);
+        rmt_BeginCPUSample(TexSubImage, 0);//RMTSF_Aggregate);
 		{
 			smax = (surf->extents[0]>>4)+1;
 			tmax = (surf->extents[1]>>4)+1;
@@ -763,7 +763,7 @@ dynamic:
 
     if(actually_draw)
 	{
-        rmt_BeginCPUSample(DrawPoly, RMTSF_Aggregate);
+        rmt_BeginCPUSample(DrawPoly, 0);//RMTSF_Aggregate);
 		c_brush_polys++;
 
 		GL_MBind( GL_TEXTURE0_SGIS, image->texnum );
