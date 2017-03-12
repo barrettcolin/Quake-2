@@ -80,7 +80,7 @@ R_TextureAnimation
 Returns the proper texture for a given time and base texture
 ===============
 */
-image_t *R_TextureAnimation (mtexinfo_t *tex)
+image_t *R_TextureAnimation (mtexinfo_t const *tex)
 {
 	int		c;
 
@@ -439,6 +439,61 @@ void DrawTextureChains (void)
 }
 
 
+static void GL_UpdateLightmap(msurface_t *surf)
+{
+    int map;
+    qboolean is_dynamic_style;
+    qboolean is_dlight;
+    qboolean was_dlight;
+
+    if (!gl_dynamic->value)
+        return;
+
+    if (surf->texinfo->flags & (SURF_SKY | SURF_TRANS33 | SURF_TRANS66 | SURF_WARP))
+        return;
+
+    for (is_dynamic_style = false, map = 0; map < MAXLIGHTMAPS && surf->styles[map] != 255; map++)
+    {
+        if (r_newrefdef.lightstyles[surf->styles[map]].white != surf->cached_light[map])
+        {
+            is_dynamic_style = true;
+            break;
+        }
+    }
+
+    is_dlight = (surf->dlightframe == r_framecount);
+    was_dlight = (surf->dlightframe != 0) && !is_dlight; // catch stale dlights
+
+    if (is_dynamic_style || is_dlight || was_dlight)
+    {
+        unsigned	temp[128 * 128];
+        int			smax, tmax;
+
+        smax = (surf->extents[0] >> 4) + 1;
+        tmax = (surf->extents[1] >> 4) + 1;
+
+        R_BuildLightMap(surf, (void *)temp, smax * 4);
+
+        if ((surf->styles[map] >= 32 || surf->styles[map] == 0) && !is_dlight)
+        {
+            R_SetCacheState(surf);
+        }
+
+        // clear stale dlights
+        if(was_dlight)
+            surf->dlightframe = 0;
+
+        GL_SelectTexture(GL_TEXTURE1);
+        GL_Bind(gl_state.lightmap_textures + surf->lightmaptexturenum);
+
+        qglTexSubImage2D(
+            GL_TEXTURE_2D, 0, surf->light_s, surf->light_t, smax, tmax, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE, temp);
+
+        c_lightmap_updates++;
+    }
+}
+
+
 static void GL_RenderLightmappedPoly( msurface_t *surf )
 {
 	int		nv = surf->polys->numverts;
@@ -671,10 +726,10 @@ void R_DrawBrushModel (entity_t *e)
 
 /*
 ================
-R_RecursiveWorldNode
+RecursiveWorldNode
 ================
 */
-void R_RecursiveWorldNode (mnode_t *node)
+static void RecursiveWorldNode (mnode_t *node)
 {
 	int			c, side, sidebit;
 	cplane_t	*plane;
@@ -702,6 +757,8 @@ void R_RecursiveWorldNode (mnode_t *node)
 			if (! (r_newrefdef.areabits[pleaf->area>>3] & (1<<(pleaf->area&7)) ) )
 				return;		// not visible
 		}
+
+        pleaf->viewframe = r_visframecount;
 
 		mark = pleaf->firstmarksurface;
 		c = pleaf->nummarksurfaces;
@@ -751,7 +808,7 @@ void R_RecursiveWorldNode (mnode_t *node)
 	}
 
 // recurse down the children, front side first
-	R_RecursiveWorldNode (node->children[side]);
+	RecursiveWorldNode (node->children[side]);
 
 	// draw stuff
 	for ( c = node->numsurfaces, surf = r_worldmodel->surfaces + node->firstsurface; c ; c--, surf++)
@@ -775,7 +832,7 @@ void R_RecursiveWorldNode (mnode_t *node)
 		{
             if ( !( surf->flags & SURF_DRAWTURB ) )
 			{
-				GL_RenderLightmappedPoly( surf );
+                GL_UpdateLightmap(surf);
 			}
 			else
 			{
@@ -790,7 +847,7 @@ void R_RecursiveWorldNode (mnode_t *node)
 	}
 
 	// recurse down the back side
-	R_RecursiveWorldNode (node->children[!side]);
+	RecursiveWorldNode (node->children[!side]);
 /*
 	for ( ; c ; c--, surf++)
 	{
@@ -830,6 +887,65 @@ void R_RecursiveWorldNode (mnode_t *node)
 }
 
 
+static void GL_RenderMarkSurfaces(int numleafs, mleaf_t *leaf)
+{
+    for (; numleafs; numleafs--, leaf++)
+    {
+        int numsurfs;
+        msurface_t **surf;
+
+        if (leaf->viewframe != r_visframecount)
+            continue;
+
+        surf = leaf->firstmarksurface;
+        numsurfs = leaf->nummarksurfaces;
+        for (; numsurfs; numsurfs--, surf++)
+        {
+            image_t const *const image = R_TextureAnimation((*surf)->texinfo);
+            int const nv = (*surf)->polys->numverts;
+            glpoly_t const *p;
+
+            if (((*surf)->flags & SURF_DRAWTURB) || ((*surf)->texinfo->flags & (SURF_SKY | SURF_TRANS33 | SURF_TRANS66)))
+                continue;
+
+            c_brush_polys++;
+
+            GL_MBind(GL_TEXTURE0, image->texnum);
+            GL_MBind(GL_TEXTURE1, gl_state.lightmap_textures + (*surf)->lightmaptexturenum);
+
+            if ((*surf)->texinfo->flags & SURF_FLOWING)
+            {
+                float scroll;
+
+                scroll = -64 * ((r_newrefdef.time / 40.0) - (int)(r_newrefdef.time / 40.0));
+                if (scroll == 0.0)
+                    scroll = -64.0;
+
+                for (p = (*surf)->polys; p; p = p->chain)
+                {
+                    qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+                    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+                    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+                    qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
+                    qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
+                }
+            }
+            else
+            {
+                for (p = (*surf)->polys; p; p = p->chain)
+                {
+                    qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
+                    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
+                    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+                    qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
+                    qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
+                }
+            }
+        }
+    }
+}
+
+
 /*
 =============
 R_DrawWorld
@@ -863,9 +979,11 @@ void R_DrawWorld (void)
     Material_SetClipFromView(g_lightmapped_material, gl_state.clip_from_view);
     Material_SetViewFromWorld(g_lightmapped_material, gl_state.view_from_world);
     Material_SetWorldFromModel(g_lightmapped_material, g_identity_matrix);
-    R_RecursiveWorldNode (r_worldmodel->nodes);
+    RecursiveWorldNode (r_worldmodel->nodes);
 
-    // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by R_RecursiveWorldNode
+    GL_RenderMarkSurfaces(r_worldmodel->numleafs, r_worldmodel->leafs);
+
+    // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by RecursiveWorldNode
     Material_SetCurrent(g_unlit_material);
     Material_SetClipFromView(g_unlit_material, gl_state.clip_from_view);
     Material_SetViewFromWorld(g_unlit_material, gl_state.view_from_world);

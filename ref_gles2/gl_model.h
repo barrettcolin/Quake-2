@@ -156,8 +156,9 @@ typedef struct mleaf_s
 	struct mnode_s	*parent;
 
 // leaf specific
-	int			cluster;
-	int			area;
+	short		cluster;
+	short		area;
+    int			viewframe;
 
 	msurface_t	**firstmarksurface;
 	int			nummarksurfaces;

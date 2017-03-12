@@ -64,7 +64,7 @@ An OpenGL ES 2.0 refresh module for Quake 2. What's called a 'Material' below mi
     R_RenderFrame
      R_RenderView
       R_PushDlights
-      R_SetupFrame
+      R_SetupFrame // Sets current view cluster (leaf->cluster of leaf containing view origin)
       R_SetFrustum
       R_SetupGL
        glViewport
@@ -74,14 +74,15 @@ An OpenGL ES 2.0 refresh module for Quake 2. What's called a 'Material' below mi
        // gl_state.view_from_world.view_from_world = view_from_ref * ref_from_world
        GL_CULL_FACE
        glEnable(GL_DEPTH_TEST)
-      R_MarkLeaves
+      R_MarkVisLeaves // Calculates clusters visible from current view cluster, marks all cluster leaves with current frame count
+	  R_MarkViewLeaves // Mark PVS leaves actually in view
       R_DrawWorld
        Material_SetCurrent(g_lightmapped_material)
        Material_SetClipFromView(g_lightmapped_material, gl_state.clip_from_view)
        Material_SetViewFromWorld(g_lightmapped_material, gl_state.view_from_world)
        Material_SetWorldFromModel(g_lightmapped_material, g_identity_matrix)
-       R_RecursiveWorldNode (r_worldmodel->nodes)
-       // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by R_RecursiveWorldNode
+       RecursiveWorldNode (r_worldmodel->nodes) // (leaf) if leaf has current frame count, mark all surfaces as visible/(node) render node surfaces (i.e. in plane)
+       // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by RecursiveWorldNode
        Material_SetCurrent(g_unlit_material)
        Material_SetClipFromView(g_unlit_material, gl_state.clip_from_view)
        Material_SetViewFromWorld(g_unlit_material, gl_state.view_from_world)
