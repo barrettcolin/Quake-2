@@ -602,3 +602,5 @@ typedef struct
 {
     short a, b, c;
 } gltriangle_t;
+
+#include "../Remotery/lib/Remotery.h"

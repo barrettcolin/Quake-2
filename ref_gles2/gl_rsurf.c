@@ -985,9 +985,14 @@ void R_DrawWorld (void)
     Material_SetClipFromView(g_lightmapped_material, gl_state.clip_from_view);
     Material_SetViewFromWorld(g_lightmapped_material, gl_state.view_from_world);
     Material_SetWorldFromModel(g_lightmapped_material, g_identity_matrix);
-    RecursiveWorldNode (r_worldmodel->nodes);
 
+    rmt_BeginCPUSample(RecursiveWorldNode, 0);
+    RecursiveWorldNode (r_worldmodel->nodes);
+    rmt_EndCPUSample();
+
+    rmt_BeginCPUSample(GL_RenderMarkSurfaces, 0);
     GL_RenderMarkSurfaces(r_worldmodel->numleafs, r_worldmodel->leafs);
+    rmt_EndCPUSample();
 
     // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by RecursiveWorldNode
     Material_SetCurrent(g_unlit_material);

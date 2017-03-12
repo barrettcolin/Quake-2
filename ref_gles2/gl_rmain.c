@@ -914,7 +914,10 @@ R_RenderFrame
 */
 void R_RenderFrame (refdef_t *fd)
 {
+    rmt_BeginCPUSample(R_RenderView, 0);
 	R_RenderView( fd );
+    rmt_EndCPUSample();
+
 	R_SetLightLevel ();
 	R_SetGL2D ();
 }
