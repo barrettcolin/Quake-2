@@ -436,7 +436,7 @@ extern BOOL ( WINAPI * qwglSetDeviceGammaRampEXT ) ( const unsigned char *pRed, 
 #define GL_SHARED_TEXTURE_PALETTE_EXT		0x81FB
 #endif
 
-#define GL_TEXTURE0_SGIS					0x835E
-#define GL_TEXTURE1_SGIS					0x835F
+#define GL_TEXTURE0_SGIS					GL_TEXTURE0
+#define GL_TEXTURE1_SGIS					GL_TEXTURE1
 
 #endif

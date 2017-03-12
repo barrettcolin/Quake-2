@@ -17,7 +17,7 @@ link_directories(/opt/vc/lib)
 
 add_definitions(-D_CRT_SECURE_NO_WARNINGS -DC_ONLY -DGAME_HARD_LINKED -DREF_HARD_LINKED)
 
-set(SHARED_SRCS game/q_shared.c game/q_shared.h)
+set(SHARED_SRCS game/q_shared.c game/q_shared.h Remotery/lib/Remotery.c Remotery/lib/Remotery.h)
 
 if(WIN32)
   set(SHARED_SRCS ${SHARED_SRCS} win32/q_shwin.c)
@@ -115,8 +115,7 @@ if(WIN32)
   target_link_libraries(Quake2 game_static ref_gles2_static shared ${SDL2_LIBRARIES} wsock32 winmm)
 else()
   add_executable(Quake2 ${Q2_SRCS} ${Q2_INCS})
-  target_link_libraries(Quake2 game_static ref_gles2_static shared ${SDL2_LIBRARIES} m)
-  #target_link_libraries(Quake2 game_static ref_gl2_static shared ${SDL2_LIBRARIES} GL m)
+  target_link_libraries(Quake2 game_static ref_gles2_static shared ${SDL2_LIBRARIES} m pthread)
 endif()
 
 #add_custom_command(TARGET Quake2 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETPATH)\" ${PROJECT_SOURCE_DIR})

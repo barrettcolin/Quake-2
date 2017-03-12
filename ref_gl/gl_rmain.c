@@ -836,9 +836,13 @@ void R_RenderView (refdef_t *fd)
 
 	R_MarkLeaves ();	// done here so we know if we're in water
 
+    rmt_BeginCPUSample(R_DrawWorld, 0);
 	R_DrawWorld ();
+    rmt_EndCPUSample();
 
+    rmt_BeginCPUSample(R_DrawEntitiesOnList, 0);
 	R_DrawEntitiesOnList ();
+    rmt_EndCPUSample();
 
 	R_RenderDlights ();
 
@@ -1301,25 +1305,17 @@ int R_Init( void *hinstance, void *hWnd )
 	{
 		ri.Con_Printf( PRINT_ALL, "...GL_EXT_shared_texture_palette not found\n" );
 	}
-
-	if ( strstr( gl_config.extensions_string, "GL_SGIS_multitexture" ) )
-	{
-		if ( gl_ext_multitexture->value )
-		{
-			ri.Con_Printf( PRINT_ALL, "...using GL_SGIS_multitexture\n" );
-			qglMTexCoord2fSGIS = ( void * ) qwglGetProcAddress( "glMTexCoord2fSGIS" );
-			qglSelectTextureSGIS = ( void * ) qwglGetProcAddress( "glSelectTextureSGIS" );
-		}
-		else
-		{
-			ri.Con_Printf( PRINT_ALL, "...ignoring GL_SGIS_multitexture\n" );
-		}
-	}
-	else
-	{
-		ri.Con_Printf( PRINT_ALL, "...GL_SGIS_multitexture not found\n" );
-	}
 #endif
+    if ( gl_ext_multitexture->value )
+    {
+        ri.Con_Printf( PRINT_ALL, "...using GL_SGIS_multitexture\n" );
+        qglMTexCoord2fSGIS = glMultiTexCoord2f; // ( void * ) qwglGetProcAddress( "glMTexCoord2fSGIS" );
+        qglSelectTextureSGIS = glActiveTexture; // ( void * ) qwglGetProcAddress( "glSelectTextureSGIS" );
+    }
+    else
+    {
+        ri.Con_Printf( PRINT_ALL, "...ignoring GL_SGIS_multitexture\n" );
+    }
 
 	GL_SetDefaultState();
 

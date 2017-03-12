@@ -1,5 +1,8 @@
 #include "SDL.h"
 
+#include "Remotery/lib/Remotery.h"
+static Remotery *rmt;
+
 #include "client/client.h"
 #include "client/snd_loc.h"
 #include "game/game.h"
@@ -14,12 +17,16 @@ game_export_t *GetGameAPI(game_import_t *import);
 
 void Sys_Init(void)
 {
+    rmt_CreateGlobalInstance(&rmt);
+
     SDL_Init(SDL_INIT_EVERYTHING);
 }
 
 void Sys_Quit(void)
 {
     SDL_Quit();
+
+    rmt_DestroyGlobalInstance(rmt);
 
     exit(0);
 }
@@ -557,7 +564,9 @@ int main(int argc, char **argv)
             if(deltaTime == 0)
                 continue;
 
+            rmt_BeginCPUSample(Qcommon_Frame, 0);
             Qcommon_Frame(deltaTime);
+            rmt_EndCPUSample();
 
             prevTime = currTime;
         }
