@@ -488,8 +488,6 @@ static void GL_UpdateLightmap(msurface_t *surf)
 
         qglTexSubImage2D(
             GL_TEXTURE_2D, 0, surf->light_s, surf->light_t, smax, tmax, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE, temp);
-
-        c_lightmap_updates++;
     }
 }
 
