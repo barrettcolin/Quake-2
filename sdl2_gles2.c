@@ -101,14 +101,14 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
     window = SDL_CreateWindow("Quake 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, desiredWidth, desiredHeight, flags);
     if(!window)
     {
-        ri.Con_Printf(PRINT_ALL, "%s\n", SDL_GetError());
+        ri.Con_Printf(PRINT_ALL, "(%s) SDL_CreateWindow: %s\n", SDL_GetCurrentVideoDriver(), SDL_GetError());
         return rserr_unknown;
     }
 
     GLcontext = SDL_GL_CreateContext(window);
     if(!GLcontext)
     {
-        ri.Con_Printf(PRINT_ALL, "%s\n", SDL_GetError());
+        ri.Con_Printf(PRINT_ALL, "(%s) SDL_GL_CreateContext: %s\n", SDL_GetCurrentVideoDriver(), SDL_GetError());
         SDL_DestroyWindow(window);
         window = NULL;
         return rserr_unknown;

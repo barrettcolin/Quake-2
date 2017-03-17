@@ -17,9 +17,16 @@ game_export_t *GetGameAPI(game_import_t *import);
 
 void Sys_Init(void)
 {
+    int i, numVid = SDL_GetNumVideoDrivers();
     rmt_CreateGlobalInstance(&rmt);
 
     SDL_Init(SDL_INIT_EVERYTHING);
+
+    for(i = 0; i < numVid; ++i)
+    {
+        printf("%d: %s\n", i, SDL_GetVideoDriver(i));
+    }
+    printf("current: %s\n", SDL_GetCurrentVideoDriver());
 }
 
 void Sys_Quit(void)
@@ -77,7 +84,7 @@ char *Sys_ConsoleInput(void)
 
 void Sys_ConsoleOutput(char *string)
 {
-
+    printf("%s", string);
 }
 
 // IN
