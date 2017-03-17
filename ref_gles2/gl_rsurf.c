@@ -74,10 +74,11 @@ static qboolean	LM_AllocBlock (lightmaptype_t type, int w, int h, int *x, int *y
 extern void R_SetCacheState( msurface_t *surf );
 extern void R_BuildLightMap (msurface_t *surf, byte *dest, int stride);
 
-static int GL_GetLightmapTextureId(int textureId, int firstLightmap, int numLightmaps, int numBuffers, int frameCount)
+static int gl_currentLightmapBuffer = 0;
+
+static int GL_GetLightmapTextureId(int textureId, int firstLightmap, int numLightmaps)
 {
-    const int frameBuffer = frameCount % numBuffers;
-    return firstLightmap + (numLightmaps * frameBuffer) + textureId;
+    return firstLightmap + (numLightmaps * gl_currentLightmapBuffer) + textureId;
 }
 
 /*
@@ -346,7 +347,7 @@ dynamic:
 			R_SetCacheState( fa );
 
             GL_SelectTexture(GL_TEXTURE1);
-			GL_Bind(GL_GetLightmapTextureId(fa->lightmaptexturenum, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
+			GL_Bind(GL_GetLightmapTextureId(fa->lightmaptexturenum, gl_state.lightmap_textures, MAX_LIGHTMAPS));
 
             qglTexSubImage2D( GL_TEXTURE_2D, 0,
 							  fa->light_s, fa->light_t, 
@@ -458,7 +459,9 @@ static void GL_UpdateLightmap(msurface_t *surf)
 {
     int map;
     qboolean is_dynamic_style;
-    qboolean is_or_was_dlight;
+    qboolean is_dlight;
+    qboolean was_dlight;
+    int lightmap_dirty_bit = (1 << (gl_currentLightmapBuffer + 16));
 
     if (!gl_dynamic->value)
         return;
@@ -475,9 +478,10 @@ static void GL_UpdateLightmap(msurface_t *surf)
         }
     }
 
-    is_or_was_dlight = (surf->dlightframe >= r_framecount - NUM_LIGHTMAP_BUFFERS);
+    is_dlight = (surf->dlightframe == r_framecount);
+    was_dlight = surf->flags & lightmap_dirty_bit;
 
-    if (is_dynamic_style || is_or_was_dlight)
+    if (is_dynamic_style || is_dlight || was_dlight)
     {
         unsigned	temp[128 * 128];
         int			smax, tmax;
@@ -487,13 +491,23 @@ static void GL_UpdateLightmap(msurface_t *surf)
 
         R_BuildLightMap(surf, (void *)temp, smax * 4);
 
-        if ((surf->styles[map] >= 32 || surf->styles[map] == 0) && !is_or_was_dlight)
+        if ((surf->styles[map] >= 32 || surf->styles[map] == 0) && !is_dlight)
         {
             R_SetCacheState(surf);
         }
 
+        // clear stale dlights
+        if (was_dlight && !is_dlight)
+        {
+            surf->flags &= ~lightmap_dirty_bit;
+        }
+        else if (is_dlight)
+        {
+            surf->flags |= lightmap_dirty_bit;
+        }
+
         GL_SelectTexture(GL_TEXTURE1);
-        GL_Bind(GL_GetLightmapTextureId(surf->lightmaptexturenum, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
+        GL_Bind(GL_GetLightmapTextureId(surf->lightmaptexturenum, gl_state.lightmap_textures, MAX_LIGHTMAPS));
 
         qglTexSubImage2D(
             GL_TEXTURE_2D, 0, surf->light_s, surf->light_t, smax, tmax, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE, temp);
@@ -551,7 +565,7 @@ dynamic:
 		}
 
         GL_SelectTexture(GL_TEXTURE1);
-        GL_Bind(GL_GetLightmapTextureId(lmtex, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
+        GL_Bind(GL_GetLightmapTextureId(lmtex, gl_state.lightmap_textures, MAX_LIGHTMAPS));
 
         qglTexSubImage2D( GL_TEXTURE_2D, 0,
                           surf->light_s, surf->light_t,
@@ -563,7 +577,7 @@ dynamic:
     c_brush_polys++;
 
     GL_MBind( GL_TEXTURE0, image->texnum );
-    GL_MBind( GL_TEXTURE1, GL_GetLightmapTextureId(lmtex, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
+    GL_MBind( GL_TEXTURE1, GL_GetLightmapTextureId(lmtex, gl_state.lightmap_textures, MAX_LIGHTMAPS));
 
     if (surf->texinfo->flags & SURF_FLOWING)
     {
@@ -918,8 +932,7 @@ static void GL_RenderMarkSurfaces(int numleafs, mleaf_t *leaf)
             c_brush_polys++;
 
             GL_MBind(GL_TEXTURE0, image->texnum);
-            GL_MBind(GL_TEXTURE1, 
-                GL_GetLightmapTextureId((*surf)->lightmaptexturenum, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
+            GL_MBind(GL_TEXTURE1, GL_GetLightmapTextureId((*surf)->lightmaptexturenum, gl_state.lightmap_textures, MAX_LIGHTMAPS));
 
             if ((*surf)->texinfo->flags & SURF_FLOWING)
             {
@@ -962,6 +975,8 @@ R_DrawWorld
 void R_DrawWorld (void)
 {
 	entity_t	ent;
+
+    gl_currentLightmapBuffer = r_framecount % NUM_LIGHTMAP_BUFFERS;
 
 	if (!r_drawworld->value)
 		return;
