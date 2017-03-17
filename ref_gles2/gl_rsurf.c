@@ -35,6 +35,7 @@ msurface_t	*r_alpha_surfaces;
 #define	BLOCK_HEIGHT	128
 
 #define	MAX_LIGHTMAPS	128
+#define NUM_LIGHTMAP_BUFFERS 2
 
 int		c_visible_lightmaps;
 int		c_visible_textures;
@@ -72,6 +73,12 @@ static qboolean	LM_AllocBlock (lightmaptype_t type, int w, int h, int *x, int *y
 
 extern void R_SetCacheState( msurface_t *surf );
 extern void R_BuildLightMap (msurface_t *surf, byte *dest, int stride);
+
+static int GL_GetLightmapTextureId(int textureId, int firstLightmap, int numLightmaps, int numBuffers, int frameCount)
+{
+    const int frameBuffer = frameCount % numBuffers;
+    return firstLightmap + (numLightmaps * frameBuffer) + textureId;
+}
 
 /*
 =============================================================
@@ -339,7 +346,7 @@ dynamic:
 			R_SetCacheState( fa );
 
             GL_SelectTexture(GL_TEXTURE1);
-			GL_Bind( gl_state.lightmap_textures + fa->lightmaptexturenum );
+			GL_Bind(GL_GetLightmapTextureId(fa->lightmaptexturenum, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
 
             qglTexSubImage2D( GL_TEXTURE_2D, 0,
 							  fa->light_s, fa->light_t, 
@@ -451,8 +458,7 @@ static void GL_UpdateLightmap(msurface_t *surf)
 {
     int map;
     qboolean is_dynamic_style;
-    qboolean is_dlight;
-    qboolean was_dlight;
+    qboolean is_or_was_dlight;
 
     if (!gl_dynamic->value)
         return;
@@ -469,10 +475,9 @@ static void GL_UpdateLightmap(msurface_t *surf)
         }
     }
 
-    is_dlight = (surf->dlightframe == r_framecount);
-    was_dlight = (surf->dlightframe != 0) && !is_dlight; // catch stale dlights
+    is_or_was_dlight = (surf->dlightframe >= r_framecount - NUM_LIGHTMAP_BUFFERS);
 
-    if (is_dynamic_style || is_dlight || was_dlight)
+    if (is_dynamic_style || is_or_was_dlight)
     {
         unsigned	temp[128 * 128];
         int			smax, tmax;
@@ -482,17 +487,13 @@ static void GL_UpdateLightmap(msurface_t *surf)
 
         R_BuildLightMap(surf, (void *)temp, smax * 4);
 
-        if ((surf->styles[map] >= 32 || surf->styles[map] == 0) && !is_dlight)
+        if ((surf->styles[map] >= 32 || surf->styles[map] == 0) && !is_or_was_dlight)
         {
             R_SetCacheState(surf);
         }
 
-        // clear stale dlights
-        if(was_dlight)
-            surf->dlightframe = 0;
-
         GL_SelectTexture(GL_TEXTURE1);
-        GL_Bind(gl_state.lightmap_textures + surf->lightmaptexturenum);
+        GL_Bind(GL_GetLightmapTextureId(surf->lightmaptexturenum, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
 
         qglTexSubImage2D(
             GL_TEXTURE_2D, 0, surf->light_s, surf->light_t, smax, tmax, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE, temp);
@@ -550,7 +551,7 @@ dynamic:
 		}
 
         GL_SelectTexture(GL_TEXTURE1);
-        GL_Bind(gl_state.lightmap_textures + lmtex);
+        GL_Bind(GL_GetLightmapTextureId(lmtex, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
 
         qglTexSubImage2D( GL_TEXTURE_2D, 0,
                           surf->light_s, surf->light_t,
@@ -562,7 +563,7 @@ dynamic:
     c_brush_polys++;
 
     GL_MBind( GL_TEXTURE0, image->texnum );
-    GL_MBind( GL_TEXTURE1, gl_state.lightmap_textures + lmtex );
+    GL_MBind( GL_TEXTURE1, GL_GetLightmapTextureId(lmtex, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
 
     if (surf->texinfo->flags & SURF_FLOWING)
     {
@@ -917,7 +918,8 @@ static void GL_RenderMarkSurfaces(int numleafs, mleaf_t *leaf)
             c_brush_polys++;
 
             GL_MBind(GL_TEXTURE0, image->texnum);
-            GL_MBind(GL_TEXTURE1, gl_state.lightmap_textures + (*surf)->lightmaptexturenum);
+            GL_MBind(GL_TEXTURE1, 
+                GL_GetLightmapTextureId((*surf)->lightmaptexturenum, gl_state.lightmap_textures, MAX_LIGHTMAPS, NUM_LIGHTMAP_BUFFERS, r_framecount));
 
             if ((*surf)->texinfo->flags & SURF_FLOWING)
             {
@@ -1150,20 +1152,28 @@ static void LM_UploadBlock( lightmaptype_t type, qboolean dynamic )
 	}
 	else
 	{
-        int next_texture =
+        int b = 0, next_texture =
                 ((gl_lms.current_lightmap_texture[lmt_static] >
                 gl_lms.current_lightmap_texture[lmt_dynamic])
                 ? gl_lms.current_lightmap_texture[lmt_static]
                   : gl_lms.current_lightmap_texture[lmt_dynamic]) + 1;
 
-        qglTexImage2D( GL_TEXTURE_2D,
-					   0, 
-					   gl_lms.internal_format,
-					   BLOCK_WIDTH, BLOCK_HEIGHT, 
-					   0, 
-					   GL_LIGHTMAP_FORMAT, 
-					   GL_UNSIGNED_BYTE, 
-					   gl_lms.lightmap_buffer[type] );
+        for (; b < NUM_LIGHTMAP_BUFFERS; ++b)
+        {
+            int next_lmtex = gl_state.lightmap_textures + texture + (b + 1) * MAX_LIGHTMAPS;
+            qglTexImage2D(GL_TEXTURE_2D,
+                0,
+                gl_lms.internal_format,
+                BLOCK_WIDTH, BLOCK_HEIGHT,
+                0,
+                GL_LIGHTMAP_FORMAT,
+                GL_UNSIGNED_BYTE,
+                gl_lms.lightmap_buffer[type]);
+
+            GL_Bind(next_lmtex);
+            qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
 
         if ( next_texture == MAX_LIGHTMAPS )
 			ri.Sys_Error( ERR_DROP, "LM_UploadBlock() - MAX_LIGHTMAPS exceeded\n" );
@@ -1409,17 +1419,21 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	/*
 	** initialize the dynamic lightmap texture
 	*/
-    GL_MBind( GL_TEXTURE1, gl_state.lightmap_textures + 0 );
-    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    qglTexImage2D( GL_TEXTURE_2D,
-				   0, 
-				   gl_lms.internal_format,
-				   BLOCK_WIDTH, BLOCK_HEIGHT, 
-				   0, 
-				   GL_LIGHTMAP_FORMAT, 
-				   GL_UNSIGNED_BYTE, 
-				   dummy );
+    for (i = 0; i < NUM_LIGHTMAP_BUFFERS; ++i)
+    {
+        int lmtex = gl_state.lightmap_textures + i * MAX_LIGHTMAPS;
+        GL_MBind(GL_TEXTURE1, lmtex);
+        qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        qglTexImage2D(GL_TEXTURE_2D,
+            0,
+            gl_lms.internal_format,
+            BLOCK_WIDTH, BLOCK_HEIGHT,
+            0,
+            GL_LIGHTMAP_FORMAT,
+            GL_UNSIGNED_BYTE,
+            dummy);
+    }
 }
 
 /*

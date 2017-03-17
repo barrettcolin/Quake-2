@@ -141,11 +141,11 @@ typedef struct image_s
 	qboolean paletted;
 } image_t;
 
-#define	TEXNUM_LIGHTMAPS	1024
-#define	TEXNUM_SCRAPS		1152
-#define	TEXNUM_IMAGES		1153
+#define	TEXNUM_SCRAPS		1023
+#define	TEXNUM_IMAGES		1024
 
 #define		MAX_GLTEXTURES	1024
+#define	TEXNUM_LIGHTMAPS	TEXNUM_IMAGES + MAX_GLTEXTURES
 
 //===================================================================
 
