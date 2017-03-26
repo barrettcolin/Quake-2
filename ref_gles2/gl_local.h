@@ -80,6 +80,9 @@ extern void (GL_APIENTRY *qglUseProgram)(GLuint program);
 extern void (GL_APIENTRY *qglVertexAttribPointer)(GLuint indx, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* ptr);
 extern void (GL_APIENTRY *qglViewport)(GLint x, GLint y, GLsizei width, GLsizei height);
 
+#ifndef GL_KHR_debug
+typedef void (GL_APIENTRYP GLDEBUGPROCKHR)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam);
+#endif
 extern void (GL_APIENTRY *qglDebugMessageCallbackKHR)(GLDEBUGPROCKHR callback, const void* userParam);
 
 #include "../client/ref.h"

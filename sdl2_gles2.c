@@ -50,7 +50,6 @@ void (GL_APIENTRY *qglUseProgram)(GLuint program);
 void (GL_APIENTRY *qglVertexAttribPointer)(GLuint indx, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* ptr);
 void (GL_APIENTRY *qglViewport)(GLint x, GLint y, GLsizei width, GLsizei height);
 
-void (GL_APIENTRY *qglDebugMessageControlKHR)(GLenum source, GLenum type, GLenum severity, GLsizei count, const GLuint *ids, GLboolean enabled);
 void (GL_APIENTRY *qglDebugMessageCallbackKHR)(GLDEBUGPROCKHR callback, const void* userParam);
 
 static SDL_Window *window;

@@ -1075,8 +1075,9 @@ qboolean R_Init( void *hinstance, void *hWnd )
 		return -1;
 	}
 
-    if (gl_debug->value)
+    if (gl_debug->value && qglDebugMessageCallbackKHR)
     {
+        ri.Con_Printf(PRINT_ALL, "Setting GL_DebugMessageCallback\n");
         qglEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
         qglDebugMessageCallbackKHR(GL_DebugMessageCallback, NULL);
     }
