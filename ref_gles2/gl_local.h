@@ -59,6 +59,7 @@ extern void (GL_APIENTRY *qglDrawElements)(GLenum mode, GLsizei count, GLenum ty
 extern void (GL_APIENTRY *qglEnable)(GLenum cap);
 extern void (GL_APIENTRY *qglEnableVertexAttribArray)(GLuint index);
 extern void (GL_APIENTRY *qglGenBuffers)(GLsizei n, GLuint* buffers);
+extern void (GL_APIENTRY *qglGenTextures)(GLsizei n, GLuint* textures);
 extern GLenum (GL_APIENTRY *qglGetError)(void);
 extern void (GL_APIENTRY *qglGetProgramiv)(GLuint program, GLenum pname, GLint* params);
 extern void (GL_APIENTRY *qglGetProgramInfoLog)(GLuint program, GLsizei bufsize, GLsizei* length, GLchar* infolog);
@@ -141,11 +142,7 @@ typedef struct image_s
 	qboolean paletted;
 } image_t;
 
-#define	TEXNUM_SCRAPS		1023
-#define	TEXNUM_IMAGES		1024
-
 #define		MAX_GLTEXTURES	1024
-#define	TEXNUM_LIGHTMAPS	TEXNUM_IMAGES + MAX_GLTEXTURES
 
 //===================================================================
 
@@ -433,8 +430,6 @@ typedef struct
 	int     prev_mode;
 
 	unsigned char *d_16to8table;
-
-	int lightmap_textures;
 
 	int	currenttextures[2];
 	int currenttmu;

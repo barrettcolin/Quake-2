@@ -29,6 +29,7 @@ void (GL_APIENTRY *qglDrawElements)(GLenum mode, GLsizei count, GLenum type, con
 void (GL_APIENTRY *qglEnable)(GLenum cap);
 void (GL_APIENTRY *qglEnableVertexAttribArray)(GLuint index);
 void (GL_APIENTRY *qglGenBuffers)(GLsizei n, GLuint* buffers);
+void (GL_APIENTRY *qglGenTextures)(GLsizei n, GLuint* textures);
 GLenum(GL_APIENTRY *qglGetError)(void);
 void (GL_APIENTRY *qglGetProgramiv)(GLuint program, GLenum pname, GLint* params);
 void (GL_APIENTRY *qglGetProgramInfoLog)(GLuint program, GLsizei bufsize, GLsizei* length, GLchar* infolog);
@@ -142,6 +143,7 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
     qglEnable = SDL_GL_GetProcAddress("glEnable");
     qglEnableVertexAttribArray = SDL_GL_GetProcAddress("glEnableVertexAttribArray");
     qglGenBuffers = SDL_GL_GetProcAddress("glGenBuffers");
+    qglGenTextures = SDL_GL_GetProcAddress("glGenTextures");
     qglGetError = SDL_GL_GetProcAddress("glGetError");
     qglGetProgramiv = SDL_GL_GetProcAddress("glGetProgramiv");
     qglGetProgramInfoLog = SDL_GL_GetProcAddress("glGetProgramInfoLog");

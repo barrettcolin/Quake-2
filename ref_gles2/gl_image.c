@@ -244,6 +244,9 @@ int			scrap_allocated[MAX_SCRAPS][BLOCK_WIDTH];
 byte		scrap_texels[MAX_SCRAPS][BLOCK_WIDTH*BLOCK_HEIGHT];
 qboolean	scrap_dirty;
 
+static GLuint s_scrapTextureNames[MAX_SCRAPS];
+static int s_currentScrap;
+
 // returns a texture number and the position inside it
 int Scrap_AllocBlock (int w, int h, int *x, int *y)
 {
@@ -279,6 +282,13 @@ int Scrap_AllocBlock (int w, int h, int *x, int *y)
 		for (i=0 ; i<w ; i++)
 			scrap_allocated[texnum][*x + i] = best + h;
 
+        //<todo.cb it_pic isn't freed in GL_FreeUnusedImages; these should be deleted somewhere
+        if (s_scrapTextureNames[texnum] == 0)
+        {
+            qglGenTextures(1, &s_scrapTextureNames[texnum]);
+            s_currentScrap = texnum;
+        }
+
 		return texnum;
 	}
 
@@ -291,7 +301,7 @@ int	scrap_uploads;
 void Scrap_Upload (void)
 {
 	scrap_uploads++;
-	GL_Bind(TEXNUM_SCRAPS);
+	GL_Bind(s_scrapTextureNames[s_currentScrap]);
 	GL_Upload8 (scrap_texels[0], BLOCK_WIDTH, BLOCK_HEIGHT, false, false );
 	scrap_dirty = false;
 }
@@ -1165,7 +1175,7 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, imagetype_t t
 		for (i=0 ; i<image->height ; i++)
 			for (j=0 ; j<image->width ; j++, k++)
 				scrap_texels[texnum][(y+i)*BLOCK_WIDTH + x + j] = pic[k];
-		image->texnum = TEXNUM_SCRAPS + texnum;
+		image->texnum = s_scrapTextureNames[texnum];
 		image->scrap = true;
 		image->has_alpha = true;
 		image->sl = (x+0.01)/(float)BLOCK_WIDTH;
@@ -1177,7 +1187,7 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, imagetype_t t
 	{
 nonscrap:
 		image->scrap = false;
-		image->texnum = TEXNUM_IMAGES + (image - gltextures);
+        qglGenTextures(1, &image->texnum);
 		GL_Bind(image->texnum);
 		if (bits == 8)
 			image->has_alpha = GL_Upload8 (pic, width, height, (image->type != it_pic && image->type != it_sky), image->type == it_sky );
