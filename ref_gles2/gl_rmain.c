@@ -128,6 +128,8 @@ material_id g_unlit_alpha_material;
 material_id g_vertexlit_material;
 material_id g_vertexlit_alpha_material;
 
+cvar_t  *gl_debug;
+
 /*
 =================
 R_CullBox
@@ -986,6 +988,8 @@ void R_Register( void )
 	ri.Cmd_AddCommand( "screenshot", GL_ScreenShot_f );
 	ri.Cmd_AddCommand( "modellist", Mod_Modellist_f );
 	ri.Cmd_AddCommand( "gl_strings", GL_Strings_f );
+
+    gl_debug = ri.Cvar_Get("gl_debug", "0", 0);
 }
 
 /*
@@ -996,12 +1000,13 @@ R_SetMode
 qboolean R_SetMode (void)
 {
 	rserr_t err;
-    qboolean fullscreen = vid_fullscreen->value;
+    int fullscreen = vid_fullscreen->value;
+    int debug = gl_debug->value;
 
 	vid_fullscreen->modified = false;
 	gl_mode->modified = false;
 
-	if ( ( err = GLimp_SetMode( &vid.width, &vid.height, gl_mode->value, fullscreen ) ) == rserr_ok )
+	if ( ( err = GLimp_SetMode( &vid.width, &vid.height, gl_mode->value, fullscreen, debug ) ) == rserr_ok )
 	{
 		gl_state.prev_mode = gl_mode->value;
 	}
@@ -1012,7 +1017,7 @@ qboolean R_SetMode (void)
 			ri.Cvar_SetValue( "vid_fullscreen", 0);
 			vid_fullscreen->modified = false;
 			ri.Con_Printf( PRINT_ALL, "ref_gl::R_SetMode() - fullscreen unavailable in this mode\n" );
-			if ( ( err = GLimp_SetMode( &vid.width, &vid.height, gl_mode->value, false ) ) == rserr_ok )
+			if ( ( err = GLimp_SetMode( &vid.width, &vid.height, gl_mode->value, 0, debug ) ) == rserr_ok )
 				return true;
 		}
 		else if ( err == rserr_invalid_mode )
@@ -1023,7 +1028,7 @@ qboolean R_SetMode (void)
 		}
 
 		// try setting it back to something safe
-		if ( ( err = GLimp_SetMode( &vid.width, &vid.height, gl_state.prev_mode, false ) ) != rserr_ok )
+		if ( ( err = GLimp_SetMode( &vid.width, &vid.height, gl_state.prev_mode, 0, 0 ) ) != rserr_ok )
 		{
 			ri.Con_Printf( PRINT_ALL, "ref_gl::R_SetMode() - could not revert to safe mode\n" );
 			return false;
@@ -1037,6 +1042,11 @@ qboolean R_SetMode (void)
 R_Init
 ===============
 */
+static void GL_APIENTRY GL_DebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+{
+    fprintf(stderr, "%s", message);
+}
+
 qboolean R_Init( void *hinstance, void *hWnd )
 {	
 	int		err;
@@ -1067,6 +1077,13 @@ qboolean R_Init( void *hinstance, void *hWnd )
         ri.Con_Printf (PRINT_ALL, "ref_gl::R_Init() - could not R_SetMode()\n" );
 		return -1;
 	}
+
+    if (gl_debug->value && qglDebugMessageCallbackKHR)
+    {
+        ri.Con_Printf(PRINT_ALL, "Setting GL_DebugMessageCallback\n");
+        qglEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
+        qglDebugMessageCallbackKHR(GL_DebugMessageCallback, NULL);
+    }
 
 	ri.Vid_MenuInit();
 

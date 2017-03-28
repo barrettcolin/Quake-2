@@ -53,6 +53,8 @@ void (GL_APIENTRY *qglUseProgram)(GLuint program);
 void (GL_APIENTRY *qglVertexAttribPointer)(GLuint indx, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid* ptr);
 void (GL_APIENTRY *qglViewport)(GLint x, GLint y, GLsizei width, GLsizei height);
 
+void (GL_APIENTRY *qglDebugMessageCallbackKHR)(GLDEBUGPROCKHR callback, const void* userParam);
+
 static SDL_Window *window;
 static SDL_GLContext GLcontext;
 
@@ -78,7 +80,7 @@ void GLimp_Shutdown(void)
     }
 }
 
-int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
+int GLimp_SetMode(int *pwidth, int *pheight, int mode, int fullscreen, int debug)
 {
     int desiredWidth, desiredHeight, winWidth, winHeight;
     if(!ri.Vid_GetModeInfo(&desiredWidth, &desiredHeight, mode))
@@ -100,6 +102,7 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, debug ? SDL_GL_CONTEXT_DEBUG_FLAG : 0);
 
     window = SDL_CreateWindow("Quake 2", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, desiredWidth, desiredHeight, flags);
     if(!window)
@@ -168,6 +171,15 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
     qglUseProgram = SDL_GL_GetProcAddress("glUseProgram");
     qglVertexAttribPointer = SDL_GL_GetProcAddress("glVertexAttribPointer");
     qglViewport = SDL_GL_GetProcAddress("glViewport");
+
+    if (debug && SDL_GL_ExtensionSupported("GL_KHR_debug"))
+    {
+        qglDebugMessageCallbackKHR = SDL_GL_GetProcAddress("glDebugMessageCallbackKHR");
+    }
+    else
+    {
+        qglDebugMessageCallbackKHR = NULL;
+    }
 
     SDL_GetWindowSize(window, &winWidth, &winHeight);
 
