@@ -37,6 +37,8 @@ void (GL_APIENTRY *qglGetShaderiv)(GLuint shader, GLenum pname, GLint* params);
 void (GL_APIENTRY *qglGetShaderInfoLog)(GLuint shader, GLsizei bufsize, GLsizei* length, GLchar* infolog);
 const GLubyte* (GL_APIENTRY *qglGetString)(GLenum name);
 GLint(GL_APIENTRY *qglGetUniformLocation)(GLuint program, const GLchar* name);
+GLboolean(GL_APIENTRY *qglIsBuffer)(GLuint texture);
+GLboolean(GL_APIENTRY *qglIsTexture)(GLuint buffer);
 void (GL_APIENTRY *qglLinkProgram)(GLuint program);
 void (GL_APIENTRY *qglReadPixels)(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid* pixels);
 void (GL_APIENTRY *qglScissor)(GLint x, GLint y, GLsizei width, GLsizei height);
@@ -151,6 +153,8 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
     qglGetShaderInfoLog = SDL_GL_GetProcAddress("glGetShaderInfoLog");
     qglGetString = SDL_GL_GetProcAddress("glGetString");
     qglGetUniformLocation = SDL_GL_GetProcAddress("glGetUniformLocation");
+    qglIsBuffer = SDL_GL_GetProcAddress("glIsBuffer");
+    qglIsTexture = SDL_GL_GetProcAddress("glIsTexture");
     qglLinkProgram = SDL_GL_GetProcAddress("glLinkProgram");
     qglReadPixels = SDL_GL_GetProcAddress("glReadPixels");
     qglScissor = SDL_GL_GetProcAddress("glScissor");

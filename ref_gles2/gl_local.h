@@ -67,6 +67,8 @@ extern void (GL_APIENTRY *qglGetShaderiv)(GLuint shader, GLenum pname, GLint* pa
 extern void (GL_APIENTRY *qglGetShaderInfoLog)(GLuint shader, GLsizei bufsize, GLsizei* length, GLchar* infolog);
 extern const GLubyte* (GL_APIENTRY *qglGetString)(GLenum name);
 extern GLint (GL_APIENTRY *qglGetUniformLocation)(GLuint program, const GLchar* name);
+extern GLboolean(GL_APIENTRY *qglIsBuffer)(GLuint texture);
+extern GLboolean(GL_APIENTRY *qglIsTexture)(GLuint buffer);
 extern void (GL_APIENTRY *qglLinkProgram)(GLuint program);
 extern void (GL_APIENTRY *qglReadPixels)(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid* pixels);
 extern void (GL_APIENTRY *qglScissor)(GLint x, GLint y, GLsizei width, GLsizei height);
@@ -364,6 +366,7 @@ void	GL_InitImages (void);
 void	GL_ShutdownImages (void);
 
 void	GL_FreeUnusedImages (void);
+void GL_DeleteLightmaps(void);
 
 /*
 ** GL extension emulation functions

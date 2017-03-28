@@ -82,6 +82,17 @@ static GLuint GL_GetLightmapTextureName(int textureId)
     return gl_lms.lightmapTextureNames[s_currentLightmapBuffer][textureId];
 }
 
+void GL_DeleteLightmaps(void)
+{
+    int i = 0;
+
+    for (; i < NUM_LIGHTMAP_BUFFERS; ++i)
+    {
+        qglDeleteTextures(MAX_LIGHTMAPS, gl_lms.lightmapTextureNames[i]);
+        memset(gl_lms.lightmapTextureNames[i], 0, sizeof(gl_lms.lightmapTextureNames[i]));
+    }
+}
+
 /*
 =============================================================
 
@@ -1363,12 +1374,6 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	unsigned		dummy[128*128];
 
 	memset( gl_lms.allocated, 0, sizeof(gl_lms.allocated) );
-
-    // reset lightmap texture names
-    for (i = 0; i < NUM_LIGHTMAP_BUFFERS; ++i)
-        qglDeleteTextures(MAX_LIGHTMAPS, gl_lms.lightmapTextureNames[NUM_LIGHTMAP_BUFFERS]);
-
-    memset(gl_lms.lightmapTextureNames, 0, sizeof(gl_lms.lightmapTextureNames));
 
 	r_framecount = 1;		// no dlightcache
 

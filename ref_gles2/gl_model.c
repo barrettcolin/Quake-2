@@ -1286,14 +1286,6 @@ void R_BeginRegistration (char *model)
 	flushmap = ri.Cvar_Get ("flushmap", "0", 0);
 	if ( strcmp(mod_known[0].name, fullname) || flushmap->value)
     {
-        //<todo.cb free model buffers the way alias buffers are freed (see Mod_Free)
-        for(i = 0; i < s_num_vertexbuffers; ++i)
-        {
-            VertexBuffer_Destroy(&s_vertexbuffers[i]);
-        }
-
-        s_num_vertexbuffers = 0;
-
 		Mod_Free (&mod_known[0]);
     }
 	r_worldmodel = Mod_ForName(fullname, true);
@@ -1379,10 +1371,28 @@ void R_EndRegistration (void)
 Mod_Free
 ================
 */
+static void Mod_FreeBrushModel(model_t *mod)
+{
+    int i;
+
+    for (i = 0; i < s_num_vertexbuffers; ++i)
+    {
+        VertexBuffer_Destroy(&s_vertexbuffers[i]);
+    }
+
+    s_num_vertexbuffers = 0;
+
+    GL_DeleteLightmaps();
+}
+
 void Mod_Free (model_t *mod)
 {
     switch(mod->type)
     {
+    case mod_brush:
+        Mod_FreeBrushModel(mod);
+        break;
+
     case mod_alias:
         qglDeleteBuffers(NUM_GLMDL_BUFFERS, ((glmdl_t *)mod->extradata)->buffers);
         break;

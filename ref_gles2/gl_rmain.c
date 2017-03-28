@@ -1183,7 +1183,10 @@ R_Shutdown
 */
 void R_Shutdown (void)
 {	
-	ri.Cmd_RemoveCommand ("modellist");
+    GLuint name;
+    int numTextures = 0, numBuffers = 0;
+    
+    ri.Cmd_RemoveCommand ("modellist");
 	ri.Cmd_RemoveCommand ("screenshot");
 	ri.Cmd_RemoveCommand ("imagelist");
 	ri.Cmd_RemoveCommand ("gl_strings");
@@ -1191,6 +1194,16 @@ void R_Shutdown (void)
 	Mod_FreeAll ();
 
 	GL_ShutdownImages ();
+
+    // Dump GL resources
+    for (name = 0; name < 65536; ++name)
+    {
+        if (qglIsTexture(name))
+            numTextures++;
+        else if (qglIsBuffer(name))
+            numBuffers++;
+    }
+    ri.Con_Printf(PRINT_DEVELOPER, "GL_ShutdownImages: numTextures (%d), numBuffers (%d)\n", numTextures, numBuffers);
 
     Material_Shutdown();
 
