@@ -1212,19 +1212,22 @@ void R_Shutdown (void)
 
 	GL_ShutdownImages ();
 
-    // Dump GL resources
-    for (name = 0; name < 65536; ++name)
-    {
-        if (qglIsTexture(name))
-            numTextures++;
-        else if (qglIsBuffer(name))
-            numBuffers++;
-    }
-    ri.Con_Printf(PRINT_DEVELOPER, "GL_ShutdownImages: numTextures (%d), numBuffers (%d)\n", numTextures, numBuffers);
-
     Material_Shutdown();
 
-	/*
+    if (gl_debug->value)
+    {
+        // Dump GL resources
+        for (name = 0; name < 65536; ++name)
+        {
+            if (qglIsTexture(name))
+                numTextures++;
+            else if (qglIsBuffer(name))
+                numBuffers++;
+        }
+        ri.Con_Printf(PRINT_DEVELOPER, "GL_ShutdownImages: numTextures (%d), numBuffers (%d)\n", numTextures, numBuffers);
+    }
+    
+    /*
 	** shut down OS specific OpenGL stuff like contexts, etc.
 	*/
 	GLimp_Shutdown();
