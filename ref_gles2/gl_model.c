@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "gl_local.h"
 
+#include "Ref_C.h"
+
 model_t	*loadmodel;
 int		modfilelen;
 
@@ -933,6 +935,61 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 
 		starmod->numleafs = bm->visleafs;
 	}
+
+    // Cluster processing
+    {
+        struct ClusterBuilder *clusterBuilder = ref_ClusterBuilderCreate();
+        struct ClusterMeshBuilder *clusterMeshBuilder = ref_ClusterMeshBuilderCreate();
+        struct ClusterData *clusterData;
+        struct ClusterMeshData *clusterMeshData;
+
+        for (i = 0; i < mod->numleafs; ++i)
+        {
+            int j;
+            mleaf_t *leaf = &mod->leafs[i];
+
+            if (leaf->nummarksurfaces == 0)
+                continue;
+
+            ref_ClusterBuilderAddLeaf(clusterBuilder, leaf->cluster, leaf);
+
+            for (j = 0; j < leaf->nummarksurfaces; ++j)
+            {
+                int k;
+                glpoly_t *poly;
+                msurface_t **surf = leaf->firstmarksurface + j;
+
+                for (poly = (*surf)->polys; poly; poly = poly->chain)
+                {
+                    if ((*surf)->lightmaptexturenum == 0)
+                        continue;
+
+                    struct SurfacePoly *surfacePoly =
+                        ref_ClusterMeshBuilderAllocatePoly(clusterMeshBuilder,
+                            leaf->cluster,
+                            (*surf)->lightmaptexturenum,
+                            (*surf)->texinfo->image->texnum,
+                            poly->numverts);
+
+                    for (k = 0; k < poly->numverts; ++k)
+                    {
+                        ref_SurfacePolySetVertex(surfacePoly, k,
+                            poly->verts[k][0], poly->verts[k][1], poly->verts[k][2],
+                            poly->verts[k][3], poly->verts[k][4],
+                            poly->verts[k][5], poly->verts[k][6]);
+                    }
+                }
+            }
+        }
+
+        clusterData = ref_ClusterDataCreate(clusterBuilder);
+        clusterMeshData = ref_ClusterMeshDataCreate(clusterMeshBuilder);
+
+        ref_ClusterMeshDataDestroy(clusterMeshData);
+        ref_ClusterDataDestroy(clusterData);
+        ref_ClusterMeshBuilderDestroy(clusterMeshBuilder);
+        ref_ClusterBuilderDestroy(clusterBuilder);
+    }
 }
 
 /*
@@ -1274,7 +1331,6 @@ void R_BeginRegistration (char *model)
 {
 	char	fullname[MAX_QPATH];
 	cvar_t	*flushmap;
-    int i;
 
 	registration_sequence++;
 	r_oldviewcluster = -1;		// force markleafs
