@@ -9,13 +9,18 @@ set(REF_GL_SRCS
   gl_rmain.c
   gl_rmisc.c
   gl_rsurf.c
-  gl_warp.c)
+  gl_warp.c
+  MapModel.cpp
+  Ref_C.cpp)
 
 set(REF_GL_INCS
   anorms.h
   anormtab.h
   gl_local.h
   gl_model.h
+  MapModel.h
+  Ref_C.h
+  Types_C.h
   warpsin.h)
   
 #add_library(ref_gl SHARED ${REF_GL_SRCS} ${REF_GL_INCS} ref_gl.def)

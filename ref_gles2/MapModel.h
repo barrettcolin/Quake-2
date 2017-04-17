@@ -31,20 +31,13 @@ struct mleaf_s : NodeBase
     int m_numMarkSurfaces;
 };
 
-struct SurfaceVertex
-{
-    float x, y, z, s0, t0, s1, t1;
-};
-
 struct SurfacePoly
 {
     // Methods
     SurfacePoly(unsigned numVertices);
 
-    void SetVertex(unsigned vertexIndex, float x, float y, float z, float s0, float t0, float s1, float t1);
-
     // Members
-    std::vector<SurfaceVertex> m_vertices;
+    std::vector<MapModelVertex> m_vertices;
 };
 
 struct ClusterMeshBuilder
@@ -63,26 +56,23 @@ struct ClusterMeshBuilder
     SurfacesFromCluster m_surfacesFromCluster;
 };
 
-struct Mesh
+struct ClusterMesh
 {
     // Members
-    uint32_t m_lightMap;
+    std::vector<VertexIndex> m_indices;
 
-    uint32_t m_baseMap;
+    std::vector<MapModelVertex> m_vertices;
 
-    std::vector<SurfacePoly> m_polys;
+    std::vector<MapModelMeshSection> m_sections;
 };
 
 struct ClusterMeshData
 {
-    // Types
-    typedef std::vector<Mesh> Meshes;
-
     // Methods
     ClusterMeshData(const ClusterMeshBuilder& clusterMeshBuilder);
 
     // Members
-    std::vector<Meshes> m_clusterMeshes;
+    std::vector<ClusterMesh> m_clusterMeshes;
 };
 
 struct ClusterBuilder

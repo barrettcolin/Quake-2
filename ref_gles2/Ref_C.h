@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 // BuilderSurf
-void ref_SurfacePolySetVertex(struct SurfacePoly *surfacePoly, unsigned vertexIndex, float x, float y, float z, float s0, float t0, float s1, float t1);
+void ref_SurfacePolySetVertex(struct SurfacePoly *surfacePoly, unsigned vertexIndex, struct MapModelVertex const *vertex);
 
 // ClusterMeshBuilder
 struct ClusterMeshBuilder *ref_ClusterMeshBuilderCreate();
@@ -21,6 +21,18 @@ struct ClusterMeshData *ref_ClusterMeshDataCreate(struct ClusterMeshBuilder *clu
 
 void ref_ClusterMeshDataDestroy(struct ClusterMeshData *clusterData);
 
+unsigned ref_ClusterMeshDataGetNumVertices(struct ClusterMeshData const *clusterData, ClusterId cluster);
+
+struct MapModelVertex const *ref_ClusterMeshDataGetVertices(struct ClusterMeshData const *clusterData, ClusterId cluster);
+
+unsigned ref_ClusterMeshDataGetNumIndices(struct ClusterMeshData const *clusterData, ClusterId cluster);
+
+VertexIndex const *ref_ClusterMeshDataGetIndices(struct ClusterMeshData const *clusterData, ClusterId cluster);
+
+unsigned ref_ClusterMeshDataGetNumMeshSections(struct ClusterMeshData const *clusterData, ClusterId cluster);
+
+struct MapModelMeshSection const *ref_ClusterMeshDataGetMeshSections(struct ClusterMeshData const *clusterData, ClusterId cluster);
+
 // ClusterBuilder
 struct ClusterBuilder *ref_ClusterBuilderCreate();
 
@@ -33,9 +45,9 @@ struct ClusterData *ref_ClusterDataCreate(struct ClusterBuilder *clusterBuilder)
 
 void ref_ClusterDataDestroy(struct ClusterData *clusterData);
 
-unsigned ref_ClusterDataGetNumClusters(struct ClusterData *clusterData);
+unsigned ref_ClusterDataGetNumClusters(struct ClusterData const *clusterData);
 
-struct mnode_s **ref_ClusterDataGetClusterNodes(struct ClusterData *clusterData);
+struct mnode_s *const *ref_ClusterDataGetClusterNodes(struct ClusterData const *clusterData);
 
 #if defined (__cplusplus)
 } // extern "C"

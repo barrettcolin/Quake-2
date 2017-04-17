@@ -942,6 +942,7 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
         struct ClusterMeshBuilder *clusterMeshBuilder = ref_ClusterMeshBuilderCreate();
         struct ClusterData *clusterData;
         struct ClusterMeshData *clusterMeshData;
+        unsigned numClusters;
 
         for (i = 0; i < mod->numleafs; ++i)
         {
@@ -973,17 +974,41 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 
                     for (k = 0; k < poly->numverts; ++k)
                     {
-                        ref_SurfacePolySetVertex(surfacePoly, k,
-                            poly->verts[k][0], poly->verts[k][1], poly->verts[k][2],
-                            poly->verts[k][3], poly->verts[k][4],
-                            poly->verts[k][5], poly->verts[k][6]);
+                        struct MapModelVertex vert;
+                        vert.x = poly->verts[k][0];
+                        vert.y = poly->verts[k][1];
+                        vert.z = poly->verts[k][2];
+                        vert.s0 = poly->verts[k][3];
+                        vert.t0 = poly->verts[k][4];
+                        vert.s1 = poly->verts[k][5];
+                        vert.t1 = poly->verts[k][6];
+
+                        ref_SurfacePolySetVertex(surfacePoly, k, &vert);
                     }
                 }
             }
         }
 
         clusterData = ref_ClusterDataCreate(clusterBuilder);
+        numClusters = ref_ClusterDataGetNumClusters(clusterData);
+
         clusterMeshData = ref_ClusterMeshDataCreate(clusterMeshBuilder);
+
+        for(i = 1; i < numClusters; ++i)
+        {
+            unsigned j;
+            unsigned numVertices = ref_ClusterMeshDataGetNumVertices(clusterMeshData, i);
+            struct MapModelVertex const *vertices = ref_ClusterMeshDataGetVertices(clusterMeshData, i);
+            unsigned numIndices = ref_ClusterMeshDataGetNumIndices(clusterMeshData, i);
+            VertexIndex const *indices = ref_ClusterMeshDataGetIndices(clusterMeshData, i);
+            unsigned numMeshSections = ref_ClusterMeshDataGetNumMeshSections(clusterMeshData, i);
+            struct MapModelMeshSection const *meshSections = ref_ClusterMeshDataGetMeshSections(clusterMeshData, i);
+
+            for (j = 0; j < numMeshSections; ++j)
+            {
+
+            }
+        }
 
         ref_ClusterMeshDataDestroy(clusterMeshData);
         ref_ClusterDataDestroy(clusterData);

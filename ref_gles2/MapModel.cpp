@@ -8,16 +8,6 @@ SurfacePoly::SurfacePoly(unsigned numVertices)
 
 }
 
-void SurfacePoly::SetVertex(unsigned vertexIndex, float x, float y, float z, float s0, float t0, float s1, float t1)
-{
-    SurfaceVertex& vert = m_vertices[vertexIndex];
-    {
-        vert.x = x; vert.y = y; vert.z = z;
-        vert.s0 = s0; vert.t0 = t0;
-        vert.s1 = s1; vert.t1 = t1;
-    }
-}
-
 SurfacePoly& ClusterMeshBuilder::AllocatePoly(ClusterId cluster, uint32_t lightMap, uint32_t baseMap, unsigned numVertices)
 {
     std::vector<SurfacePoly>& surfaces = m_surfacesFromCluster[cluster][lightMap][baseMap];
@@ -59,10 +49,34 @@ ClusterMeshData::ClusterMeshData(const ClusterMeshBuilder& clusterMeshBuilder)
             {
                 TextureId baseMapIndex = baseMapData->first;
 
-                auto mesh = m_clusterMeshes[clusterIndex].emplace(m_clusterMeshes[clusterIndex].end());
-                mesh->m_lightMap = lightMapIndex;
-                mesh->m_baseMap = baseMapIndex;
-                mesh->m_polys = baseMapData->second;
+                ClusterMesh& clusterMesh = m_clusterMeshes[clusterIndex];
+                MapModelMeshSection& meshSection = *(clusterMesh.m_sections.emplace(clusterMesh.m_sections.end()));
+                meshSection.m_lightMap = lightMapIndex;
+                meshSection.m_baseMap = baseMapIndex;
+
+                bool first = true;
+                meshSection.m_firstStripIndex = clusterMesh.m_indices.size();
+                for (auto polyData = baseMapData->second.begin(); polyData != baseMapData->second.end(); ++polyData)
+                {
+                    unsigned firstIndex = clusterMesh.m_vertices.size();
+                    unsigned numVertices = polyData->m_vertices.size();
+                    clusterMesh.m_vertices.insert(clusterMesh.m_vertices.end(), polyData->m_vertices.begin(), polyData->m_vertices.end());
+
+                    if (!first)
+                    {
+                        clusterMesh.m_indices.push_back(clusterMesh.m_indices.back());
+                        clusterMesh.m_indices.push_back(firstIndex);
+                        meshSection.m_numStripIndices += 2;
+                    }
+
+                    // e.g. want to produce sequence 0, 1, 7, 2, 6, 3, 5, 4
+                    clusterMesh.m_indices.push_back(firstIndex);
+                    for (unsigned i = 1; i < numVertices; ++i)
+                        clusterMesh.m_indices.push_back(((i % 2 == 0) ? (numVertices - (i / 2)) : ((i / 2) + 1)) + firstIndex);
+
+                    meshSection.m_numStripIndices += numVertices;
+                    first = false;
+                }
             }
         }
     }

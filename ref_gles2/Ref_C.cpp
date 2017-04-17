@@ -2,9 +2,9 @@
 
 #include "MapModel.h"
 
-void ref_SurfacePolySetVertex(SurfacePoly *surfacePoly, unsigned vertexIndex, float x, float y, float z, float s0, float t0, float s1, float t1)
+void ref_SurfacePolySetVertex(SurfacePoly *surfacePoly, unsigned vertexIndex, MapModelVertex const *vertex)
 {
-    surfacePoly->SetVertex(vertexIndex, x, y, z, s0, t0, s1, t1);
+    surfacePoly->m_vertices[vertexIndex] = *vertex;
 }
 
 ClusterMeshBuilder *ref_ClusterMeshBuilderCreate()
@@ -32,6 +32,36 @@ void ref_ClusterMeshDataDestroy(struct ClusterMeshData *clusterData)
     delete clusterData;
 }
 
+unsigned ref_ClusterMeshDataGetNumVertices(struct ClusterMeshData const *clusterData, ClusterId cluster)
+{
+    return clusterData->m_clusterMeshes[cluster].m_vertices.size();
+}
+
+struct MapModelVertex const *ref_ClusterMeshDataGetVertices(struct ClusterMeshData const *clusterData, ClusterId cluster)
+{
+    return clusterData->m_clusterMeshes[cluster].m_vertices.data();
+}
+
+unsigned ref_ClusterMeshDataGetNumIndices(struct ClusterMeshData const *clusterData, ClusterId cluster)
+{
+    return clusterData->m_clusterMeshes[cluster].m_indices.size();
+}
+
+VertexIndex const *ref_ClusterMeshDataGetIndices(struct ClusterMeshData const *clusterData, ClusterId cluster)
+{
+    return clusterData->m_clusterMeshes[cluster].m_indices.data();
+}
+
+unsigned ref_ClusterMeshDataGetNumMeshSections(struct ClusterMeshData const *clusterData, ClusterId cluster)
+{
+    return clusterData->m_clusterMeshes[cluster].m_sections.size();
+}
+
+struct MapModelMeshSection const *ref_ClusterMeshDataGetMeshSections(struct ClusterMeshData const *clusterData, ClusterId cluster)
+{
+    return clusterData->m_clusterMeshes[cluster].m_sections.data();
+}
+
 ClusterBuilder *ref_ClusterBuilderCreate()
 {
     return new ClusterBuilder();
@@ -57,12 +87,12 @@ void ref_ClusterDataDestroy(struct ClusterData *clusterData)
     delete clusterData;
 }
 
-unsigned ref_ClusterDataGetNumClusters(struct ClusterData *clusterData)
+unsigned ref_ClusterDataGetNumClusters(struct ClusterData const *clusterData)
 {
     return clusterData->m_clusterNodes.size();
 }
 
-struct mnode_s **ref_ClusterDataGetClusterNodes(struct ClusterData *clusterData)
+struct mnode_s * const*ref_ClusterDataGetClusterNodes(struct ClusterData const *clusterData)
 {
     return clusterData->m_clusterNodes.data();
 }
