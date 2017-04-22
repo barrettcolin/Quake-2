@@ -2,11 +2,6 @@
 
 #include "MapModel.h"
 
-void ref_SurfacePolySetVertex(SurfacePoly *surfacePoly, unsigned vertexIndex, MapModelVertex const *vertex)
-{
-    surfacePoly->m_vertices[vertexIndex] = *vertex;
-}
-
 ClusterMeshBuilder *ref_ClusterMeshBuilderCreate()
 {
     return new ClusterMeshBuilder();
@@ -17,9 +12,9 @@ void ref_ClusterMeshBuilderDestroy(ClusterMeshBuilder *clusterMeshBuilder)
     delete clusterMeshBuilder;
 }
 
-SurfacePoly *ref_ClusterMeshBuilderAllocatePoly(ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster, TextureId lightMap, TextureId baseMap, unsigned numVertices)
+void ref_ClusterMeshBuilderAddSurface(ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster, Surface *surface)
 {
-    return &clusterMeshBuilder->AllocatePoly(cluster, lightMap, baseMap, numVertices);
+    clusterMeshBuilder->AddSurface(cluster, surface);
 }
 
 struct ClusterMeshData *ref_ClusterMeshDataCreate(struct ClusterMeshBuilder *clusterMeshBuilder)
@@ -37,7 +32,7 @@ unsigned ref_ClusterMeshDataGetNumVertices(struct ClusterMeshData const *cluster
     return clusterData->m_clusterMeshes[cluster].m_vertices.size();
 }
 
-struct MapModelVertex const *ref_ClusterMeshDataGetVertices(struct ClusterMeshData const *clusterData, ClusterId cluster)
+MapModelVertex const *ref_ClusterMeshDataGetVertices(struct ClusterMeshData const *clusterData, ClusterId cluster)
 {
     return clusterData->m_clusterMeshes[cluster].m_vertices.data();
 }

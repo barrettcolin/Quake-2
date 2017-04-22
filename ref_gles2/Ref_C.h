@@ -6,15 +6,12 @@
 extern "C" {
 #endif
 
-// BuilderSurf
-void ref_SurfacePolySetVertex(struct SurfacePoly *surfacePoly, unsigned vertexIndex, struct MapModelVertex const *vertex);
-
 // ClusterMeshBuilder
 struct ClusterMeshBuilder *ref_ClusterMeshBuilderCreate();
 
 void ref_ClusterMeshBuilderDestroy(struct ClusterMeshBuilder *clusterMeshBuilder);
 
-struct SurfacePoly *ref_ClusterMeshBuilderAllocatePoly(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster, TextureId lightMap, TextureId baseMap, unsigned numVertices);
+void ref_ClusterMeshBuilderAddSurface(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster, struct Surface *surface);
 
 // ClusterMeshData
 struct ClusterMeshData *ref_ClusterMeshDataCreate(struct ClusterMeshBuilder *clusterMeshBuilder);

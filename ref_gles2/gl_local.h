@@ -141,7 +141,7 @@ typedef struct image_s
 	int		width, height;				// source image
 	int		upload_width, upload_height;	// after power of two and picmip
 	int		registration_sequence;		// 0 = free
-	struct msurface_s	*texturechain;	// for sort-by-texture world drawing
+	struct Surface *texturechain;	// for sort-by-texture world drawing
 	int		texnum;						// gl texture binding
 	float	sl, tl, sh, th;				// 0,0 - 1,1 unless part of the scrap
 	qboolean	scrap;
@@ -565,11 +565,6 @@ void Matrix_InverseFromAnglesOrigin(vec3_t const angles, vec3_t const origin, GL
 
 // calculate T * Ra
 void Matrix_FromAxisAngleOrigin(vec3_t const axis, float angle, vec3_t const origin, GLfloat matrix_out[16]);
-
-// VertexBuffer
-GLuint VertexBuffer_Create();
-
-void VertexBuffer_Destroy(GLuint *name);
 
 typedef enum
 {

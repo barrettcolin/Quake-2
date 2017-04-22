@@ -129,7 +129,7 @@ void SubdividePolygon (int numverts, float *verts)
 	}
 
 	// add a point in the center to help keep warp valid
-	poly = Hunk_Alloc (sizeof(glpoly_t) + ((numverts-4)+2) * VERTEXSIZE*sizeof(float));
+	poly = Hunk_Alloc (sizeof(glpoly_t) + ((numverts-4)+2) * sizeof(struct MapModelVertex));
 	poly->next = warpface->polys;
 	warpface->polys = poly;
 	poly->numverts = numverts+2;
@@ -138,7 +138,7 @@ void SubdividePolygon (int numverts, float *verts)
 	total_t = 0;
 	for (i=0 ; i<numverts ; i++, verts+= 3)
 	{
-		VectorCopy (verts, poly->verts[i+1]);
+		VectorCopy (verts, poly->verts[i+1].m_xyz);
 		s = DotProduct (verts, warpface->texinfo->vecs[0]);
 		t = DotProduct (verts, warpface->texinfo->vecs[1]);
 
@@ -146,16 +146,16 @@ void SubdividePolygon (int numverts, float *verts)
 		total_t += t;
 		VectorAdd (total, verts, total);
 
-		poly->verts[i+1][3] = s;
-		poly->verts[i+1][4] = t;
+		poly->verts[i+1].m_st[0][0] = s;
+		poly->verts[i+1].m_st[0][1] = t;
 	}
 
-	VectorScale (total, (1.0/numverts), poly->verts[0]);
-	poly->verts[0][3] = total_s/numverts;
-	poly->verts[0][4] = total_t/numverts;
+	VectorScale (total, (1.0/numverts), poly->verts[0].m_xyz);
+	poly->verts[0].m_st[0][0] = total_s/numverts;
+	poly->verts[0].m_st[0][1] = total_t/numverts;
 
 	// copy first vertex to last
-	memcpy (poly->verts[i+1], poly->verts[1], sizeof(poly->verts[0]));
+    poly->verts[i + 1] = poly->verts[1];
 }
 
 /*
@@ -217,7 +217,7 @@ Does a water warp on the pre-fragmented glpoly_t chain
 // function scope for alloca
 static void EmitWaterPoly(glpoly_t const *p, float scroll)
 {
-    float const *v;
+    struct MapModelVertex const *v;
     int i;
     float s, t, os, ot;
     warpvert_t *wv;
@@ -227,10 +227,10 @@ static void EmitWaterPoly(glpoly_t const *p, float scroll)
     warpvert_t *waterverts = alloca(p->numverts * sizeof(warpvert_t));
 #endif
 
-    for (i = 0, v = p->verts[0], wv = waterverts; i < p->numverts; ++i, v += VERTEXSIZE, ++wv)
+    for (i = 0, v = &p->verts[0], wv = waterverts; i < p->numverts; ++i, ++v, ++wv)
     {
-        os = v[3];
-        ot = v[4];
+        os = v->m_st[0][0];
+        ot = v->m_st[0][1];
 
 #if !id386
         s = os + r_turbsin[(int)((ot * 0.125f + r_newrefdef.time) * TURBSCALE) & 255];
@@ -247,9 +247,9 @@ static void EmitWaterPoly(glpoly_t const *p, float scroll)
 #endif
         t *= (1.0f / 64.0f);
 
-        wv->x = v[0];
-        wv->y = v[1];
-        wv->z = v[2];
+        wv->x = v->m_xyz[0];
+        wv->y = v->m_xyz[1];
+        wv->z = v->m_xyz[2];
         wv->s = s;
         wv->t = t;
     }
@@ -517,7 +517,7 @@ void R_AddSkySurface (msurface_t *fa)
 	{
 		for (i=0 ; i<p->numverts ; i++)
 		{
-			VectorSubtract (p->verts[i], r_origin, verts[i]);
+			VectorSubtract (p->verts[i].m_xyz, r_origin, verts[i]);
 		}
 		ClipSkyPolygon (p->numverts, verts[0], 0);
 	}

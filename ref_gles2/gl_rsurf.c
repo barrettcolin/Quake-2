@@ -207,9 +207,8 @@ DrawGLPoly
 */
 void DrawGLPoly (glpoly_t *p)
 {
-    qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
-    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
-    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
+    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_xyz);
+    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[0]);
     qglDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
 }
 
@@ -601,10 +600,9 @@ dynamic:
 
         for ( p = surf->polys; p; p = p->chain )
         {
-            qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
-            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
-            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
-            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
+            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_xyz);
+            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[0]);
+            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[1]);
             qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
@@ -612,10 +610,9 @@ dynamic:
     {
         for ( p = surf->polys; p; p = p->chain )
         {
-            qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
-            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
-            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
-            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
+            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_xyz);
+            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[0]);
+            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[1]);
             qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
         }
     }
@@ -778,6 +775,8 @@ static void RecursiveWorldNode (mnode_t *node)
 		return;
 	if (R_CullBox (node->minmaxs, node->minmaxs+3))
 		return;
+
+    node->m_viewFrame = r_visframecount;
 	
 // if a leaf node, draw stuff
 	if (node->contents != -1)
@@ -920,6 +919,43 @@ static void RecursiveWorldNode (mnode_t *node)
 }
 
 
+static void GL_RenderClusterMeshes(int numNodes, mnode_t *node)
+{
+    for (; numNodes; numNodes--, node++)
+    {
+        int i;
+
+        if (node->m_viewFrame != r_visframecount)
+            continue;
+
+        if (!node->m_clusterMesh)
+            continue;
+
+        qglBindBuffer(GL_ARRAY_BUFFER, node->m_clusterMesh->m_vertexBuffer);
+        qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)0);
+        qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)12);
+        qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)20);
+
+        qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, node->m_clusterMesh->m_indexBuffer);
+
+        for (i = 0; i < node->m_clusterMesh->m_numMeshSections; ++i)
+        {
+            struct MapModelMeshSection const *section = &node->m_clusterMesh->m_meshSections[i];
+            image_t *image = R_TextureAnimation(section->m_texInfo);
+            unsigned indicesOffset = section->m_firstStripIndex * sizeof(VertexIndex);
+
+            GL_MBind(GL_TEXTURE0, image->texnum);
+            GL_MBind(GL_TEXTURE1, GL_GetLightmapTextureName(section->m_lightMap));
+
+            qglDrawElements(GL_TRIANGLE_STRIP, section->m_numStripIndices, GL_UNSIGNED_SHORT, (void *)indicesOffset);
+        }
+    }
+
+    qglBindBuffer(GL_ARRAY_BUFFER, 0);
+    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+
 static void GL_RenderMarkSurfaces(int numleafs, mleaf_t *leaf)
 {
     for (; numleafs; numleafs--, leaf++)
@@ -956,10 +992,9 @@ static void GL_RenderMarkSurfaces(int numleafs, mleaf_t *leaf)
 
                 for (p = (*surf)->polys; p; p = p->chain)
                 {
-                    qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
-                    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
-                    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
-                    qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
+                    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_xyz);
+                    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[0]);
+                    qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[1]);
                     qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
                 }
             }
@@ -967,10 +1002,9 @@ static void GL_RenderMarkSurfaces(int numleafs, mleaf_t *leaf)
             {
                 for (p = (*surf)->polys; p; p = p->chain)
                 {
-                    qglBindBuffer(GL_ARRAY_BUFFER, p->vertexbuffer);
-                    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)0);
-                    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)12);
-                    qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, VERTEXSIZE * sizeof(float), (void *)20);
+                    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_xyz);
+                    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[0]);
+                    qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[1]);
                     qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
                 }
             }
@@ -1019,10 +1053,16 @@ void R_DrawWorld (void)
     RecursiveWorldNode (r_worldmodel->nodes);
     rmt_EndCPUSample();
 
+    rmt_BeginCPUSample(GL_RenderClusterMeshes, 0);
+    GL_RenderClusterMeshes(r_worldmodel->numnodes, r_worldmodel->nodes);
+    rmt_EndCPUSample();
+
+    //<todo.cb remove GL_RenderMarkSurfaces
+#if 0
     rmt_BeginCPUSample(GL_RenderMarkSurfaces, 0);
     GL_RenderMarkSurfaces(r_worldmodel->numleafs, r_worldmodel->leafs);
     rmt_EndCPUSample();
-
+#endif
     // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by RecursiveWorldNode
     Material_SetCurrent(g_unlit_material);
     Material_SetClipFromView(g_unlit_material, gl_state.clip_from_view);
@@ -1260,7 +1300,7 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 	//
 	// draw texture
 	//
-	poly = Hunk_Alloc (sizeof(glpoly_t) + (lnumverts-4) * VERTEXSIZE*sizeof(float));
+	poly = Hunk_Alloc (sizeof(glpoly_t) + (lnumverts-4) * sizeof(struct MapModelVertex));
 	poly->next = fa->polys;
 	poly->flags = fa->flags;
 	fa->polys = poly;
@@ -1287,9 +1327,9 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 		t /= fa->texinfo->image->height;
 
 		VectorAdd (total, vec, total);
-		VectorCopy (vec, poly->verts[i]);
-		poly->verts[i][3] = s;
-		poly->verts[i][4] = t;
+		VectorCopy (vec, poly->verts[i].m_xyz);
+		poly->verts[i].m_st[0][0] = s;
+		poly->verts[i].m_st[0][1] = t;
 
 		//
 		// lightmap texture coordinates
@@ -1306,20 +1346,11 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 		t += 8;
 		t /= BLOCK_HEIGHT*16; //fa->texinfo->texture->height;
 
-		poly->verts[i][5] = s;
-		poly->verts[i][6] = t;
+		poly->verts[i].m_st[1][0] = s;
+		poly->verts[i].m_st[1][1] = t;
 	}
 
 	poly->numverts = lnumverts;
-
-    poly->vertexbuffer = VertexBuffer_Create();
-    {
-        GLsizeiptr buf_size = sizeof(float) * VERTEXSIZE * poly->numverts;
-
-        qglBindBuffer(GL_ARRAY_BUFFER, poly->vertexbuffer);
-        qglBufferData(GL_ARRAY_BUFFER, buf_size, poly->verts, GL_STATIC_DRAW);
-        qglBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
 }
 
 /*

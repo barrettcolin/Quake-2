@@ -42,11 +42,6 @@ model_t	mod_inline[MAX_MOD_KNOWN];
 
 int		registration_sequence;
 
-#define MAX_VERTEX_BUFFERS 65536
-
-static GLuint s_vertexbuffers[MAX_VERTEX_BUFFERS];
-static int s_num_vertexbuffers;
-
 // Indexed triangle list construction
 static glstvert_t s_gl_stvert[MAX_VERTS];
 
@@ -461,7 +456,8 @@ Mod_LoadTexinfo
 void Mod_LoadTexinfo (lump_t *l)
 {
 	texinfo_t *in;
-	mtexinfo_t *out, *step;
+    mtexinfo_t *out;
+    mtexinfo_t const *step;
 	int 	i, j, count;
 	char	name[MAX_QPATH];
 	int		next;
@@ -711,6 +707,8 @@ void Mod_LoadNodes (lump_t *l)
 			else
 				out->children[j] = (mnode_t *)(loadmodel->leafs + (-1 - p));
 		}
+
+        out->m_clusterMesh = NULL;
 	}
 	
 	Mod_SetParent (loadmodel->nodes, NULL);	// sets nodes and leafs
@@ -943,6 +941,7 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
         struct ClusterData *clusterData;
         struct ClusterMeshData *clusterMeshData;
         unsigned numClusters;
+        mnode_t *const * clusterNodes;
 
         for (i = 0; i < mod->numleafs; ++i)
         {
@@ -956,59 +955,64 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 
             for (j = 0; j < leaf->nummarksurfaces; ++j)
             {
-                int k;
-                glpoly_t *poly;
                 msurface_t **surf = leaf->firstmarksurface + j;
 
-                for (poly = (*surf)->polys; poly; poly = poly->chain)
-                {
-                    if ((*surf)->lightmaptexturenum == 0)
-                        continue;
+                if ((*surf)->lightmaptexturenum == 0)
+                    continue;
 
-                    struct SurfacePoly *surfacePoly =
-                        ref_ClusterMeshBuilderAllocatePoly(clusterMeshBuilder,
-                            leaf->cluster,
-                            (*surf)->lightmaptexturenum,
-                            (*surf)->texinfo->image->texnum,
-                            poly->numverts);
-
-                    for (k = 0; k < poly->numverts; ++k)
-                    {
-                        struct MapModelVertex vert;
-                        vert.x = poly->verts[k][0];
-                        vert.y = poly->verts[k][1];
-                        vert.z = poly->verts[k][2];
-                        vert.s0 = poly->verts[k][3];
-                        vert.t0 = poly->verts[k][4];
-                        vert.s1 = poly->verts[k][5];
-                        vert.t1 = poly->verts[k][6];
-
-                        ref_SurfacePolySetVertex(surfacePoly, k, &vert);
-                    }
-                }
+                ref_ClusterMeshBuilderAddSurface(clusterMeshBuilder, leaf->cluster, *surf);
             }
         }
 
         clusterData = ref_ClusterDataCreate(clusterBuilder);
         numClusters = ref_ClusterDataGetNumClusters(clusterData);
+        clusterNodes = ref_ClusterDataGetClusterNodes(clusterData);
 
         clusterMeshData = ref_ClusterMeshDataCreate(clusterMeshBuilder);
 
-        for(i = 1; i < numClusters; ++i)
+        for(i = 0; i < numClusters; ++i)
         {
             unsigned j;
             unsigned numVertices = ref_ClusterMeshDataGetNumVertices(clusterMeshData, i);
-            struct MapModelVertex const *vertices = ref_ClusterMeshDataGetVertices(clusterMeshData, i);
             unsigned numIndices = ref_ClusterMeshDataGetNumIndices(clusterMeshData, i);
-            VertexIndex const *indices = ref_ClusterMeshDataGetIndices(clusterMeshData, i);
-            unsigned numMeshSections = ref_ClusterMeshDataGetNumMeshSections(clusterMeshData, i);
-            struct MapModelMeshSection const *meshSections = ref_ClusterMeshDataGetMeshSections(clusterMeshData, i);
 
-            for (j = 0; j < numMeshSections; ++j)
+            if (numVertices && numIndices)
             {
+                struct MapModelVertex const *vertices = ref_ClusterMeshDataGetVertices(clusterMeshData, i);
+                VertexIndex const *indices = ref_ClusterMeshDataGetIndices(clusterMeshData, i);
+                unsigned numMeshSections = ref_ClusterMeshDataGetNumMeshSections(clusterMeshData, i);
+                struct MapModelMeshSection const *meshSections = ref_ClusterMeshDataGetMeshSections(clusterMeshData, i);
 
+                glmesh_t *clusterMesh = Hunk_Alloc(sizeof(glmesh_t) + (numMeshSections - 1) * sizeof(struct MapModelMeshSection));
+
+                qglGenBuffers(1, &clusterMesh->m_vertexBuffer);
+                {
+                    GLsizeiptr bufSize = numVertices * sizeof(struct MapModelVertex);
+
+                    qglBindBuffer(GL_ARRAY_BUFFER, clusterMesh->m_vertexBuffer);
+                    qglBufferData(GL_ARRAY_BUFFER, bufSize, vertices, GL_STATIC_DRAW);
+                }
+
+                qglGenBuffers(1, &clusterMesh->m_indexBuffer);
+                {
+                    GLsizeiptr bufSize = numIndices * sizeof(VertexIndex);
+
+                    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, clusterMesh->m_indexBuffer);
+                    qglBufferData(GL_ELEMENT_ARRAY_BUFFER, bufSize, indices, GL_STATIC_DRAW);
+                }
+
+                clusterMesh->m_numMeshSections = numMeshSections;
+                for (j = 0; j < numMeshSections; ++j)
+                {
+                    clusterMesh->m_meshSections[j] = meshSections[j];
+                }
+
+                clusterNodes[i]->m_clusterMesh = clusterMesh;
             }
         }
+
+        qglBindBuffer(GL_ARRAY_BUFFER, 0);
+        qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
         ref_ClusterMeshDataDestroy(clusterMeshData);
         ref_ClusterDataDestroy(clusterData);
@@ -1456,12 +1460,15 @@ static void Mod_FreeBrushModel(model_t *mod)
 {
     int i;
 
-    for (i = 0; i < s_num_vertexbuffers; ++i)
+    for (i = 0; i < mod->numnodes; ++i)
     {
-        VertexBuffer_Destroy(&s_vertexbuffers[i]);
+        glmesh_t *clusterMesh = mod->nodes[i].m_clusterMesh;
+        if (clusterMesh)
+        {
+            qglDeleteBuffers(1, &clusterMesh->m_vertexBuffer);
+            qglDeleteBuffers(1, &clusterMesh->m_indexBuffer);
+        }
     }
-
-    s_num_vertexbuffers = 0;
 
     GL_DeleteLightmaps();
 }
@@ -1499,34 +1506,3 @@ void Mod_FreeAll (void)
 	}
 }
 
-GLuint VertexBuffer_Create()
-{
-    int i;
-    GLuint *vb;
-    for(i = 0; i < s_num_vertexbuffers; ++i)
-    {
-        if(s_vertexbuffers[i] == 0)
-            break;
-    }
-
-    if(i == s_num_vertexbuffers)
-    {
-        if(s_num_vertexbuffers == MAX_VERTEX_BUFFERS)
-            ri.Sys_Error(ERR_DROP, "MAX_VERTEX_BUFFERS");
-
-        s_num_vertexbuffers++;
-    }
-
-    vb = &s_vertexbuffers[i];
-    qglGenBuffers(1, vb);
-    return *vb;
-}
-
-void VertexBuffer_Destroy(GLuint *name)
-{
-    if(*name != 0)
-    {
-        qglDeleteBuffers(1, name);
-        *name = 0;
-    }
-}

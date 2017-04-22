@@ -33,6 +33,11 @@ BRUSH MODELS
 ==============================================================================
 */
 
+#include "Types_C.h"
+
+typedef struct Poly glpoly_t;
+typedef struct Surface msurface_t;
+typedef struct TexInfo mtexinfo_t;
 
 //
 // in memory representation
@@ -72,58 +77,13 @@ typedef struct
 	unsigned int	cachededgeoffset;
 } medge_t;
 
-typedef struct mtexinfo_s
+typedef struct glmesh_s
 {
-	float		vecs[2][4];
-	int			flags;
-	int			numframes;
-	struct mtexinfo_s	*next;		// animation chain
-	image_t		*image;
-} mtexinfo_t;
-
-#define	VERTEXSIZE	7
-
-typedef struct glpoly_s
-{
-	struct	glpoly_s	*next;
-	struct	glpoly_s	*chain;
-	int		numverts;
-	int		flags;			// for SURF_UNDERWATER (not needed anymore?)
-    GLuint vertexbuffer;
-	float	verts[4][VERTEXSIZE];	// variable sized (xyz s1t1 s2t2)
-} glpoly_t;
-
-typedef struct msurface_s
-{
-	int			visframe;		// should be drawn when node is crossed
-
-	cplane_t	*plane;
-	int			flags;
-
-	int			firstedge;	// look up in model->surfedges[], negative numbers
-	int			numedges;	// are backwards edges
-	
-	short		texturemins[2];
-	short		extents[2];
-
-	int			light_s, light_t;	// gl lightmap coordinates
-	int			dlight_s, dlight_t; // gl lightmap coordinates for dynamic lightmaps
-
-	glpoly_t	*polys;				// multiple if warped
-	struct	msurface_s	*texturechain;
-	struct  msurface_s	*lightmapchain;
-
-	mtexinfo_t	*texinfo;
-	
-// lighting info
-	int			dlightframe;
-	int			dlightbits;
-
-	int			lightmaptexturenum;
-	byte		styles[MAXLIGHTMAPS];
-	float		cached_light[MAXLIGHTMAPS];	// values currently used in lightmap
-	byte		*samples;		// [numstyles*surfsize]
-} msurface_t;
+    GLuint m_vertexBuffer;
+    GLuint m_indexBuffer;
+    unsigned m_numMeshSections;
+    struct MapModelMeshSection m_meshSections[1];
+} glmesh_t;
 
 typedef struct mnode_s
 {
@@ -141,6 +101,9 @@ typedef struct mnode_s
 
 	unsigned short		firstsurface;
 	unsigned short		numsurfaces;
+
+    int m_viewFrame;
+    glmesh_t *m_clusterMesh;
 } mnode_t;
 
 

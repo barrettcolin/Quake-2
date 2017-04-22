@@ -6,20 +6,26 @@
 
 #include "Types_C.h"
 
+struct cplane_s;
+struct image_s;
+struct mnode_s;
+
 struct NodeBase
 {
     int m_contents;
     int m_visframe;
     float m_minMaxs[6];
-    struct mnode_s *m_parent;
+    mnode_s *m_parent;
 };
 
 struct mnode_s : NodeBase
 {
-    struct cplane_s *m_plane;
+    cplane_s *m_plane;
     NodeBase *m_children[2];
     uint16_t m_firstSurface;
     uint16_t m_numSurfaces;
+    int m_viewFrame;
+    struct glmesh_s *m_clusterMesh;
 };
 
 struct mleaf_s : NodeBase
@@ -27,33 +33,31 @@ struct mleaf_s : NodeBase
     ClusterId m_cluster;
     int16_t m_area;
     int m_viewFrame;
-    struct msurface_s **m_firstMarkSurface;
+    Surface **m_firstMarkSurface;
     int m_numMarkSurfaces;
-};
-
-struct SurfacePoly
-{
-    // Methods
-    SurfacePoly(unsigned numVertices);
-
-    // Members
-    std::vector<MapModelVertex> m_vertices;
 };
 
 struct ClusterMeshBuilder
 {
     // Types
-    typedef std::unordered_map<TextureId, std::vector<SurfacePoly> > PolysFromBaseMap;
+    struct Surfs
+    {
+        std::vector<Surface*> m_surfs;
+    };
 
-    typedef std::unordered_map<TextureId, PolysFromBaseMap> BaseMapPolysFromLightMap;
+    typedef std::unordered_map<struct image_s const*, Surfs> SurfsFromImage;
 
-    typedef std::unordered_map<ClusterId, BaseMapPolysFromLightMap> SurfacesFromCluster;
+    typedef std::unordered_map<int, SurfsFromImage> ImageSurfsFromLightMap;
+
+    typedef std::unordered_map<ClusterId, ImageSurfsFromLightMap> SurfsFromCluster;
 
     // Methods
-    SurfacePoly& AllocatePoly(ClusterId cluster, TextureId lightMap, TextureId baseMap, unsigned numVertices);
+    void AddSurface(ClusterId, Surface *surface);
 
     // Members
-    SurfacesFromCluster m_surfacesFromCluster;
+    std::unordered_set<Surface*> m_surfaces;
+
+    SurfsFromCluster m_surfacesFromCluster;
 };
 
 struct ClusterMesh
