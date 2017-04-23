@@ -69,11 +69,25 @@ ClusterMeshData::ClusterMeshData(const ClusterMeshBuilder& clusterMeshBuilder)
                             meshSection.m_numStripIndices += 2;
                         }
 
-                        // e.g. want to produce sequence 0, 1, 7, 2, 6, 3, 5, 4
-                        clusterMesh.m_indices.push_back(firstIndex);
-                        for (unsigned i = 1; i < numVertices; ++i)
-                            clusterMesh.m_indices.push_back(((i % 2 == 0) ? (numVertices - (i / 2)) : ((i / 2) + 1)) + firstIndex);
+                        // e.g. want to produce sequence 0, 1, 7, 2, 6, 3, 5, 4 (even), 0, 7, 1, 6, 2, 5, 3, 4 (odd)
+                        std::vector<VertexIndex> indices(numVertices);
+                        indices[0] = firstIndex;
 
+                        // flip if we're appending to an odd number of triangles
+                        const bool flipWinding = ((meshSection.m_numStripIndices % 2) != 0);
+
+                        if (flipWinding)
+                        {
+                            for (unsigned i = 1; i < numVertices; ++i)
+                                indices[i] = ((i % 2 == 0) ? (((i - 1) / 2) + 1) : (numVertices - ((i + 1) / 2))) + firstIndex;
+                        }
+                        else
+                        {
+                            for (unsigned i = 1; i < numVertices; ++i)
+                                indices[i] = ((i % 2 == 0) ? (numVertices - (i / 2)) : ((i / 2) + 1)) + firstIndex;
+                        }
+
+                        clusterMesh.m_indices.insert(clusterMesh.m_indices.end(), indices.begin(), indices.end());
                         meshSection.m_numStripIndices += numVertices;
 
                         first = false;
