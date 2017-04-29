@@ -26,10 +26,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 model_t	*loadmodel;
 int		modfilelen;
 
-void Mod_LoadSpriteModel (model_t *mod, void *buffer);
-void Mod_LoadBrushModel (model_t *mod, void *buffer);
-void Mod_LoadAliasModel (model_t *mod, void *buffer);
-model_t *Mod_LoadModel (model_t *mod, qboolean crash);
+static void Mod_LoadSpriteModel (model_t *mod, void *buffer);
+static void Mod_LoadBrushModel (model_t *mod, void *buffer);
+static void Mod_LoadAliasModel (model_t *mod, void *buffer);
 
 byte	mod_novis[MAX_MAP_LEAFS/8];
 
@@ -55,7 +54,7 @@ static gltriangle_t s_gl_triangles[MAX_TRIANGLES];
 static int s_num_gl_triangles;
 
 // Cluster meshes
-void BuildClusterMeshes(model_t *model);
+static void BuildClusterMeshes(model_t *model);
 
 /*
 ===============
@@ -869,7 +868,7 @@ void Mod_LoadPlanes (lump_t *l)
 Mod_LoadBrushModel
 =================
 */
-void Mod_LoadBrushModel (model_t *mod, void *buffer)
+static void Mod_LoadBrushModel (model_t *mod, void *buffer)
 {
 	int			i;
 	dheader_t	*header;
@@ -1078,7 +1077,7 @@ static void GenerateIndexedTriangles(dmdl_t const *pinmodel, dmdl_t const *phead
 Mod_LoadAliasModel
 =================
 */
-void Mod_LoadAliasModel (model_t *mod, void *buffer)
+static void Mod_LoadAliasModel (model_t *mod, void *buffer)
 {
 	int					i, j;
     dmdl_t				*pinmodel;
@@ -1230,7 +1229,7 @@ SPRITE MODELS
 Mod_LoadSpriteModel
 =================
 */
-void Mod_LoadSpriteModel (model_t *mod, void *buffer)
+static void Mod_LoadSpriteModel (model_t *mod, void *buffer)
 {
 	dsprite_t	*sprin, *sprout;
 	int			i;
