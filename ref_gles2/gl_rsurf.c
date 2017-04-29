@@ -939,6 +939,9 @@ static void GL_RenderClusterMeshes(model_t *model)
         for (j = 0; j < clusterMesh->m_numMeshSections; ++j)
         {
             struct MapModelMeshSection const *section = &clusterMesh->m_meshSections[j];
+            if (section->m_lightMap == 0)
+                continue;
+
             image_t *image = R_TextureAnimation(section->m_texInfo);
             unsigned indicesOffset = section->m_firstStripIndex * sizeof(VertexIndex);
 

@@ -1433,14 +1433,7 @@ static void AddClusterMeshSurfaces(mnode_t const *node, struct ClusterMeshBuilde
         msurface_t **surfptr;
 
         for (surfptr = leaf->firstmarksurface; nummarksurfaces; ++surfptr, --nummarksurfaces)
-        {
-            msurface_t *surf = *surfptr;
-
-            if (surf->lightmaptexturenum == 0)
-                continue;
-
-            ref_ClusterMeshBuilderAddSurface(meshBuilder, leaf->cluster, surf);
-        }
+            ref_ClusterMeshBuilderAddSurface(meshBuilder, leaf->cluster, *surfptr);
     }
     else
     {
