@@ -18,6 +18,8 @@ struct ClusterMeshData *ref_ClusterMeshDataCreate(struct ClusterMeshBuilder *clu
 
 void ref_ClusterMeshDataDestroy(struct ClusterMeshData *clusterData);
 
+unsigned ref_ClusterMeshDataGetNumClusters(struct ClusterMeshData const *clusterData);
+
 unsigned ref_ClusterMeshDataGetNumVertices(struct ClusterMeshData const *clusterData, ClusterId cluster);
 
 struct MapModelVertex const *ref_ClusterMeshDataGetVertices(struct ClusterMeshData const *clusterData, ClusterId cluster);
@@ -29,22 +31,6 @@ VertexIndex const *ref_ClusterMeshDataGetIndices(struct ClusterMeshData const *c
 unsigned ref_ClusterMeshDataGetNumMeshSections(struct ClusterMeshData const *clusterData, ClusterId cluster);
 
 struct MapModelMeshSection const *ref_ClusterMeshDataGetMeshSections(struct ClusterMeshData const *clusterData, ClusterId cluster);
-
-// ClusterBuilder
-struct ClusterBuilder *ref_ClusterBuilderCreate();
-
-void ref_ClusterBuilderDestroy(struct ClusterBuilder *clusterBuilder);
-
-void ref_ClusterBuilderAddLeaf(struct ClusterBuilder *clusterBuilder, ClusterId cluster, struct mleaf_s *leaf);
-
-// ClusterData
-struct ClusterData *ref_ClusterDataCreate(struct ClusterBuilder *clusterBuilder);
-
-void ref_ClusterDataDestroy(struct ClusterData *clusterData);
-
-unsigned ref_ClusterDataGetNumClusters(struct ClusterData const *clusterData);
-
-struct mnode_s *const *ref_ClusterDataGetClusterNodes(struct ClusterData const *clusterData);
 
 #if defined (__cplusplus)
 } // extern "C"

@@ -12,18 +12,16 @@ void ClusterMeshBuilder::AddSurface(ClusterId cluster, Surface *surface)
 
     m_surfaces.insert(surface);
 
-    m_surfacesFromCluster[cluster][surface->lightmaptexturenum][surface->texinfo->image].m_surfs.push_back(surface);
+    m_surfacesFromCluster[cluster].push_back(surface);
 }
 
 ClusterMeshData::ClusterMeshData(const ClusterMeshBuilder& clusterMeshBuilder)
 {
     // Calc num clusters
     int maxClusterId = 0;
-    for (auto clusterData = clusterMeshBuilder.m_surfacesFromCluster.begin();
-        clusterData != clusterMeshBuilder.m_surfacesFromCluster.end();
-        ++clusterData)
+    for (const auto& clusterSurfaces : clusterMeshBuilder.m_surfacesFromCluster)
     {
-        int clusterId = clusterData->first;
+        int clusterId = clusterSurfaces.first;
         if (clusterId > maxClusterId)
             maxClusterId = clusterId;
     }
@@ -32,29 +30,32 @@ ClusterMeshData::ClusterMeshData(const ClusterMeshBuilder& clusterMeshBuilder)
     int numClusters = maxClusterId + 1;
     m_clusterMeshes.resize(numClusters);
 
-    for(const auto& clusterPair : clusterMeshBuilder.m_surfacesFromCluster)
+    for (const auto& clusterSurface : clusterMeshBuilder.m_surfacesFromCluster)
     {
-        ClusterId clusterIndex = clusterPair.first;
+        ClusterId cluster = clusterSurface.first;
+        ClusterMesh& clusterMesh = m_clusterMeshes[cluster];
 
-        for (const auto& lightPair : clusterPair.second)
+        std::unordered_map<int, std::unordered_map<image_s *, std::vector<Surface*> > > surfacesFromImageFromLightmap;
+        for (const auto& surf : clusterSurface.second)
         {
-            int lightMapIndex = lightPair.first;
+            surfacesFromImageFromLightmap[surf->lightmaptexturenum][surf->texinfo->image].push_back(surf);
+        }
 
-            for (const auto& basePair : lightPair.second)
+        for (const auto& lightmapSurfacesFromImage : surfacesFromImageFromLightmap)
+        {
+            int lightMapIndex = lightmapSurfacesFromImage.first;
+
+            for (const auto& imageSurfaces : lightmapSurfacesFromImage.second)
             {
-                struct image_s const *baseMap = basePair.first;
+                image_s *image = imageSurfaces.first;
 
-                if (basePair.second.m_surfs.size() == 0)
-                    continue;
-
-                ClusterMesh& clusterMesh = m_clusterMeshes[clusterIndex];
                 MapModelMeshSection& meshSection = *(clusterMesh.m_sections.emplace(clusterMesh.m_sections.end()));
                 meshSection.m_lightMap = lightMapIndex;
-                meshSection.m_texInfo = basePair.second.m_surfs[0]->texinfo; // all texinfos reference same image
+                meshSection.m_texInfo = imageSurfaces.second[0]->texinfo; // all texinfos reference same image
 
                 bool first = true;
                 meshSection.m_firstStripIndex = clusterMesh.m_indices.size();
-                for (const auto& surface : basePair.second.m_surfs)
+                for (const auto& surface : imageSurfaces.second)
                 {
                     for (Poly *poly = surface->polys; poly; poly = poly->next)
                     {
@@ -93,58 +94,6 @@ ClusterMeshData::ClusterMeshData(const ClusterMeshBuilder& clusterMeshBuilder)
                         first = false;
                     }
                 }
-            }
-        }
-    }
-}
-
-ClusterData::ClusterData(const ClusterBuilder& clusterBuilder)
-{
-    // Calc num clusters
-    int maxClusterId = 0;
-    for (auto clusterData = clusterBuilder.m_leafsFromCluster.begin();
-        clusterData != clusterBuilder.m_leafsFromCluster.end();
-        ++clusterData)
-    {
-        int clusterId = clusterData->first;
-        if (clusterId > maxClusterId)
-            maxClusterId = clusterId;
-    }
-
-    // Populate m_clusterNodes
-    int numClusters = maxClusterId + 1;
-    m_clusterNodes.resize(numClusters);
-
-    for (auto clusterData = clusterBuilder.m_leafsFromCluster.begin();
-        clusterData != clusterBuilder.m_leafsFromCluster.end(); 
-        ++clusterData)
-    {
-        ClusterId cluster = clusterData->first;
-        const ClusterBuilder::Leafs& leafs = clusterData->second;
-        unsigned numLeafs = leafs.size();
-
-        if (numLeafs == 0)
-            continue;
-
-        m_clusterNodes[cluster] = leafs[0]->m_parent;
-
-        for (unsigned j = 1; j < numLeafs; ++j)
-        {
-            mnode_s *clusterNode = m_clusterNodes[j];
-            mleaf_s *leaf = leafs[j];
-            mnode_s *leafNode = leaf->m_parent;
-
-            if (!leafNode)
-                continue;
-
-            while (clusterNode)
-            {
-                if (clusterNode->m_parent == leafNode)
-                {
-                    m_clusterNodes[cluster] = leafNode;
-                    break;
-                }
-                clusterNode = clusterNode->m_parent;
             }
         }
     }

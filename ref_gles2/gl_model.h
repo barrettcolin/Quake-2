@@ -79,6 +79,7 @@ typedef struct
 
 typedef struct glmesh_s
 {
+    int m_viewFrame;
     GLuint m_vertexBuffer;
     GLuint m_indexBuffer;
     unsigned m_numMeshSections;
@@ -101,9 +102,6 @@ typedef struct mnode_s
 
 	unsigned short		firstsurface;
 	unsigned short		numsurfaces;
-
-    int m_viewFrame;
-    glmesh_t *m_clusterMesh;
 } mnode_t;
 
 
@@ -125,6 +123,7 @@ typedef struct mleaf_s
 
 	msurface_t	**firstmarksurface;
 	int			nummarksurfaces;
+    glmesh_t *m_clusterMesh;
 } mleaf_t;
 
 
@@ -168,7 +167,10 @@ typedef struct model_s
 	int			numleafs;		// number of visible leafs, not counting 0
 	mleaf_t		*leafs;
 
-	int			numvertexes;
+    int         numclustermeshes;
+    glmesh_t    **clustermeshes;
+
+    int			numvertexes;
 	mvertex_t	*vertexes;
 
 	int			numedges;

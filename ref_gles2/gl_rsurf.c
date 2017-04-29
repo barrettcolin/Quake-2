@@ -776,8 +776,6 @@ static void RecursiveWorldNode (mnode_t *node)
 	if (R_CullBox (node->minmaxs, node->minmaxs+3))
 		return;
 
-    node->m_viewFrame = r_visframecount;
-	
 // if a leaf node, draw stuff
 	if (node->contents != -1)
 	{
@@ -791,6 +789,8 @@ static void RecursiveWorldNode (mnode_t *node)
 		}
 
         pleaf->viewframe = r_visframecount;
+        if (pleaf->cluster >= 0 && r_worldmodel->clustermeshes[pleaf->cluster])
+            r_worldmodel->clustermeshes[pleaf->cluster]->m_viewFrame = r_visframecount;
 
 		mark = pleaf->firstmarksurface;
 		c = pleaf->nummarksurfaces;
@@ -919,28 +919,26 @@ static void RecursiveWorldNode (mnode_t *node)
 }
 
 
-static void GL_RenderClusterMeshes(int numNodes, mnode_t *node)
+static void GL_RenderClusterMeshes(model_t *model)
 {
-    for (; numNodes; numNodes--, node++)
+    int i;
+    for (i = 0; i < model->numclustermeshes; ++i)
     {
-        int i;
-
-        if (node->m_viewFrame != r_visframecount)
+        int j;
+        glmesh_t *clusterMesh = model->clustermeshes[i];
+        if (!(clusterMesh && clusterMesh->m_viewFrame == r_visframecount))
             continue;
 
-        if (!node->m_clusterMesh)
-            continue;
-
-        qglBindBuffer(GL_ARRAY_BUFFER, node->m_clusterMesh->m_vertexBuffer);
+        qglBindBuffer(GL_ARRAY_BUFFER, clusterMesh->m_vertexBuffer);
         qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)0);
         qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)12);
         qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)20);
 
-        qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, node->m_clusterMesh->m_indexBuffer);
+        qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, clusterMesh->m_indexBuffer);
 
-        for (i = 0; i < node->m_clusterMesh->m_numMeshSections; ++i)
+        for (j = 0; j < clusterMesh->m_numMeshSections; ++j)
         {
-            struct MapModelMeshSection const *section = &node->m_clusterMesh->m_meshSections[i];
+            struct MapModelMeshSection const *section = &clusterMesh->m_meshSections[j];
             image_t *image = R_TextureAnimation(section->m_texInfo);
             unsigned indicesOffset = section->m_firstStripIndex * sizeof(VertexIndex);
 
@@ -1054,7 +1052,7 @@ void R_DrawWorld (void)
     rmt_EndCPUSample();
 
     rmt_BeginCPUSample(GL_RenderClusterMeshes, 0);
-    GL_RenderClusterMeshes(r_worldmodel->numnodes, r_worldmodel->nodes);
+    GL_RenderClusterMeshes(r_worldmodel);
     rmt_EndCPUSample();
 
     //<todo.cb remove GL_RenderMarkSurfaces
