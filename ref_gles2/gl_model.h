@@ -119,7 +119,6 @@ typedef struct mleaf_s
 // leaf specific
 	short		cluster;
 	short		area;
-    int			viewframe;
 
 	msurface_t	**firstmarksurface;
 	int			nummarksurfaces;
@@ -167,8 +166,8 @@ typedef struct model_s
 	int			numleafs;		// number of visible leafs, not counting 0
 	mleaf_t		*leafs;
 
-    int         numclustermeshes;
-    glmesh_t    **clustermeshes;
+    int         nummeshes;
+    glmesh_t    **meshes;
 
     int			numvertexes;
 	mvertex_t	*vertexes;

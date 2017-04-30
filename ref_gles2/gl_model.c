@@ -1377,13 +1377,13 @@ static void Mod_FreeBrushModel(model_t *mod)
 {
     int i;
 
-    for (i = 0; i < mod->numclustermeshes; ++i)
+    for (i = 0; i < mod->nummeshes; ++i)
     {
-        glmesh_t *clusterMesh = mod->clustermeshes[i];
-        if (clusterMesh)
+        glmesh_t *mesh = mod->meshes[i];
+        if (mesh)
         {
-            qglDeleteBuffers(1, &clusterMesh->m_vertexBuffer);
-            qglDeleteBuffers(1, &clusterMesh->m_indexBuffer);
+            qglDeleteBuffers(1, &mesh->m_vertexBuffer);
+            qglDeleteBuffers(1, &mesh->m_indexBuffer);
         }
     }
 
@@ -1507,9 +1507,9 @@ static void BuildClusterMeshes(model_t *model)
     meshData = ref_ClusterMeshDataCreate(meshBuilder);
     
     // Build and assign cluster meshes
-    model->numclustermeshes = ref_ClusterMeshDataGetNumClusters(meshData);
-    model->clustermeshes = Hunk_Alloc(model->numclustermeshes * sizeof(*model->clustermeshes)); //< Hunk_Alloc zero inits clusterMeshes
-    BuildAndAssignClusterMeshes(meshData, model->nodes, model->clustermeshes);
+    model->nummeshes = ref_ClusterMeshDataGetNumClusters(meshData);
+    model->meshes = Hunk_Alloc(model->nummeshes * sizeof(*model->meshes)); //< Hunk_Alloc zero inits model->meshes
+    BuildAndAssignClusterMeshes(meshData, model->nodes, model->meshes);
 
     qglBindBuffer(GL_ARRAY_BUFFER, 0);
     qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);

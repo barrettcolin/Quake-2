@@ -753,181 +753,156 @@ void R_DrawBrushModel (entity_t *e)
 
 =============================================================
 */
-
-/*
-================
-RecursiveWorldNode
-================
-*/
-static void RecursiveWorldNode (mnode_t *node)
+static int CalcSide(cplane_t const *plane)
 {
-	int			c, side, sidebit;
-	cplane_t	*plane;
-	msurface_t	*surf, **mark;
-	mleaf_t		*pleaf;
-	float		dot;
-	image_t		*image;
+    float dot;
 
-	if (node->contents == CONTENTS_SOLID)
-		return;		// solid
+    switch (plane->type)
+    {
+    case PLANE_X:
+        dot = modelorg[0] - plane->dist;
+        break;
+    case PLANE_Y:
+        dot = modelorg[1] - plane->dist;
+        break;
+    case PLANE_Z:
+        dot = modelorg[2] - plane->dist;
+        break;
+    default:
+        dot = DotProduct(modelorg, plane->normal) - plane->dist;
+        break;
+    }
 
-	if (node->visframe != r_visframecount)
-		return;
-	if (R_CullBox (node->minmaxs, node->minmaxs+3))
-		return;
-
-// if a leaf node, draw stuff
-	if (node->contents != -1)
-	{
-		pleaf = (mleaf_t *)node;
-
-		// check for door connected areas
-		if (r_newrefdef.areabits)
-		{
-			if (! (r_newrefdef.areabits[pleaf->area>>3] & (1<<(pleaf->area&7)) ) )
-				return;		// not visible
-		}
-
-        pleaf->viewframe = r_visframecount;
-        if (pleaf->cluster >= 0 && r_worldmodel->clustermeshes[pleaf->cluster])
-            r_worldmodel->clustermeshes[pleaf->cluster]->m_viewFrame = r_visframecount;
-
-		mark = pleaf->firstmarksurface;
-		c = pleaf->nummarksurfaces;
-
-		if (c)
-		{
-			do
-			{
-				(*mark)->visframe = r_framecount;
-				mark++;
-			} while (--c);
-		}
-
-		return;
-	}
-
-// node is just a decision point, so go down the apropriate sides
-
-// find which side of the node we are on
-	plane = node->plane;
-
-	switch (plane->type)
-	{
-	case PLANE_X:
-		dot = modelorg[0] - plane->dist;
-		break;
-	case PLANE_Y:
-		dot = modelorg[1] - plane->dist;
-		break;
-	case PLANE_Z:
-		dot = modelorg[2] - plane->dist;
-		break;
-	default:
-		dot = DotProduct (modelorg, plane->normal) - plane->dist;
-		break;
-	}
-
-	if (dot >= 0)
-	{
-		side = 0;
-		sidebit = 0;
-	}
-	else
-	{
-		side = 1;
-		sidebit = SURF_PLANEBACK;
-	}
-
-// recurse down the children, front side first
-	RecursiveWorldNode (node->children[side]);
-
-	// draw stuff
-	for ( c = node->numsurfaces, surf = r_worldmodel->surfaces + node->firstsurface; c ; c--, surf++)
-	{
-		if (surf->visframe != r_framecount)
-			continue;
-
-		if ( (surf->flags & SURF_PLANEBACK) != sidebit )
-			continue;		// wrong side
-
-		if (surf->texinfo->flags & SURF_SKY)
-		{	// just adds to visible sky bounds
-			R_AddSkySurface (surf);
-		}
-		else if (surf->texinfo->flags & (SURF_TRANS33|SURF_TRANS66))
-		{	// add to the translucent chain
-			surf->texturechain = r_alpha_surfaces;
-			r_alpha_surfaces = surf;
-		}
-		else
-		{
-            if ( !( surf->flags & SURF_DRAWTURB ) )
-			{
-                GL_UpdateLightmap(surf);
-			}
-			else
-			{
-				// the polygon is visible, so add it to the texture
-				// sorted chain
-				// FIXME: this is a hack for animation
-				image = R_TextureAnimation (surf->texinfo);
-				surf->texturechain = image->texturechain;
-				image->texturechain = surf;
-			}
-		}
-	}
-
-	// recurse down the back side
-	RecursiveWorldNode (node->children[!side]);
-/*
-	for ( ; c ; c--, surf++)
-	{
-		if (surf->visframe != r_framecount)
-			continue;
-
-		if ( (surf->flags & SURF_PLANEBACK) != sidebit )
-			continue;		// wrong side
-
-		if (surf->texinfo->flags & SURF_SKY)
-		{	// just adds to visible sky bounds
-			R_AddSkySurface (surf);
-		}
-		else if (surf->texinfo->flags & (SURF_TRANS33|SURF_TRANS66))
-		{	// add to the translucent chain
-//			surf->texturechain = alpha_surfaces;
-//			alpha_surfaces = surf;
-		}
-		else
-		{
-			if ( qglMTexCoord2fSGIS && !( surf->flags & SURF_DRAWTURB ) )
-			{
-				GL_RenderLightmappedPoly( surf );
-			}
-			else
-			{
-				// the polygon is visible, so add it to the texture
-				// sorted chain
-				// FIXME: this is a hack for animation
-				image = R_TextureAnimation (surf->texinfo);
-				surf->texturechain = image->texturechain;
-				image->texturechain = surf;
-			}
-		}
-	}
-*/
+    return (dot >= 0) ? 0 : 1;
 }
 
 
-static void GL_RenderClusterMeshes(model_t *model)
+static void MarkSurfacesAndUpdateLightmaps(mnode_t *node)
 {
-    int i;
-    for (i = 0; i < model->numclustermeshes; ++i)
+    int side, plane_planeback;
+
+    qboolean is_solid_leaf = (node->contents == CONTENTS_SOLID);
+    qboolean not_visible_frame = (node->visframe != r_visframecount);
+    if (is_solid_leaf || not_visible_frame)
+        return;
+
+    // Node culled?
+    if (R_CullBox(node->minmaxs, node->minmaxs + 3))
+        return;
+
+    // Node is leaf?
+    if (node->contents != -1)
     {
-        int j;
-        glmesh_t *clusterMesh = model->clustermeshes[i];
-        if (!(clusterMesh && clusterMesh->m_viewFrame == r_visframecount))
-            continue;
+        int i;
+        msurface_t **mark;
+        mleaf_t *pleaf = (mleaf_t *)node;
+
+        // Area test
+        if (r_newrefdef.areabits && !(r_newrefdef.areabits[pleaf->area >> 3] & (1 << (pleaf->area & 7))))
+            return;
+
+        // Mark surfaces
+        mark = pleaf->firstmarksurface;
+        i = pleaf->nummarksurfaces;
+
+        if (i)
+        {
+            do
+            {
+                (*mark)->visframe = r_framecount;
+                mark++;
+            } while (--i);
+        }
+
+        return;
+    }
+
+    // Determine plane side
+    side = CalcSide(node->plane);
+    plane_planeback = side ? SURF_PLANEBACK : 0;
+
+    // Front side
+    MarkSurfacesAndUpdateLightmaps(node->children[side]);
+
+    // Surfaces
+    {
+        int i;
+        msurface_t *surf;
+        for (i = node->numsurfaces, surf = r_worldmodel->surfaces + node->firstsurface; i; i--, surf++)
+        {
+            int surf_planeback;
+            if (surf->visframe != r_framecount)
+                continue;
+
+            surf_planeback = surf->flags & SURF_PLANEBACK;
+            if (surf_planeback != plane_planeback)
+                continue;
+
+            if (surf->texinfo->flags & SURF_SKY)
+            {
+                // Sky
+                R_AddSkySurface(surf);
+            }
+            else if (surf->texinfo->flags & (SURF_TRANS33 | SURF_TRANS66))
+            {
+                // Transparent chain
+                surf->texturechain = r_alpha_surfaces;
+                r_alpha_surfaces = surf;
+            }
+            else
+            {
+                if (!(surf->flags & SURF_DRAWTURB))
+                {
+                    GL_UpdateLightmap(surf);
+                }
+                else
+                {
+                    // the polygon is visible, so add it to the texture
+                    // sorted chain
+                    // FIXME: this is a hack for animation
+                    image_t *image = R_TextureAnimation(surf->texinfo);
+                    surf->texturechain = image->texturechain;
+                    image->texturechain = surf;
+                }
+            }
+        }
+    }
+
+    // Back side
+    MarkSurfacesAndUpdateLightmaps(node->children[!side]);
+}
+
+
+static void DrawClusterMeshes(mnode_t *node)
+{
+    int side;
+
+    qboolean is_solid_leaf = (node->contents == CONTENTS_SOLID);
+    qboolean not_visible_frame = (node->visframe != r_visframecount);
+    if (is_solid_leaf || not_visible_frame)
+        return;
+
+    // Node culled?
+    if (R_CullBox(node->minmaxs, node->minmaxs + 3))
+        return;
+
+    // Node is leaf?
+    if (node->contents != -1)
+    {
+        int i;
+        glmesh_t *clusterMesh;
+        mleaf_t *pleaf = (mleaf_t *)node;
+
+        if (pleaf->cluster == -1)
+            return;
+
+        // Area test
+        if (r_newrefdef.areabits && !(r_newrefdef.areabits[pleaf->area >> 3] & (1 << (pleaf->area & 7))))
+            return;
+
+        clusterMesh = r_worldmodel->meshes[pleaf->cluster];
+        if (clusterMesh && clusterMesh->m_viewFrame == r_framecount)
+            return;
 
         qglBindBuffer(GL_ARRAY_BUFFER, clusterMesh->m_vertexBuffer);
         qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)0);
@@ -936,9 +911,9 @@ static void GL_RenderClusterMeshes(model_t *model)
 
         qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, clusterMesh->m_indexBuffer);
 
-        for (j = 0; j < clusterMesh->m_numMeshSections; ++j)
+        for (i = 0; i < clusterMesh->m_numMeshSections; ++i)
         {
-            struct MapModelMeshSection const *section = &clusterMesh->m_meshSections[j];
+            struct MapModelMeshSection const *section = &clusterMesh->m_meshSections[i];
             if (section->m_lightMap == 0)
                 continue;
 
@@ -950,67 +925,19 @@ static void GL_RenderClusterMeshes(model_t *model)
 
             qglDrawElements(GL_TRIANGLE_STRIP, section->m_numStripIndices, GL_UNSIGNED_SHORT, (void *)indicesOffset);
         }
+
+        clusterMesh->m_viewFrame = r_framecount;
+        return;
     }
 
-    qglBindBuffer(GL_ARRAY_BUFFER, 0);
-    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-}
+    // Determine plane side
+    side = CalcSide(node->plane);
 
+    // Front side
+    DrawClusterMeshes(node->children[side]);
 
-static void GL_RenderMarkSurfaces(int numleafs, mleaf_t *leaf)
-{
-    for (; numleafs; numleafs--, leaf++)
-    {
-        int numsurfs;
-        msurface_t **surf;
-
-        if (leaf->viewframe != r_visframecount)
-            continue;
-
-        surf = leaf->firstmarksurface;
-        numsurfs = leaf->nummarksurfaces;
-        for (; numsurfs; numsurfs--, surf++)
-        {
-            image_t const *const image = R_TextureAnimation((*surf)->texinfo);
-            int const nv = (*surf)->polys->numverts;
-            glpoly_t const *p;
-
-            if (((*surf)->flags & SURF_DRAWTURB) || ((*surf)->texinfo->flags & (SURF_SKY | SURF_TRANS33 | SURF_TRANS66)))
-                continue;
-
-            c_brush_polys++;
-
-            GL_MBind(GL_TEXTURE0, image->texnum);
-            GL_MBind(GL_TEXTURE1, GL_GetLightmapTextureName((*surf)->lightmaptexturenum));
-
-            if ((*surf)->texinfo->flags & SURF_FLOWING)
-            {
-                float scroll;
-
-                scroll = -64 * ((r_newrefdef.time / 40.0) - (int)(r_newrefdef.time / 40.0));
-                if (scroll == 0.0)
-                    scroll = -64.0;
-
-                for (p = (*surf)->polys; p; p = p->chain)
-                {
-                    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_xyz);
-                    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[0]);
-                    qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[1]);
-                    qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
-                }
-            }
-            else
-            {
-                for (p = (*surf)->polys; p; p = p->chain)
-                {
-                    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_xyz);
-                    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[0]);
-                    qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[1]);
-                    qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
-                }
-            }
-        }
-    }
+    // Back side
+    DrawClusterMeshes(node->children[!side]);
 }
 
 
@@ -1050,20 +977,17 @@ void R_DrawWorld (void)
     Material_SetViewFromWorld(g_lightmapped_material, gl_state.view_from_world);
     Material_SetWorldFromModel(g_lightmapped_material, g_identity_matrix);
 
-    rmt_BeginCPUSample(RecursiveWorldNode, 0);
-    RecursiveWorldNode (r_worldmodel->nodes);
+    rmt_BeginCPUSample(MarkSurfacesAndUpdateLightmaps, 0);
+    MarkSurfacesAndUpdateLightmaps(r_worldmodel->nodes);
     rmt_EndCPUSample();
 
-    rmt_BeginCPUSample(GL_RenderClusterMeshes, 0);
-    GL_RenderClusterMeshes(r_worldmodel);
+    rmt_BeginCPUSample(DrawClusterMeshes, 0);
+    DrawClusterMeshes(r_worldmodel->nodes);
     rmt_EndCPUSample();
 
-    //<todo.cb remove GL_RenderMarkSurfaces
-#if 0
-    rmt_BeginCPUSample(GL_RenderMarkSurfaces, 0);
-    GL_RenderMarkSurfaces(r_worldmodel->numleafs, r_worldmodel->leafs);
-    rmt_EndCPUSample();
-#endif
+    qglBindBuffer(GL_ARRAY_BUFFER, 0);
+    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
     // R_RenderBrushPoly for SURF_DRAWTURB surfaces not rendered by RecursiveWorldNode
     Material_SetCurrent(g_unlit_material);
     Material_SetClipFromView(g_unlit_material, gl_state.clip_from_view);
