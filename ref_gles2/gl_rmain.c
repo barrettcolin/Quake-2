@@ -1224,7 +1224,7 @@ void R_Shutdown (void)
             else if (qglIsBuffer(name))
                 numBuffers++;
         }
-        ri.Con_Printf(PRINT_DEVELOPER, "GL_ShutdownImages: numTextures (%d), numBuffers (%d)\n", numTextures, numBuffers);
+        ri.Con_Printf(PRINT_DEVELOPER, "R_Shutdown: numTextures (%d), numBuffers (%d)\n", numTextures, numBuffers);
     }
     
     /*
