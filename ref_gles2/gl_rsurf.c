@@ -108,7 +108,7 @@ R_TextureAnimation
 Returns the proper texture for a given time and base texture
 ===============
 */
-image_t *R_TextureAnimation (mtexinfo_t const *tex)
+static image_t *R_TextureAnimation (mtexinfo_t const *tex)
 {
 	int		c;
 
@@ -123,6 +123,36 @@ image_t *R_TextureAnimation (mtexinfo_t const *tex)
 	}
 
 	return tex->image;
+}
+
+static void GL_RenderMesh(glmesh_t *mesh)
+{
+    int i;
+
+    qglBindBuffer(GL_ARRAY_BUFFER, mesh->m_vertexBuffer);
+    qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)0);
+    qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)12);
+    qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)20);
+
+    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->m_indexBuffer);
+
+    for (i = 0; i < mesh->m_numMeshSections; ++i)
+    {
+        struct MapModelMeshSection const *section = &mesh->m_meshSections[i];
+        if (section->m_lightMap == 0)
+            continue;
+
+        image_t *image = R_TextureAnimation(section->m_texInfo);
+        unsigned indicesOffset = section->m_firstStripIndex * sizeof(VertexIndex);
+
+        GL_MBind(GL_TEXTURE0, image->texnum);
+        GL_MBind(GL_TEXTURE1, GL_GetLightmapTextureName(section->m_lightMap));
+
+        qglDrawElements(GL_TRIANGLE_STRIP, section->m_numStripIndices, GL_UNSIGNED_SHORT, (void *)indicesOffset);
+    }
+
+    qglBindBuffer(GL_ARRAY_BUFFER, 0);
+    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 #if 0
@@ -623,7 +653,7 @@ dynamic:
 R_DrawInlineBModel
 =================
 */
-void R_DrawInlineBModel (void)
+static void R_DrawInlineBModel (void)
 {
 	int			i, k;
 	cplane_t	*pplane;
@@ -649,8 +679,24 @@ void R_DrawInlineBModel (void)
 	psurf = &currentmodel->surfaces[currentmodel->firstmodelsurface];
 
     alpha = is_translucent ? 0.25 : 1;
-
-	//
+#if 0
+    if (currentmodel->meshes[0])
+    {
+        msurface_t *surf;
+        for (i = 0, surf = currentmodel->surfaces + currentmodel->firstmodelsurface; i < currentmodel->nummodelsurfaces; ++i, ++surf)
+            GL_UpdateLightmap(surf);
+        
+        material_id mat = is_translucent ? g_lightmapped_alpha_material : g_lightmapped_material;
+        Material_SetCurrent(mat);
+        Material_SetWorldFromModel(mat, world_from_model); // proj + view already set when drawing world
+        if (is_translucent)
+        {
+            Material_SetDiffuseColor(mat, 1, 1, 1, alpha);
+        }
+        GL_RenderMesh(currentmodel->meshes[0]);
+    }
+#endif
+    //
 	// draw texture
 	//
 	for (i=0 ; i<currentmodel->nummodelsurfaces ; i++, psurf++)
@@ -887,7 +933,6 @@ static void DrawClusterMeshes(mnode_t *node)
     // Node is leaf?
     if (node->contents != -1)
     {
-        int i;
         glmesh_t *clusterMesh;
         mleaf_t *pleaf = (mleaf_t *)node;
 
@@ -901,27 +946,7 @@ static void DrawClusterMeshes(mnode_t *node)
         clusterMesh = r_worldmodel->meshes[pleaf->cluster];
         if (clusterMesh && clusterMesh->m_viewFrame != r_framecount)
         {
-            qglBindBuffer(GL_ARRAY_BUFFER, clusterMesh->m_vertexBuffer);
-            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)0);
-            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)12);
-            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)20);
-
-            qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, clusterMesh->m_indexBuffer);
-
-            for (i = 0; i < clusterMesh->m_numMeshSections; ++i)
-            {
-                struct MapModelMeshSection const *section = &clusterMesh->m_meshSections[i];
-                if (section->m_lightMap == 0)
-                    continue;
-
-                image_t *image = R_TextureAnimation(section->m_texInfo);
-                unsigned indicesOffset = section->m_firstStripIndex * sizeof(VertexIndex);
-
-                GL_MBind(GL_TEXTURE0, image->texnum);
-                GL_MBind(GL_TEXTURE1, GL_GetLightmapTextureName(section->m_lightMap));
-
-                qglDrawElements(GL_TRIANGLE_STRIP, section->m_numStripIndices, GL_UNSIGNED_SHORT, (void *)indicesOffset);
-            }
+            GL_RenderMesh(clusterMesh);
 
             clusterMesh->m_viewFrame = r_framecount;
         }
