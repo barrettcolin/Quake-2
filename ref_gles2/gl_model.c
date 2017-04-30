@@ -53,8 +53,9 @@ static int s_num_xyz_st;
 static gltriangle_t s_gl_triangles[MAX_TRIANGLES];
 static int s_num_gl_triangles;
 
-// Cluster meshes
-static void BuildClusterMeshes(model_t *model);
+// Model meshes
+static void BuildClusterMeshes(model_t *model); // world
+static void BuildMeshes(model_t *model); // inline
 
 /*
 ===============
@@ -930,12 +931,11 @@ static void Mod_LoadBrushModel (model_t *mod, void *buffer)
 		VectorCopy (bm->maxs, starmod->maxs);
 		VectorCopy (bm->mins, starmod->mins);
 		starmod->radius = bm->radius;
-	
-		if (i == 0)
-			*loadmodel = *starmod;
-
 		starmod->numleafs = bm->visleafs;
-	}
+
+        if (i != 0)
+            BuildMeshes(starmod);
+    }
 }
 
 /*
@@ -1387,6 +1387,16 @@ static void Mod_FreeBrushModel(model_t *mod)
         }
     }
 
+    for (i = 1; i < mod->numsubmodels; ++i)
+    {
+        glmesh_t *mesh = mod_inline[i].meshes[0];
+        if (mesh)
+        {
+            qglDeleteBuffers(1, &mesh->m_vertexBuffer);
+            qglDeleteBuffers(1, &mesh->m_indexBuffer);
+        }
+    }
+
     GL_DeleteLightmaps();
 }
 
@@ -1442,6 +1452,50 @@ static void AddClusterMeshSurfaces(mnode_t const *node, struct ClusterMeshBuilde
     }
 }
 
+static glmesh_t *BuildClusterMesh(struct ClusterMeshData const *meshData, ClusterId cluster)
+{
+    glmesh_t *clusterMesh = NULL;
+
+    unsigned numVertices = ref_ClusterMeshDataGetNumVertices(meshData, cluster);
+    unsigned numIndices = ref_ClusterMeshDataGetNumIndices(meshData, cluster);
+
+    if (numVertices && numIndices)
+    {
+        int i;
+        struct MapModelVertex const *vertices = ref_ClusterMeshDataGetVertices(meshData, cluster);
+        VertexIndex const *indices = ref_ClusterMeshDataGetIndices(meshData, cluster);
+        unsigned numMeshSections = ref_ClusterMeshDataGetNumMeshSections(meshData, cluster);
+        struct MapModelMeshSection const *meshSections = ref_ClusterMeshDataGetMeshSections(meshData, cluster);
+
+        clusterMesh = Hunk_Alloc(sizeof(glmesh_t) + (numMeshSections - 1) * sizeof(struct MapModelMeshSection));
+
+        qglGenBuffers(1, &clusterMesh->m_vertexBuffer);
+        {
+            GLsizeiptr bufSize = numVertices * sizeof(struct MapModelVertex);
+
+            qglBindBuffer(GL_ARRAY_BUFFER, clusterMesh->m_vertexBuffer);
+            qglBufferData(GL_ARRAY_BUFFER, bufSize, vertices, GL_STATIC_DRAW);
+        }
+
+        qglGenBuffers(1, &clusterMesh->m_indexBuffer);
+        {
+            GLsizeiptr bufSize = numIndices * sizeof(VertexIndex);
+
+            qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, clusterMesh->m_indexBuffer);
+            qglBufferData(GL_ELEMENT_ARRAY_BUFFER, bufSize, indices, GL_STATIC_DRAW);
+        }
+
+        clusterMesh->m_numMeshSections = numMeshSections;
+        for (i = 0; i < numMeshSections; ++i)
+            clusterMesh->m_meshSections[i] = meshSections[i];
+
+        qglBindBuffer(GL_ARRAY_BUFFER, 0);
+        qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+
+    return clusterMesh;
+}
+
 static void BuildAndAssignClusterMeshes(struct ClusterMeshData const *meshData, mnode_t const *node, glmesh_t **clusterMeshes)
 {
     if (node->contents != -1)
@@ -1450,43 +1504,7 @@ static void BuildAndAssignClusterMeshes(struct ClusterMeshData const *meshData, 
         short cluster = leaf->cluster;
 
         if (cluster >= 0 && clusterMeshes[cluster] == NULL)
-        {
-            unsigned numVertices = ref_ClusterMeshDataGetNumVertices(meshData, cluster);
-            unsigned numIndices = ref_ClusterMeshDataGetNumIndices(meshData, cluster);
-
-            if (numVertices && numIndices)
-            {
-                int j;
-                struct MapModelVertex const *vertices = ref_ClusterMeshDataGetVertices(meshData, cluster);
-                VertexIndex const *indices = ref_ClusterMeshDataGetIndices(meshData, cluster);
-                unsigned numMeshSections = ref_ClusterMeshDataGetNumMeshSections(meshData, cluster);
-                struct MapModelMeshSection const *meshSections = ref_ClusterMeshDataGetMeshSections(meshData, cluster);
-
-                glmesh_t *clusterMesh = Hunk_Alloc(sizeof(glmesh_t) + (numMeshSections - 1) * sizeof(struct MapModelMeshSection));
-
-                qglGenBuffers(1, &clusterMesh->m_vertexBuffer);
-                {
-                    GLsizeiptr bufSize = numVertices * sizeof(struct MapModelVertex);
-
-                    qglBindBuffer(GL_ARRAY_BUFFER, clusterMesh->m_vertexBuffer);
-                    qglBufferData(GL_ARRAY_BUFFER, bufSize, vertices, GL_STATIC_DRAW);
-                }
-
-                qglGenBuffers(1, &clusterMesh->m_indexBuffer);
-                {
-                    GLsizeiptr bufSize = numIndices * sizeof(VertexIndex);
-
-                    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, clusterMesh->m_indexBuffer);
-                    qglBufferData(GL_ELEMENT_ARRAY_BUFFER, bufSize, indices, GL_STATIC_DRAW);
-                }
-
-                clusterMesh->m_numMeshSections = numMeshSections;
-                for (j = 0; j < numMeshSections; ++j)
-                    clusterMesh->m_meshSections[j] = meshSections[j];
-
-                clusterMeshes[cluster] = clusterMesh;
-            }
-        }
+            clusterMeshes[cluster] = BuildClusterMesh(meshData, cluster);
     }
     else
     {
@@ -1511,8 +1529,29 @@ static void BuildClusterMeshes(model_t *model)
     model->meshes = Hunk_Alloc(model->nummeshes * sizeof(*model->meshes)); //< Hunk_Alloc zero inits model->meshes
     BuildAndAssignClusterMeshes(meshData, model->nodes, model->meshes);
 
-    qglBindBuffer(GL_ARRAY_BUFFER, 0);
-    qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    ref_ClusterMeshDataDestroy(meshData);
+    ref_ClusterMeshBuilderDestroy(meshBuilder);
+}
+
+static void BuildMeshes(model_t *model)
+{
+    int i;
+    msurface_t *surf;
+    struct ClusterMeshBuilder *meshBuilder;
+    struct ClusterMeshData *meshData;
+
+    // Alloc mesh pointer
+    model->nummeshes = 1;
+    model->meshes = Hunk_Alloc(model->nummeshes * sizeof(*model->meshes));
+
+    // Populate builder
+    meshBuilder = ref_ClusterMeshBuilderCreate();
+    for (i = 0, surf = model->surfaces + model->firstmodelsurface; i < model->nummodelsurfaces; ++i, ++surf)
+        ref_ClusterMeshBuilderAddSurface(meshBuilder, 0, surf);
+
+    // Generate mesh
+    meshData = ref_ClusterMeshDataCreate(meshBuilder);
+    model->meshes[0] = BuildClusterMesh(meshData, 0);
 
     ref_ClusterMeshDataDestroy(meshData);
     ref_ClusterMeshBuilderDestroy(meshBuilder);
