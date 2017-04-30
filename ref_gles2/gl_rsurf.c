@@ -779,8 +779,6 @@ static int CalcSide(cplane_t const *plane)
 
 static void MarkSurfacesAndUpdateLightmaps(mnode_t *node)
 {
-    int side, plane_planeback;
-
     qboolean is_solid_leaf = (node->contents == CONTENTS_SOLID);
     qboolean not_visible_frame = (node->visframe != r_visframecount);
     if (is_solid_leaf || not_visible_frame)
@@ -813,63 +811,63 @@ static void MarkSurfacesAndUpdateLightmaps(mnode_t *node)
                 mark++;
             } while (--i);
         }
-
-        return;
     }
-
-    // Determine plane side
-    side = CalcSide(node->plane);
-    plane_planeback = side ? SURF_PLANEBACK : 0;
-
-    // Front side
-    MarkSurfacesAndUpdateLightmaps(node->children[side]);
-
-    // Surfaces
+    else
     {
-        int i;
-        msurface_t *surf;
-        for (i = node->numsurfaces, surf = r_worldmodel->surfaces + node->firstsurface; i; i--, surf++)
+        // Determine plane side
+        int side = CalcSide(node->plane);
+        int plane_planeback = side ? SURF_PLANEBACK : 0;
+
+        // Front side
+        MarkSurfacesAndUpdateLightmaps(node->children[side]);
+
+        // Surfaces
         {
-            int surf_planeback;
-            if (surf->visframe != r_framecount)
-                continue;
+            int i;
+            msurface_t *surf;
+            for (i = node->numsurfaces, surf = r_worldmodel->surfaces + node->firstsurface; i; i--, surf++)
+            {
+                int surf_planeback;
+                if (surf->visframe != r_framecount)
+                    continue;
 
-            surf_planeback = surf->flags & SURF_PLANEBACK;
-            if (surf_planeback != plane_planeback)
-                continue;
+                surf_planeback = surf->flags & SURF_PLANEBACK;
+                if (surf_planeback != plane_planeback)
+                    continue;
 
-            if (surf->texinfo->flags & SURF_SKY)
-            {
-                // Sky
-                R_AddSkySurface(surf);
-            }
-            else if (surf->texinfo->flags & (SURF_TRANS33 | SURF_TRANS66))
-            {
-                // Transparent chain
-                surf->texturechain = r_alpha_surfaces;
-                r_alpha_surfaces = surf;
-            }
-            else
-            {
-                if (!(surf->flags & SURF_DRAWTURB))
+                if (surf->texinfo->flags & SURF_SKY)
                 {
-                    GL_UpdateLightmap(surf);
+                    // Sky
+                    R_AddSkySurface(surf);
+                }
+                else if (surf->texinfo->flags & (SURF_TRANS33 | SURF_TRANS66))
+                {
+                    // Transparent chain
+                    surf->texturechain = r_alpha_surfaces;
+                    r_alpha_surfaces = surf;
                 }
                 else
                 {
-                    // the polygon is visible, so add it to the texture
-                    // sorted chain
-                    // FIXME: this is a hack for animation
-                    image_t *image = R_TextureAnimation(surf->texinfo);
-                    surf->texturechain = image->texturechain;
-                    image->texturechain = surf;
+                    if (!(surf->flags & SURF_DRAWTURB))
+                    {
+                        GL_UpdateLightmap(surf);
+                    }
+                    else
+                    {
+                        // the polygon is visible, so add it to the texture
+                        // sorted chain
+                        // FIXME: this is a hack for animation
+                        image_t *image = R_TextureAnimation(surf->texinfo);
+                        surf->texturechain = image->texturechain;
+                        image->texturechain = surf;
+                    }
                 }
             }
         }
-    }
 
-    // Back side
-    MarkSurfacesAndUpdateLightmaps(node->children[!side]);
+        // Back side
+        MarkSurfacesAndUpdateLightmaps(node->children[!side]);
+    }
 }
 
 
@@ -901,43 +899,44 @@ static void DrawClusterMeshes(mnode_t *node)
             return;
 
         clusterMesh = r_worldmodel->meshes[pleaf->cluster];
-        if (clusterMesh && clusterMesh->m_viewFrame == r_framecount)
-            return;
-
-        qglBindBuffer(GL_ARRAY_BUFFER, clusterMesh->m_vertexBuffer);
-        qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)0);
-        qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)12);
-        qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)20);
-
-        qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, clusterMesh->m_indexBuffer);
-
-        for (i = 0; i < clusterMesh->m_numMeshSections; ++i)
+        if (clusterMesh && clusterMesh->m_viewFrame != r_framecount)
         {
-            struct MapModelMeshSection const *section = &clusterMesh->m_meshSections[i];
-            if (section->m_lightMap == 0)
-                continue;
+            qglBindBuffer(GL_ARRAY_BUFFER, clusterMesh->m_vertexBuffer);
+            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)0);
+            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)12);
+            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), (void *)20);
 
-            image_t *image = R_TextureAnimation(section->m_texInfo);
-            unsigned indicesOffset = section->m_firstStripIndex * sizeof(VertexIndex);
+            qglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, clusterMesh->m_indexBuffer);
 
-            GL_MBind(GL_TEXTURE0, image->texnum);
-            GL_MBind(GL_TEXTURE1, GL_GetLightmapTextureName(section->m_lightMap));
+            for (i = 0; i < clusterMesh->m_numMeshSections; ++i)
+            {
+                struct MapModelMeshSection const *section = &clusterMesh->m_meshSections[i];
+                if (section->m_lightMap == 0)
+                    continue;
 
-            qglDrawElements(GL_TRIANGLE_STRIP, section->m_numStripIndices, GL_UNSIGNED_SHORT, (void *)indicesOffset);
+                image_t *image = R_TextureAnimation(section->m_texInfo);
+                unsigned indicesOffset = section->m_firstStripIndex * sizeof(VertexIndex);
+
+                GL_MBind(GL_TEXTURE0, image->texnum);
+                GL_MBind(GL_TEXTURE1, GL_GetLightmapTextureName(section->m_lightMap));
+
+                qglDrawElements(GL_TRIANGLE_STRIP, section->m_numStripIndices, GL_UNSIGNED_SHORT, (void *)indicesOffset);
+            }
+
+            clusterMesh->m_viewFrame = r_framecount;
         }
-
-        clusterMesh->m_viewFrame = r_framecount;
-        return;
     }
+    else
+    {
+        // Determine plane side
+        side = CalcSide(node->plane);
 
-    // Determine plane side
-    side = CalcSide(node->plane);
+        // Front side
+        DrawClusterMeshes(node->children[side]);
 
-    // Front side
-    DrawClusterMeshes(node->children[side]);
-
-    // Back side
-    DrawClusterMeshes(node->children[!side]);
+        // Back side
+        DrawClusterMeshes(node->children[!side]);
+    }
 }
 
 
