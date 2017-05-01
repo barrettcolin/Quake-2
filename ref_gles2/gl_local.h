@@ -327,7 +327,6 @@ void EmitWaterPolys (msurface_t *fa);
 void R_AddSkySurface (msurface_t *fa);
 void R_ClearSkyBox (void);
 void R_DrawSkyBox (void);
-void R_MarkLights (dlight_t *light, int bit, mnode_t *node);
 
 #if 0
 short LittleShort (short l);

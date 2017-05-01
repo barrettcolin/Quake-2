@@ -608,8 +608,6 @@ static void R_SetupFrame (void)
 	int i;
 	mleaf_t	*leaf;
 
-	r_framecount++;
-
 // build the transformation matrix for the given view angles
 	VectorCopy (r_newrefdef.vieworg, r_origin);
 
@@ -818,6 +816,8 @@ void R_RenderView (refdef_t *fd)
 		c_brush_polys = 0;
 		c_alias_polys = 0;
 	}
+
+    r_framecount++;
 
 	R_PushDlights ();
 

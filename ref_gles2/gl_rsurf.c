@@ -100,6 +100,7 @@ void GL_DeleteLightmaps(void)
 
 =============================================================
 */
+static void UpdateBrushEntityLightmaps(void);
 
 /*
 ===============
@@ -655,37 +656,22 @@ R_DrawInlineBModel
 */
 static void R_DrawInlineBModel (void)
 {
-	int			i, k;
+	int			i;
 	cplane_t	*pplane;
 	float		dot;
 	msurface_t	*psurf;
-	dlight_t	*lt;
     float alpha;
     GLfloat world_from_model[16];
     int is_translucent = (currententity->flags & RF_TRANSLUCENT);
 
     Matrix_FromAnglesOrigin(currententity->angles, currententity->origin, world_from_model);
 
-	// calculate dynamic lighting for bmodel
-	if ( !gl_flashblend->value )
-	{
-		lt = r_newrefdef.dlights;
-		for (k=0 ; k<r_newrefdef.num_dlights ; k++, lt++)
-		{
-			R_MarkLights (lt, 1<<k, currentmodel->nodes + currentmodel->firstnode);
-		}
-	}
-
 	psurf = &currentmodel->surfaces[currentmodel->firstmodelsurface];
 
     alpha = is_translucent ? 0.25 : 1;
-#if 0
+
     if (currentmodel->meshes[0])
     {
-        msurface_t *surf;
-        for (i = 0, surf = currentmodel->surfaces + currentmodel->firstmodelsurface; i < currentmodel->nummodelsurfaces; ++i, ++surf)
-            GL_UpdateLightmap(surf);
-        
         material_id mat = is_translucent ? g_lightmapped_alpha_material : g_lightmapped_material;
         Material_SetCurrent(mat);
         Material_SetWorldFromModel(mat, world_from_model); // proj + view already set when drawing world
@@ -695,7 +681,7 @@ static void R_DrawInlineBModel (void)
         }
         GL_RenderMesh(currentmodel->meshes[0]);
     }
-#endif
+
     //
 	// draw texture
 	//
@@ -715,18 +701,7 @@ static void R_DrawInlineBModel (void)
 				psurf->texturechain = r_alpha_surfaces;
 				r_alpha_surfaces = psurf;
 			}
-            else if ( !( psurf->flags & SURF_DRAWTURB ) )
-			{
-                material_id mat = is_translucent ? g_lightmapped_alpha_material : g_lightmapped_material;
-                Material_SetCurrent(mat);
-                Material_SetWorldFromModel(mat, world_from_model); // proj + view already set when drawing world
-                if(is_translucent)
-                {
-                    Material_SetDiffuseColor(mat, 1, 1, 1, alpha);
-                }
-				GL_RenderLightmappedPoly( psurf );
-			}
-			else
+            else if(psurf->flags & SURF_DRAWTURB)
 			{
                 material_id mat = g_unlit_material;
                 Material_SetCurrent(mat);
@@ -1003,6 +978,9 @@ void R_DrawWorld (void)
 
     rmt_BeginCPUSample(MarkSurfacesAndUpdateLightmaps, 0);
     MarkSurfacesAndUpdateLightmaps(r_worldmodel->nodes);
+
+    // Update brush entity lightmaps here too
+    UpdateBrushEntityLightmaps();
     rmt_EndCPUSample();
 
     rmt_BeginCPUSample(DrawClusterMeshes, 0);
@@ -1439,3 +1417,69 @@ void GL_EndBuildingLightmaps (void)
 	LM_UploadBlock( lmt_dynamic, false );
 }
 
+static void UpdateBrushEntityLightmaps(void)
+{
+    int i;
+
+    for (i = 0; i < r_newrefdef.num_entities; i++)
+    {
+        entity_t *brushEnt = &r_newrefdef.entities[i];
+        if (brushEnt->flags & (RF_TRANSLUCENT | RF_BEAM))
+            continue;
+
+        if (brushEnt->model && (brushEnt->model->type == mod_brush) && brushEnt->model->nummodelsurfaces)
+        {
+            qboolean rotated;
+            int j;
+            vec3_t mins, maxs;
+            msurface_t *psurf = brushEnt->model->surfaces + brushEnt->model->firstmodelsurface;
+
+            if (brushEnt->angles[0] || brushEnt->angles[1] || brushEnt->angles[2])
+            {
+                int k;
+                rotated = true;
+                for (k = 0; k < 3; k++)
+                {
+                    mins[k] = brushEnt->origin[k] - brushEnt->model->radius;
+                    maxs[k] = brushEnt->origin[k] + brushEnt->model->radius;
+                }
+            }
+            else
+            {
+                rotated = false;
+                VectorAdd(brushEnt->origin, brushEnt->model->mins, mins);
+                VectorAdd(brushEnt->origin, brushEnt->model->maxs, maxs);
+            }
+
+            VectorSubtract(r_newrefdef.vieworg, brushEnt->origin, modelorg);
+            if (rotated)
+            {
+                vec3_t temp;
+                vec3_t forward, right, up;
+
+                VectorCopy(modelorg, temp);
+                AngleVectors(brushEnt->angles, forward, right, up);
+                modelorg[0] = DotProduct(temp, forward);
+                modelorg[1] = -DotProduct(temp, right);
+                modelorg[2] = DotProduct(temp, up);
+            }
+
+            for (j = 0; j < brushEnt->model->nummodelsurfaces; j++, psurf++)
+            {
+                cplane_t const *pplane = psurf->plane;
+                float dot = DotProduct(modelorg, pplane->normal) - pplane->dist;
+
+                if (((psurf->flags & SURF_PLANEBACK) && (dot < -BACKFACE_EPSILON)) ||
+                    (!(psurf->flags & SURF_PLANEBACK) && (dot > BACKFACE_EPSILON)))
+                {
+                    if ((psurf->flags & SURF_DRAWTURB) || (psurf->texinfo->flags & (SURF_TRANS33 | SURF_TRANS66)))
+                        continue;
+
+                    GL_UpdateLightmap(psurf);
+                }
+            }
+        }
+    }
+
+    VectorCopy(r_newrefdef.vieworg, modelorg);
+}

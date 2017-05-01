@@ -21,8 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "gl_local.h"
 
-int	r_dlightframecount;
-
 #define	DLIGHT_CUTOFF	64
 
 /*
@@ -119,13 +117,14 @@ DYNAMIC LIGHTS
 R_MarkLights
 =============
 */
-void R_MarkLights (dlight_t *light, int bit, mnode_t *node)
+static void MarkLights(entity_t const *entity, dlight_t const *light, int bit, mnode_t *node)
 {
 	cplane_t	*splitplane;
 	float		dist;
 	msurface_t	*surf;
 	int			i;
-	
+    model_t const *model = entity ? entity->model : r_worldmodel; //<todo.cb entity transform?
+
 	if (node->contents != -1)
 		return;
 
@@ -134,29 +133,29 @@ void R_MarkLights (dlight_t *light, int bit, mnode_t *node)
 	
 	if (dist > light->intensity-DLIGHT_CUTOFF)
 	{
-		R_MarkLights (light, bit, node->children[0]);
+        MarkLights(entity, light, bit, node->children[0]);
 		return;
 	}
 	if (dist < -light->intensity+DLIGHT_CUTOFF)
 	{
-		R_MarkLights (light, bit, node->children[1]);
+        MarkLights(entity, light, bit, node->children[1]);
 		return;
 	}
 		
 // mark the polygons
-	surf = r_worldmodel->surfaces + node->firstsurface;
+	surf = model->surfaces + node->firstsurface;
 	for (i=0 ; i<node->numsurfaces ; i++, surf++)
 	{
-		if (surf->dlightframe != r_dlightframecount)
+		if (surf->dlightframe != r_framecount)
 		{
 			surf->dlightbits = 0;
-			surf->dlightframe = r_dlightframecount;
+			surf->dlightframe = r_framecount;
 		}
 		surf->dlightbits |= bit;
 	}
 
-	R_MarkLights (light, bit, node->children[0]);
-	R_MarkLights (light, bit, node->children[1]);
+    MarkLights(entity, light, bit, node->children[0]);
+    MarkLights(entity, light, bit, node->children[1]);
 }
 
 
@@ -173,11 +172,25 @@ void R_PushDlights (void)
 	if (gl_flashblend->value)
 		return;
 
-	r_dlightframecount = r_framecount + 1;	// because the count hasn't
-											//  advanced yet for this frame
 	l = r_newrefdef.dlights;
-	for (i=0 ; i<r_newrefdef.num_dlights ; i++, l++)
-		R_MarkLights ( l, 1<<i, r_worldmodel->nodes );
+    for (i = 0; i < r_newrefdef.num_dlights; i++, l++)
+    {
+        int j;
+        MarkLights(NULL, l, 1 << i, r_worldmodel->nodes);
+
+        for (j = 0; j < r_newrefdef.num_entities; j++)
+        {
+            entity_t *ent = &r_newrefdef.entities[j];
+            if (ent->flags & (RF_TRANSLUCENT | RF_BEAM))
+                continue;
+
+            if (ent->model && ent->model->type == mod_brush)
+            {
+                mnode_t *root = ent->model->nodes + ent->model->firstnode;
+                MarkLights(ent, l, 1 << i, root);
+            }
+        }
+    }
 }
 
 
