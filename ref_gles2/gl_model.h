@@ -122,7 +122,6 @@ typedef struct mleaf_s
 
 	msurface_t	**firstmarksurface;
 	int			nummarksurfaces;
-    glmesh_t *m_clusterMesh;
 } mleaf_t;
 
 

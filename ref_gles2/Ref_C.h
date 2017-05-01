@@ -7,11 +7,15 @@ extern "C" {
 #endif
 
 // ClusterMeshBuilder
-struct ClusterMeshBuilder *ref_ClusterMeshBuilderCreate();
+struct ClusterMeshBuilder *ref_ClusterMeshBuilderCreate(void);
 
 void ref_ClusterMeshBuilderDestroy(struct ClusterMeshBuilder *clusterMeshBuilder);
 
 void ref_ClusterMeshBuilderAddSurface(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster, struct Surface *surface);
+
+unsigned ref_ClusterMeshBuilderGetNumSurfaces(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster);
+
+struct Surface **ref_ClusterMeshBuilderGetSurfaces(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster);
 
 // ClusterMeshData
 struct ClusterMeshData *ref_ClusterMeshDataCreate(struct ClusterMeshBuilder *clusterMeshBuilder);

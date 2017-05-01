@@ -17,6 +17,27 @@ void ref_ClusterMeshBuilderAddSurface(ClusterMeshBuilder *clusterMeshBuilder, Cl
     clusterMeshBuilder->AddSurface(cluster, surface);
 }
 
+unsigned ref_ClusterMeshBuilderGetNumSurfaces(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster)
+{
+    if (clusterMeshBuilder->m_surfacesFromCluster.find(cluster) != clusterMeshBuilder->m_surfacesFromCluster.end())
+    {
+        return clusterMeshBuilder->m_surfacesFromCluster[cluster].size();
+    }
+
+    return 0;
+}
+
+struct Surface **ref_ClusterMeshBuilderGetSurfaces(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster)
+{
+    if (clusterMeshBuilder->m_surfacesFromCluster.find(cluster) != clusterMeshBuilder->m_surfacesFromCluster.end())
+    {
+        return clusterMeshBuilder->m_surfacesFromCluster[cluster].data();
+    }
+
+    return NULL;
+}
+
+
 struct ClusterMeshData *ref_ClusterMeshDataCreate(struct ClusterMeshBuilder *clusterMeshBuilder)
 {
     return new ClusterMeshData(*clusterMeshBuilder);

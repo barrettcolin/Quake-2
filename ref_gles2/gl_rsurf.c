@@ -763,6 +763,54 @@ static void MarkSurfacesAndUpdateLightmaps(entity_t const *ent, mnode_t *node)
                 if (surf_planeback != plane_planeback)
                     continue;
 
+                if ((surf->flags & SURF_DRAWTURB) || (surf->texinfo->flags & (SURF_SKY | SURF_TRANS33 | SURF_TRANS66)))
+                    continue;
+
+                GL_UpdateLightmap(surf);
+            }
+        }
+
+        // Back side
+        MarkSurfacesAndUpdateLightmaps(ent, node->children[!side]);
+    }
+}
+
+
+static void DrawSurfaces(entity_t const *ent, mnode_t *node)
+{
+    qboolean is_solid_leaf = (node->contents == CONTENTS_SOLID);
+    qboolean not_visible_frame = (node->visframe != r_visframecount);
+    if (is_solid_leaf || not_visible_frame)
+        return;
+
+    // Node culled?
+    if (R_CullBox(node->minmaxs, node->minmaxs + 3))
+        return;
+
+    // Node is not leaf?
+    if (node->contents == -1)
+    {
+        // Determine plane side
+        int side = CalcSide(node->plane);
+        int plane_planeback = side ? SURF_PLANEBACK : 0;
+
+        // Front side
+        DrawSurfaces(ent, node->children[side]);
+
+        // Surfaces
+        {
+            int i;
+            msurface_t *surf;
+            for (i = node->numsurfaces, surf = r_worldmodel->surfaces + node->firstsurface; i; i--, surf++)
+            {
+                int surf_planeback;
+                if (surf->visframe != r_framecount)
+                    continue;
+
+                surf_planeback = surf->flags & SURF_PLANEBACK;
+                if (surf_planeback != plane_planeback)
+                    continue;
+
                 if (surf->texinfo->flags & SURF_SKY)
                 {
                     // Sky
@@ -776,9 +824,10 @@ static void MarkSurfacesAndUpdateLightmaps(entity_t const *ent, mnode_t *node)
                 }
                 else
                 {
-                    if (!(surf->flags & SURF_DRAWTURB))
+                    if (!(surf->flags & SURF_DRAWTURB) && surf->m_mesh && (surf->m_mesh->m_viewFrame != r_framecount))
                     {
-                        GL_UpdateLightmap(surf);
+                        GL_RenderMesh(ent, surf->m_mesh);
+                        surf->m_mesh->m_viewFrame = r_framecount;
                     }
                     else
                     {
@@ -794,55 +843,7 @@ static void MarkSurfacesAndUpdateLightmaps(entity_t const *ent, mnode_t *node)
         }
 
         // Back side
-        MarkSurfacesAndUpdateLightmaps(ent, node->children[!side]);
-    }
-}
-
-
-static void DrawClusterMeshes(entity_t const *ent, mnode_t *node)
-{
-    int side;
-
-    qboolean is_solid_leaf = (node->contents == CONTENTS_SOLID);
-    qboolean not_visible_frame = (node->visframe != r_visframecount);
-    if (is_solid_leaf || not_visible_frame)
-        return;
-
-    // Node culled?
-    if (R_CullBox(node->minmaxs, node->minmaxs + 3))
-        return;
-
-    // Node is leaf?
-    if (node->contents != -1)
-    {
-        glmesh_t *clusterMesh;
-        mleaf_t *pleaf = (mleaf_t *)node;
-
-        if (pleaf->cluster == -1)
-            return;
-
-        // Area test
-        if (r_newrefdef.areabits && !(r_newrefdef.areabits[pleaf->area >> 3] & (1 << (pleaf->area & 7))))
-            return;
-
-        clusterMesh = r_worldmodel->meshes[pleaf->cluster];
-        if (clusterMesh && clusterMesh->m_viewFrame != r_framecount)
-        {
-            GL_RenderMesh(ent, clusterMesh);
-
-            clusterMesh->m_viewFrame = r_framecount;
-        }
-    }
-    else
-    {
-        // Determine plane side
-        side = CalcSide(node->plane);
-
-        // Front side
-        DrawClusterMeshes(ent, node->children[side]);
-
-        // Back side
-        DrawClusterMeshes(ent, node->children[!side]);
+        DrawSurfaces(ent, node->children[!side]);
     }
 }
 
@@ -887,8 +888,8 @@ void R_DrawWorld (void)
     UpdateBrushEntityLightmaps();
     rmt_EndCPUSample();
 
-    rmt_BeginCPUSample(DrawClusterMeshes, 0);
-    DrawClusterMeshes(&ent, r_worldmodel->nodes);
+    rmt_BeginCPUSample(DrawSurfaces, 0);
+    DrawSurfaces(&ent, r_worldmodel->nodes);
     rmt_EndCPUSample();
 
     qglBindBuffer(GL_ARRAY_BUFFER, 0);

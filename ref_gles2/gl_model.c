@@ -1512,6 +1512,7 @@ static void BuildAndAssignClusterMeshes(struct ClusterMeshData const *meshData, 
 
 static void BuildClusterMeshes(model_t *model)
 {
+    int i;
     struct ClusterMeshBuilder *meshBuilder = ref_ClusterMeshBuilderCreate();
     struct ClusterMeshData *meshData;
 
@@ -1525,6 +1526,18 @@ static void BuildClusterMeshes(model_t *model)
     model->nummeshes = ref_ClusterMeshDataGetNumClusters(meshData);
     model->meshes = Hunk_Alloc(model->nummeshes * sizeof(*model->meshes)); //< Hunk_Alloc zero inits model->meshes
     BuildAndAssignClusterMeshes(meshData, model->nodes, model->meshes);
+
+    for (i = 0; i < model->nummeshes; ++i)
+    {
+        unsigned numSurfs = ref_ClusterMeshBuilderGetNumSurfaces(meshBuilder, i);
+        if (numSurfs)
+        {
+            struct Surface **surfs = ref_ClusterMeshBuilderGetSurfaces(meshBuilder, i);
+            int j;
+            for (j = 0; j < numSurfs; ++j)
+                surfs[j]->m_mesh = model->meshes[i];
+        }
+    }
 
     ref_ClusterMeshDataDestroy(meshData);
     ref_ClusterMeshBuilderDestroy(meshBuilder);

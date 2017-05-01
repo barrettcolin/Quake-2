@@ -56,6 +56,7 @@ struct Surface
     int8_t styles[MAX_LIGHTMAPS];
     float cached_light[MAX_LIGHTMAPS]; // values currently used in lightmap
     int8_t *samples; // [numstyles*surfsize]
+    struct glmesh_s *m_mesh;
 };
 
 struct MapModelMeshSection
