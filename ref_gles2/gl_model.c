@@ -560,7 +560,6 @@ void CalcSurfaceExtents (msurface_t *s)
 }
 
 
-void GL_BuildPolygonFromSurface(msurface_t *fa);
 void GL_CreateSurfaceLightmap (msurface_t *surf, qboolean is_dynamic);
 void GL_EndBuildingLightmaps (void);
 void GL_BeginBuildingLightmaps (model_t *m);
@@ -586,8 +585,6 @@ void Mod_LoadFaces (lump_t *l)
 
 	loadmodel->surfaces = out;
 	loadmodel->numsurfaces = count;
-
-	currentmodel = loadmodel;
 
 	GL_BeginBuildingLightmaps (loadmodel);
 
@@ -645,7 +642,7 @@ void Mod_LoadFaces (lump_t *l)
 			GL_CreateSurfaceLightmap (out, is_dynamic);
 
 		if (! (out->texinfo->flags & SURF_WARP) ) 
-			GL_BuildPolygonFromSurface(out);
+			GL_BuildPolygonFromSurface(loadmodel->edges, loadmodel->surfedges, loadmodel->vertexes, out);
 
 	}
 

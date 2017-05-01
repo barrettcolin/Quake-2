@@ -53,12 +53,12 @@ float	*shadedots = r_avertexnormal_dots[0];
 
 static GLfloat s_color_array[MAX_VERTS*4];
 
-static void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, float *lerp, float move[3], float frontv[3], float backv[3] )
+static void GL_LerpVerts(entity_t const *ent, int nverts, dtrivertx_t *v, dtrivertx_t *ov, float *lerp, float move[3], float frontv[3], float backv[3])
 {
 	int i;
 
 	//PMM -- added RF_SHELL_DOUBLE, RF_SHELL_HALF_DAM
-	if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM) )
+	if (ent->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM) )
 	{
 		for (i=0 ; i < nverts; i++, v++, ov++, lerp+=4 )
 		{
@@ -89,7 +89,7 @@ interpolates between two frames and origins
 FIXME: batch lerp all vertexes
 =============
 */
-static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
+static void GL_DrawAliasFrameLerp(entity_t const *ent, glmdl_t const *paliashdr, float backlerp)
 {
 	daliasframe_t	*frame, *oldframe;
     dtrivertx_t	*v, *ov;
@@ -102,21 +102,19 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
     short *xyz_from_st_indices;
     int render_shell;
 
-	frame = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames 
-		+ currententity->frame * paliashdr->framesize);
+	frame = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames + ent->frame * paliashdr->framesize);
     v = frame->verts;
 
-	oldframe = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames 
-		+ currententity->oldframe * paliashdr->framesize);
+	oldframe = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames + ent->oldframe * paliashdr->framesize);
 	ov = oldframe->verts;
 
-	if (currententity->flags & RF_TRANSLUCENT)
-		alpha = currententity->alpha;
+	if (ent->flags & RF_TRANSLUCENT)
+		alpha = ent->alpha;
 	else
 		alpha = 1.0;
 
     // render_shell: no texture, color(shadelight[0], shadelight[1], shadelight[2], alpha)
-    render_shell = currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM);
+    render_shell = ent->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM);
 #if 0
 	// PMM - added double shell
     if ( render_shell )
@@ -125,8 +123,8 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 	frontlerp = 1.0 - backlerp;
 
 	// move should be the delta back to the previous frame * backlerp
-	VectorSubtract (currententity->oldorigin, currententity->origin, delta);
-	AngleVectors (currententity->angles, vectors[0], vectors[1], vectors[2]);
+	VectorSubtract (ent->oldorigin, ent->origin, delta);
+	AngleVectors ((vec_t *)ent->angles, vectors[0], vectors[1], vectors[2]);
 
 	move[0] = DotProduct (delta, vectors[0]);	// forward
 	move[1] = -DotProduct (delta, vectors[1]);	// left
@@ -147,7 +145,7 @@ static void GL_DrawAliasFrameLerp (glmdl_t *paliashdr, float backlerp)
 
 	lerp = s_lerped[0];
 
-    GL_LerpVerts( paliashdr->num_xyz, v, ov, lerp, move, frontv, backv );
+    GL_LerpVerts(ent, paliashdr->num_xyz, v, ov, lerp, move, frontv, backv);
 
     // write vertex positions (from num_xyz to num_st - 1)
     xyz_from_st_indices = (short *)((byte *)paliashdr + paliashdr->ofs_xyz_from_st_indices);
@@ -217,7 +215,7 @@ GL_DrawAliasShadow
 */
 extern	vec3_t			lightspot;
 
-void GL_DrawAliasShadow (glmdl_t *paliashdr, int posenum)
+void GL_DrawAliasShadow (entity_t const *ent, glmdl_t *paliashdr, int posenum)
 {
 #if 0
 	dtrivertx_t	*verts;
@@ -227,10 +225,9 @@ void GL_DrawAliasShadow (glmdl_t *paliashdr, int posenum)
 	int		count;
 	daliasframe_t	*frame;
 
-	lheight = currententity->origin[2] - lightspot[2];
+	lheight = ent->origin[2] - lightspot[2];
 
-	frame = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames 
-		+ currententity->frame * paliashdr->framesize);
+	frame = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames + ent->frame * paliashdr->framesize);
 	verts = frame->verts;
 
 	height = 0;
@@ -286,28 +283,24 @@ void GL_DrawAliasShadow (glmdl_t *paliashdr, int posenum)
 /*
 ** R_CullAliasModel
 */
-static qboolean R_CullAliasModel( vec3_t bbox[8], entity_t *e )
+static qboolean R_CullAliasModel( vec3_t bbox[8], entity_t *e, model_t const *model)
 {
 	int i;
 	vec3_t		mins, maxs;
-    glmdl_t		*paliashdr;
 	vec3_t		vectors[3];
 	vec3_t		thismins, oldmins, thismaxs, oldmaxs;
 	daliasframe_t *pframe, *poldframe;
 	vec3_t angles;
-
-    paliashdr = (glmdl_t *)currentmodel->extradata;
+    glmdl_t		const *paliashdr = (glmdl_t const *)model->extradata;
 
 	if ( ( e->frame >= paliashdr->num_frames ) || ( e->frame < 0 ) )
 	{
-		ri.Con_Printf (PRINT_ALL, "R_CullAliasModel %s: no such frame %d\n", 
-			currentmodel->name, e->frame);
+		ri.Con_Printf (PRINT_ALL, "R_CullAliasModel %s: no such frame %d\n", model->name, e->frame);
 		e->frame = 0;
 	}
 	if ( ( e->oldframe >= paliashdr->num_frames ) || ( e->oldframe < 0 ) )
 	{
-		ri.Con_Printf (PRINT_ALL, "R_CullAliasModel %s: no such oldframe %d\n", 
-			currentmodel->name, e->oldframe);
+		ri.Con_Printf (PRINT_ALL, "R_CullAliasModel %s: no such oldframe %d\n", model->name, e->oldframe);
 		e->oldframe = 0;
 	}
 
@@ -432,58 +425,58 @@ R_DrawAliasModel
 
 =================
 */
-void R_DrawAliasModel (entity_t *e)
+void R_DrawAliasModel (entity_t *ent)
 {
 	int			i;
-    glmdl_t		*paliashdr;
+    glmdl_t		const *paliashdr;
 	float		an;
 	vec3_t		bbox[8];
 	image_t		*skin;
     material_id mat;
     GLfloat world_from_entity[16];
 
-	if ( !( e->flags & RF_WEAPONMODEL ) )
+	if ( !(ent->flags & RF_WEAPONMODEL ) )
 	{
-		if ( R_CullAliasModel( bbox, e ) )
+		if ( R_CullAliasModel( bbox, ent, ent->model ) )
 			return;
 	}
 
-	if ( e->flags & RF_WEAPONMODEL )
+	if (ent->flags & RF_WEAPONMODEL )
 	{
 		if ( r_lefthand->value == 2 )
 			return;
 	}
 
-    paliashdr = (glmdl_t *)currentmodel->extradata;
+    paliashdr = (glmdl_t const *)ent->model->extradata;
 
 	//
 	// get lighting information
 	//
 	// PMM - rewrote, reordered to handle new shells & mixing
 	//
-	if ( currententity->flags & ( RF_SHELL_HALF_DAM | RF_SHELL_GREEN | RF_SHELL_RED | RF_SHELL_BLUE | RF_SHELL_DOUBLE ) )
+	if ( ent->flags & ( RF_SHELL_HALF_DAM | RF_SHELL_GREEN | RF_SHELL_RED | RF_SHELL_BLUE | RF_SHELL_DOUBLE ) )
 	{
 		// PMM -special case for godmode
-		if ( (currententity->flags & RF_SHELL_RED) &&
-			(currententity->flags & RF_SHELL_BLUE) &&
-			(currententity->flags & RF_SHELL_GREEN) )
+		if ( (ent->flags & RF_SHELL_RED) &&
+			(ent->flags & RF_SHELL_BLUE) &&
+			(ent->flags & RF_SHELL_GREEN) )
 		{
 			for (i=0 ; i<3 ; i++)
 				shadelight[i] = 1.0;
 		}
-		else if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_BLUE | RF_SHELL_DOUBLE ) )
+		else if ( ent->flags & ( RF_SHELL_RED | RF_SHELL_BLUE | RF_SHELL_DOUBLE ) )
 		{
 			VectorClear (shadelight);
 
-			if ( currententity->flags & RF_SHELL_RED )
+			if ( ent->flags & RF_SHELL_RED )
 			{
 				shadelight[0] = 1.0;
-				if (currententity->flags & (RF_SHELL_BLUE|RF_SHELL_DOUBLE) )
+				if (ent->flags & (RF_SHELL_BLUE|RF_SHELL_DOUBLE) )
 					shadelight[2] = 1.0;
 			}
-			else if ( currententity->flags & RF_SHELL_BLUE )
+			else if ( ent->flags & RF_SHELL_BLUE )
 			{
-				if ( currententity->flags & RF_SHELL_DOUBLE )
+				if ( ent->flags & RF_SHELL_DOUBLE )
 				{
 					shadelight[1] = 1.0;
 					shadelight[2] = 1.0;
@@ -493,23 +486,23 @@ void R_DrawAliasModel (entity_t *e)
 					shadelight[2] = 1.0;
 				}
 			}
-			else if ( currententity->flags & RF_SHELL_DOUBLE )
+			else if ( ent->flags & RF_SHELL_DOUBLE )
 			{
 				shadelight[0] = 0.9;
 				shadelight[1] = 0.7;
 			}
 		}
-		else if ( currententity->flags & ( RF_SHELL_HALF_DAM | RF_SHELL_GREEN ) )
+		else if ( ent->flags & ( RF_SHELL_HALF_DAM | RF_SHELL_GREEN ) )
 		{
 			VectorClear (shadelight);
 			// PMM - new colors
-			if ( currententity->flags & RF_SHELL_HALF_DAM )
+			if ( ent->flags & RF_SHELL_HALF_DAM )
 			{
 				shadelight[0] = 0.56;
 				shadelight[1] = 0.59;
 				shadelight[2] = 0.45;
 			}
-			if ( currententity->flags & RF_SHELL_GREEN )
+			if ( ent->flags & RF_SHELL_GREEN )
 			{
 				shadelight[1] = 1.0;
 			}
@@ -525,18 +518,18 @@ void R_DrawAliasModel (entity_t *e)
 	//			}
 	//		}
 	// pmm
-	else if ( currententity->flags & RF_FULLBRIGHT )
+	else if ( ent->flags & RF_FULLBRIGHT )
 	{
 		for (i=0 ; i<3 ; i++)
 			shadelight[i] = 1.0;
 	}
 	else
 	{
-		R_LightPoint (currententity->origin, shadelight);
+		R_LightPoint (ent->origin, shadelight);
 
 		// player lighting hack for communication back to server
 		// big hack!
-		if ( currententity->flags & RF_WEAPONMODEL )
+		if ( ent->flags & RF_WEAPONMODEL )
 		{
 			// pick the greatest component, which should be the same
 			// as the mono value returned by software
@@ -572,7 +565,7 @@ void R_DrawAliasModel (entity_t *e)
 		}
 	}
 
-	if ( currententity->flags & RF_MINLIGHT )
+	if ( ent->flags & RF_MINLIGHT )
 	{
 		for (i=0 ; i<3 ; i++)
 			if (shadelight[i] > 0.1)
@@ -585,7 +578,7 @@ void R_DrawAliasModel (entity_t *e)
 		}
 	}
 
-	if ( currententity->flags & RF_GLOW )
+	if ( ent->flags & RF_GLOW )
 	{	// bonus items will pulse with time
 		float	scale;
 		float	min;
@@ -602,7 +595,7 @@ void R_DrawAliasModel (entity_t *e)
 
 // =================
 // PGM	ir goggles color override
-	if ( r_newrefdef.rdflags & RDF_IRGOGGLES && currententity->flags & RF_IR_VISIBLE)
+	if ( r_newrefdef.rdflags & RDF_IRGOGGLES && ent->flags & RF_IR_VISIBLE)
 	{
 		shadelight[0] = 1.0;
 		shadelight[1] = 0.0;
@@ -611,9 +604,9 @@ void R_DrawAliasModel (entity_t *e)
 // PGM	
 // =================
 
-	shadedots = r_avertexnormal_dots[((int)(currententity->angles[1] * (SHADEDOT_QUANT / 360.0))) & (SHADEDOT_QUANT - 1)];
+	shadedots = r_avertexnormal_dots[((int)(ent->angles[1] * (SHADEDOT_QUANT / 360.0))) & (SHADEDOT_QUANT - 1)];
 	
-	an = currententity->angles[1]/180*M_PI;
+	an = ent->angles[1]/180*M_PI;
 	shadevector[0] = cos(-an);
 	shadevector[1] = sin(-an);
 	shadevector[2] = 1;
@@ -625,17 +618,17 @@ void R_DrawAliasModel (entity_t *e)
 
 	c_alias_polys += paliashdr->num_tris;
 
-    mat = (e->flags & RF_TRANSLUCENT) ? g_vertexlit_alpha_material : g_vertexlit_material;
+    mat = (ent->flags & RF_TRANSLUCENT) ? g_vertexlit_alpha_material : g_vertexlit_material;
 
     Material_SetCurrent(mat);
 
     //
 	// draw all the triangles
 	//
-	if (currententity->flags & RF_DEPTHHACK) // hack the depth range to prevent view model from poking into walls
+	if (ent->flags & RF_DEPTHHACK) // hack the depth range to prevent view model from poking into walls
         qglDepthRangef(gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
 
-	if ( ( currententity->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
+	if ( ( ent->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
 	{
         GLfloat clip_from_view[16];
         Matrix_Perspective(gl_state.camera_separation, r_newrefdef.fov_y, (float)r_newrefdef.width / r_newrefdef.height, 4, 4096, clip_from_view);
@@ -656,21 +649,21 @@ void R_DrawAliasModel (entity_t *e)
 
     Material_SetViewFromWorld(mat, gl_state.view_from_world);
 
-    Matrix_FromAnglesOrigin(e->angles, e->origin, world_from_entity);
+    Matrix_FromAnglesOrigin(ent->angles, ent->origin, world_from_entity);
     Material_SetWorldFromModel(mat, world_from_entity);
 
 	// select skin
-	if (currententity->skin)
-		skin = currententity->skin;	// custom player skin
+	if (ent->skin)
+		skin = ent->skin;	// custom player skin
 	else
 	{
-		if (currententity->skinnum >= MAX_MD2SKINS)
-			skin = currentmodel->skins[0];
+		if (ent->skinnum >= MAX_MD2SKINS)
+			skin = ent->model->skins[0];
 		else
 		{
-			skin = currentmodel->skins[currententity->skinnum];
+			skin = ent->model->skins[ent->skinnum];
 			if (!skin)
-				skin = currentmodel->skins[0];
+				skin = ent->model->skins[0];
 		}
 	}
 	if (!skin)
@@ -678,31 +671,31 @@ void R_DrawAliasModel (entity_t *e)
     GL_MBind(GL_TEXTURE0, skin->texnum);
 
 	// draw it
-	if ( (currententity->frame >= paliashdr->num_frames) 
-		|| (currententity->frame < 0) )
+	if ( (ent->frame >= paliashdr->num_frames) 
+		|| (ent->frame < 0) )
 	{
 		ri.Con_Printf (PRINT_ALL, "R_DrawAliasModel %s: no such frame %d\n",
-			currentmodel->name, currententity->frame);
-		currententity->frame = 0;
-		currententity->oldframe = 0;
+			ent->model->name, ent->frame);
+		ent->frame = 0;
+		ent->oldframe = 0;
 	}
 
-	if ( (currententity->oldframe >= paliashdr->num_frames)
-		|| (currententity->oldframe < 0))
+	if ( (ent->oldframe >= paliashdr->num_frames)
+		|| (ent->oldframe < 0))
 	{
 		ri.Con_Printf (PRINT_ALL, "R_DrawAliasModel %s: no such oldframe %d\n",
-			currentmodel->name, currententity->oldframe);
-		currententity->frame = 0;
-		currententity->oldframe = 0;
+			ent->model->name, ent->oldframe);
+		ent->frame = 0;
+		ent->oldframe = 0;
 	}
 
 	if ( !r_lerpmodels->value )
-		currententity->backlerp = 0;
+		ent->backlerp = 0;
 
     //<todo.cb inline bmodels don't unbind their buffers
     qglBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	GL_DrawAliasFrameLerp (paliashdr, currententity->backlerp);
+    GL_DrawAliasFrameLerp(ent, paliashdr, ent->backlerp);
 
 #if 0
 	qglDisable( GL_CULL_FACE );
@@ -719,23 +712,23 @@ void R_DrawAliasModel (entity_t *e)
 	qglEnable( GL_CULL_FACE );
 #endif
 
-	if ( ( currententity->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
+	if ( ( ent->flags & RF_WEAPONMODEL ) && ( r_lefthand->value == 1.0F ) )
 	{
         qglCullFace( GL_FRONT );
 	}
 
-	if (currententity->flags & RF_DEPTHHACK)
+	if (ent->flags & RF_DEPTHHACK)
         qglDepthRangef(gldepthmin, gldepthmax);
 
 #if 0
-	if (gl_shadows->value && !(currententity->flags & (RF_TRANSLUCENT | RF_WEAPONMODEL)))
+	if (gl_shadows->value && !(ent->flags & (RF_TRANSLUCENT | RF_WEAPONMODEL)))
 	{
 		qglPushMatrix ();
 		R_RotateForEntity (e);
 		qglDisable (GL_TEXTURE_2D);
 		qglEnable (GL_BLEND);
 		qglColor4f (0,0,0,0.5);
-		GL_DrawAliasShadow (paliashdr, currententity->frame );
+		GL_DrawAliasShadow (paliashdr, ent->frame );
 		qglEnable (GL_TEXTURE_2D);
 		qglDisable (GL_BLEND);
 		qglPopMatrix ();

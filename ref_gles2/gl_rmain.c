@@ -36,9 +36,6 @@ glstate_t  gl_state;
 image_t		*r_notexture;		// use for bad textures
 image_t		*r_particletexture;	// little dot for particles
 
-entity_t	*currententity;
-model_t		*currentmodel;
-
 cplane_t	frustum[4];
 
 int			r_visframecount;	// bumped when going to a new PVS
@@ -166,36 +163,36 @@ R_DrawSpriteModel
 
 =================
 */
-void R_DrawSpriteModel (entity_t *e)
+void R_DrawSpriteModel (entity_t *ent)
 {
 	float alpha = 1.0F;
 	vec3_t	point;
 	dsprframe_t	*frame;
 	float		*up, *right;
-	dsprite_t		*psprite;
+    dsprite_t const *psprite;
 
 	// don't even bother culling, because it's just a single
 	// polygon without a surface cache
 
-	psprite = (dsprite_t *)currentmodel->extradata;
+	psprite = (dsprite_t const *)ent->model->extradata;
 
 #if 0
-	if (e->frame < 0 || e->frame >= psprite->numframes)
+	if (ent->frame < 0 || ent->frame >= psprite->numframes)
 	{
 		ri.Con_Printf (PRINT_ALL, "no such sprite frame %i\n", e->frame);
 		e->frame = 0;
 	}
 #endif
-	e->frame %= psprite->numframes;
+    ent->frame %= psprite->numframes;
 
-	frame = &psprite->frames[e->frame];
+	frame = &psprite->frames[ent->frame];
 
 #if 0
 	if (psprite->type == SPR_ORIENTED)
 	{	// bullet marks on walls
 	vec3_t		v_forward, v_right, v_up;
 
-	AngleVectors (currententity->angles, v_forward, v_right, v_up);
+	AngleVectors (ent->angles, v_forward, v_right, v_up);
 		up = v_up;
 		right = v_right;
 	}
@@ -206,15 +203,15 @@ void R_DrawSpriteModel (entity_t *e)
 		right = vright;
 	}
 
-	if ( e->flags & RF_TRANSLUCENT )
-		alpha = e->alpha;
+	if (ent->flags & RF_TRANSLUCENT )
+		alpha = ent->alpha;
 
 	if ( alpha != 1.0F )
 		qglEnable( GL_BLEND );
 #if 0
 	qglColor4f( 1, 1, 1, alpha );
 
-    GL_Bind(currentmodel->skins[e->frame]->texnum);
+    GL_Bind(ent->model->skins[ent->frame]->texnum);
 
 	GL_TexEnv( GL_MODULATE );
 
@@ -226,22 +223,22 @@ void R_DrawSpriteModel (entity_t *e)
 	qglBegin (GL_QUADS);
 
 	qglTexCoord2f (0, 1);
-	VectorMA (e->origin, -frame->origin_y, up, point);
+	VectorMA (ent->origin, -frame->origin_y, up, point);
 	VectorMA (point, -frame->origin_x, right, point);
 	qglVertex3fv (point);
 
 	qglTexCoord2f (0, 0);
-	VectorMA (e->origin, frame->height - frame->origin_y, up, point);
+	VectorMA (ent->origin, frame->height - frame->origin_y, up, point);
 	VectorMA (point, -frame->origin_x, right, point);
 	qglVertex3fv (point);
 
 	qglTexCoord2f (1, 0);
-	VectorMA (e->origin, frame->height - frame->origin_y, up, point);
+	VectorMA (ent->origin, frame->height - frame->origin_y, up, point);
 	VectorMA (point, frame->width - frame->origin_x, right, point);
 	qglVertex3fv (point);
 
 	qglTexCoord2f (1, 1);
-	VectorMA (e->origin, -frame->origin_y, up, point);
+	VectorMA (ent->origin, -frame->origin_y, up, point);
 	VectorMA (point, frame->width - frame->origin_x, right, point);
 	qglVertex3fv (point);
 	
@@ -264,19 +261,19 @@ void R_DrawSpriteModel (entity_t *e)
 R_DrawNullModel
 =============
 */
-void R_DrawNullModel (void)
+void R_DrawNullModel(entity_t const *ent)
 {
 #if 0
 	vec3_t	shadelight;
 	int		i;
 
-	if ( currententity->flags & RF_FULLBRIGHT )
+	if (ent->flags & RF_FULLBRIGHT )
 		shadelight[0] = shadelight[1] = shadelight[2] = 1.0F;
 	else
-		R_LightPoint (currententity->origin, shadelight);
+		R_LightPoint (ent->origin, shadelight);
 
     qglPushMatrix ();
-	R_RotateForEntity (currententity);
+	R_RotateForEntity (ent);
 
 	qglDisable (GL_TEXTURE_2D);
 	qglColor3fv (shadelight);
@@ -314,32 +311,31 @@ void R_DrawEntitiesOnList (void)
 	// draw non-transparent first
 	for (i=0 ; i<r_newrefdef.num_entities ; i++)
 	{
-		currententity = &r_newrefdef.entities[i];
-		if (currententity->flags & RF_TRANSLUCENT)
+        entity_t *ent = &r_newrefdef.entities[i];
+		if (ent->flags & RF_TRANSLUCENT)
 			continue;	// solid
 
-		if ( currententity->flags & RF_BEAM )
+		if (ent->flags & RF_BEAM )
 		{
-			R_DrawBeam( currententity );
+			R_DrawBeam(ent);
 		}
 		else
 		{
-			currentmodel = currententity->model;
-			if (!currentmodel)
+			if (!ent->model)
 			{
-				R_DrawNullModel ();
+				R_DrawNullModel (ent);
 				continue;
 			}
-			switch (currentmodel->type)
+			switch (ent->model->type)
 			{
 			case mod_alias:
-				R_DrawAliasModel (currententity);
+				R_DrawAliasModel (ent);
 				break;
 			case mod_brush:
-				R_DrawBrushModel (currententity);
+				R_DrawBrushModel (ent);
 				break;
 			case mod_sprite:
-				R_DrawSpriteModel (currententity);
+				R_DrawSpriteModel (ent);
 				break;
 			default:
 				ri.Sys_Error (ERR_DROP, "Bad modeltype");
@@ -353,33 +349,31 @@ void R_DrawEntitiesOnList (void)
 	qglDepthMask (0);		// no z writes
 	for (i=0 ; i<r_newrefdef.num_entities ; i++)
 	{
-		currententity = &r_newrefdef.entities[i];
-		if (!(currententity->flags & RF_TRANSLUCENT))
+        entity_t *ent = &r_newrefdef.entities[i];
+		if (!(ent->flags & RF_TRANSLUCENT))
 			continue;	// solid
 
-		if ( currententity->flags & RF_BEAM )
+		if (ent->flags & RF_BEAM )
 		{
-			R_DrawBeam( currententity );
+			R_DrawBeam(ent);
 		}
 		else
 		{
-			currentmodel = currententity->model;
-
-			if (!currentmodel)
+			if (!ent->model)
 			{
-				R_DrawNullModel ();
+				R_DrawNullModel (ent);
 				continue;
 			}
-			switch (currentmodel->type)
+			switch (ent->model->type)
 			{
 			case mod_alias:
-				R_DrawAliasModel (currententity);
+				R_DrawAliasModel (ent);
 				break;
 			case mod_brush:
-				R_DrawBrushModel (currententity);
+				R_DrawBrushModel (ent);
 				break;
 			case mod_sprite:
-				R_DrawSpriteModel (currententity);
+				R_DrawSpriteModel (ent);
 				break;
 			default:
 				ri.Sys_Error (ERR_DROP, "Bad modeltype");

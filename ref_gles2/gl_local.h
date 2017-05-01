@@ -195,8 +195,6 @@ extern	int			numgltextures;
 
 extern	image_t		*r_notexture;
 extern	image_t		*r_particletexture;
-extern	entity_t	*currententity;
-extern	model_t		*currentmodel;
 extern	int			r_visframecount;
 extern	int			r_framecount;
 extern	cplane_t	frustum[4];
@@ -314,13 +312,14 @@ void R_DrawBeam( entity_t *e );
 void R_DrawWorld (void);
 void R_RenderDlights (void);
 void R_DrawAlphaSurfaces (void);
-void R_RenderBrushPoly (msurface_t *fa);
+void R_RenderBrushPoly(entity_t const *ent, msurface_t *fa);
 void R_InitParticleTexture (void);
 void Draw_InitLocal (void);
 void GL_SubdivideSurface (msurface_t *fa);
 qboolean R_CullBox (vec3_t mins, vec3_t maxs);
 void R_RotateForEntity (entity_t *e);
 void R_MarkLeaves (void);
+void GL_BuildPolygonFromSurface(medge_t const *pedges, int const *surfedges, mvertex_t const *vertexes, msurface_t *fa);
 
 glpoly_t *WaterWarpPolyVerts (glpoly_t *p);
 void EmitWaterPolys (msurface_t *fa);

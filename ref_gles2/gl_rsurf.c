@@ -109,14 +109,14 @@ R_TextureAnimation
 Returns the proper texture for a given time and base texture
 ===============
 */
-static image_t *R_TextureAnimation (mtexinfo_t const *tex)
+static image_t *R_TextureAnimation (entity_t const *ent, mtexinfo_t const *tex)
 {
 	int		c;
 
 	if (!tex->next)
 		return tex->image;
 
-	c = currententity->frame % tex->numframes;
+	c = ent->frame % tex->numframes;
 	while (c)
 	{
 		tex = tex->next;
@@ -126,7 +126,7 @@ static image_t *R_TextureAnimation (mtexinfo_t const *tex)
 	return tex->image;
 }
 
-static void GL_RenderMesh(glmesh_t *mesh)
+static void GL_RenderMesh(entity_t const *ent, glmesh_t *mesh)
 {
     int i;
 
@@ -143,7 +143,7 @@ static void GL_RenderMesh(glmesh_t *mesh)
         if (section->m_lightMap == 0)
             continue;
 
-        image_t *image = R_TextureAnimation(section->m_texInfo);
+        image_t *image = R_TextureAnimation(ent, section->m_texInfo);
         unsigned indicesOffset = section->m_firstStripIndex * sizeof(VertexIndex);
 
         GL_MBind(GL_TEXTURE0, image->texnum);
@@ -326,7 +326,7 @@ void R_DrawTriangleOutlines (void)
 R_RenderBrushPoly
 ================
 */
-void R_RenderBrushPoly (msurface_t *fa)
+void R_RenderBrushPoly(entity_t const *ent, msurface_t *fa)
 {
 	int			maps;
 	image_t		*image;
@@ -334,7 +334,7 @@ void R_RenderBrushPoly (msurface_t *fa)
 
 	c_brush_polys++;
 
-	image = R_TextureAnimation (fa->texinfo);
+    image = R_TextureAnimation(ent, fa->texinfo);
 
     GL_MBind(GL_TEXTURE0, image->texnum);
 
@@ -468,7 +468,7 @@ void R_DrawAlphaSurfaces (void)
 DrawTextureChains
 ================
 */
-void DrawTextureChains (void)
+void DrawTextureChains(entity_t const *ent)
 {
 	int		i;
 	msurface_t	*s;
@@ -489,7 +489,7 @@ void DrawTextureChains (void)
         for ( ; s ; s=s->texturechain)
         {
 			if ( s->flags & SURF_DRAWTURB )
-				R_RenderBrushPoly (s);
+                R_RenderBrushPoly(ent, s);
         }
 
         image->texturechain = NULL;
@@ -557,104 +557,12 @@ static void GL_UpdateLightmap(msurface_t *surf)
 }
 
 
-static void GL_RenderLightmappedPoly( msurface_t *surf )
-{
-	int		nv = surf->polys->numverts;
-	int		map;
-	image_t *image = R_TextureAnimation( surf->texinfo );
-	qboolean is_dynamic = false;
-	unsigned lmtex = surf->lightmaptexturenum;
-	glpoly_t *p;
-
-	for ( map = 0; map < MAXLIGHTMAPS && surf->styles[map] != 255; map++ )
-	{
-		if ( r_newrefdef.lightstyles[surf->styles[map]].white != surf->cached_light[map] )
-			goto dynamic;
-	}
-
-	// dynamic this frame or dynamic previously
-	if ( ( surf->dlightframe == r_framecount ) )
-	{
-dynamic:
-		if ( gl_dynamic->value )
-		{
-			if ( !(surf->texinfo->flags & (SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP ) ) )
-			{
-				is_dynamic = true;
-			}
-		}
-	}
-
-	if ( is_dynamic )
-	{
-		unsigned	temp[128*128];
-		int			smax, tmax;
-
-        smax = (surf->extents[0]>>4)+1;
-        tmax = (surf->extents[1]>>4)+1;
-
-        R_BuildLightMap( surf, (void *)temp, smax*4 );
-
-        if ( ( surf->styles[map] >= 32 || surf->styles[map] == 0 ) && ( surf->dlightframe != r_framecount ) )
-		{
-			R_SetCacheState( surf );
-
-            lmtex = surf->lightmaptexturenum;
-		}
-		else
-		{
-            lmtex = 0;
-		}
-
-        GL_SelectTexture(GL_TEXTURE1);
-        GL_Bind(GL_GetLightmapTextureName(lmtex));
-
-        qglTexSubImage2D( GL_TEXTURE_2D, 0,
-                          surf->light_s, surf->light_t,
-                          smax, tmax,
-                          GL_LIGHTMAP_FORMAT,
-                          GL_UNSIGNED_BYTE, temp );
-    }
-
-    c_brush_polys++;
-
-    GL_MBind( GL_TEXTURE0, image->texnum );
-    GL_MBind( GL_TEXTURE1, GL_GetLightmapTextureName(lmtex));
-
-    if (surf->texinfo->flags & SURF_FLOWING)
-    {
-        float scroll;
-
-        scroll = -64 * ( (r_newrefdef.time / 40.0) - (int)(r_newrefdef.time / 40.0) );
-        if(scroll == 0.0)
-            scroll = -64.0;
-
-        for ( p = surf->polys; p; p = p->chain )
-        {
-            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_xyz);
-            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[0]);
-            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[1]);
-            qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
-        }
-    }
-    else
-    {
-        for ( p = surf->polys; p; p = p->chain )
-        {
-            qglVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_xyz);
-            qglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[0]);
-            qglVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(struct MapModelVertex), p->verts[0].m_st[1]);
-            qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
-        }
-    }
-}
-
 /*
 =================
 R_DrawInlineBModel
 =================
 */
-static void R_DrawInlineBModel (void)
+static void R_DrawInlineBModel(entity_t const *ent)
 {
 	int			i;
 	cplane_t	*pplane;
@@ -662,15 +570,15 @@ static void R_DrawInlineBModel (void)
 	msurface_t	*psurf;
     float alpha;
     GLfloat world_from_model[16];
-    int is_translucent = (currententity->flags & RF_TRANSLUCENT);
+    int is_translucent = (ent->flags & RF_TRANSLUCENT);
 
-    Matrix_FromAnglesOrigin(currententity->angles, currententity->origin, world_from_model);
+    Matrix_FromAnglesOrigin(ent->angles, ent->origin, world_from_model);
 
-	psurf = &currentmodel->surfaces[currentmodel->firstmodelsurface];
+	psurf = &ent->model->surfaces[ent->model->firstmodelsurface];
 
     alpha = is_translucent ? 0.25 : 1;
 
-    if (currentmodel->meshes[0])
+    if (ent->model->meshes[0])
     {
         material_id mat = is_translucent ? g_lightmapped_alpha_material : g_lightmapped_material;
         Material_SetCurrent(mat);
@@ -679,13 +587,13 @@ static void R_DrawInlineBModel (void)
         {
             Material_SetDiffuseColor(mat, 1, 1, 1, alpha);
         }
-        GL_RenderMesh(currentmodel->meshes[0]);
+        GL_RenderMesh(ent, ent->model->meshes[0]);
     }
 
     //
 	// draw texture
 	//
-	for (i=0 ; i<currentmodel->nummodelsurfaces ; i++, psurf++)
+    for (i = 0; i < ent->model->nummodelsurfaces; i++, psurf++)
 	{
 	// find which side of the node we are on
 		pplane = psurf->plane;
@@ -707,7 +615,7 @@ static void R_DrawInlineBModel (void)
                 Material_SetCurrent(mat);
                 Material_SetWorldFromModel(mat, world_from_model); // proj + view already set when drawing world
                 Material_SetDiffuseColor(g_unlit_material, gl_state.inverse_intensity, gl_state.inverse_intensity, gl_state.inverse_intensity, alpha);
-				R_RenderBrushPoly( psurf );
+                R_RenderBrushPoly(ent, psurf);
 			}
 		}
 	}
@@ -718,32 +626,31 @@ static void R_DrawInlineBModel (void)
 R_DrawBrushModel
 =================
 */
-void R_DrawBrushModel (entity_t *e)
+void R_DrawBrushModel (entity_t *ent)
 {
 	vec3_t		mins, maxs;
 	int			i;
 	qboolean	rotated;
 
-	if (currentmodel->nummodelsurfaces == 0)
+	if (ent->model->nummodelsurfaces == 0)
 		return;
 
-	currententity = e;
 	gl_state.currenttextures[0] = gl_state.currenttextures[1] = -1;
 
-	if (e->angles[0] || e->angles[1] || e->angles[2])
+	if (ent->angles[0] || ent->angles[1] || ent->angles[2])
 	{
 		rotated = true;
 		for (i=0 ; i<3 ; i++)
 		{
-			mins[i] = e->origin[i] - currentmodel->radius;
-			maxs[i] = e->origin[i] + currentmodel->radius;
+			mins[i] = ent->origin[i] - ent->model->radius;
+			maxs[i] = ent->origin[i] + ent->model->radius;
 		}
 	}
 	else
 	{
 		rotated = false;
-		VectorAdd (e->origin, currentmodel->mins, mins);
-		VectorAdd (e->origin, currentmodel->maxs, maxs);
+		VectorAdd (ent->origin, ent->model->mins, mins);
+		VectorAdd (ent->origin, ent->model->maxs, maxs);
 	}
 
 	if (R_CullBox (mins, maxs))
@@ -751,20 +658,20 @@ void R_DrawBrushModel (entity_t *e)
 
 	memset (gl_lms.lightmap_surfaces, 0, sizeof(gl_lms.lightmap_surfaces));
 
-	VectorSubtract (r_newrefdef.vieworg, e->origin, modelorg);
+	VectorSubtract (r_newrefdef.vieworg, ent->origin, modelorg);
 	if (rotated)
 	{
 		vec3_t	temp;
 		vec3_t	forward, right, up;
 
 		VectorCopy (modelorg, temp);
-		AngleVectors (e->angles, forward, right, up);
+		AngleVectors (ent->angles, forward, right, up);
 		modelorg[0] = DotProduct (temp, forward);
 		modelorg[1] = -DotProduct (temp, right);
 		modelorg[2] = DotProduct (temp, up);
 	}
 
-    R_DrawInlineBModel ();
+    R_DrawInlineBModel(ent);
 }
 
 /*
@@ -798,7 +705,7 @@ static int CalcSide(cplane_t const *plane)
 }
 
 
-static void MarkSurfacesAndUpdateLightmaps(mnode_t *node)
+static void MarkSurfacesAndUpdateLightmaps(entity_t const *ent, mnode_t *node)
 {
     qboolean is_solid_leaf = (node->contents == CONTENTS_SOLID);
     qboolean not_visible_frame = (node->visframe != r_visframecount);
@@ -840,7 +747,7 @@ static void MarkSurfacesAndUpdateLightmaps(mnode_t *node)
         int plane_planeback = side ? SURF_PLANEBACK : 0;
 
         // Front side
-        MarkSurfacesAndUpdateLightmaps(node->children[side]);
+        MarkSurfacesAndUpdateLightmaps(ent, node->children[side]);
 
         // Surfaces
         {
@@ -878,7 +785,7 @@ static void MarkSurfacesAndUpdateLightmaps(mnode_t *node)
                         // the polygon is visible, so add it to the texture
                         // sorted chain
                         // FIXME: this is a hack for animation
-                        image_t *image = R_TextureAnimation(surf->texinfo);
+                        image_t *image = R_TextureAnimation(ent, surf->texinfo);
                         surf->texturechain = image->texturechain;
                         image->texturechain = surf;
                     }
@@ -887,12 +794,12 @@ static void MarkSurfacesAndUpdateLightmaps(mnode_t *node)
         }
 
         // Back side
-        MarkSurfacesAndUpdateLightmaps(node->children[!side]);
+        MarkSurfacesAndUpdateLightmaps(ent, node->children[!side]);
     }
 }
 
 
-static void DrawClusterMeshes(mnode_t *node)
+static void DrawClusterMeshes(entity_t const *ent, mnode_t *node)
 {
     int side;
 
@@ -921,7 +828,7 @@ static void DrawClusterMeshes(mnode_t *node)
         clusterMesh = r_worldmodel->meshes[pleaf->cluster];
         if (clusterMesh && clusterMesh->m_viewFrame != r_framecount)
         {
-            GL_RenderMesh(clusterMesh);
+            GL_RenderMesh(ent, clusterMesh);
 
             clusterMesh->m_viewFrame = r_framecount;
         }
@@ -932,10 +839,10 @@ static void DrawClusterMeshes(mnode_t *node)
         side = CalcSide(node->plane);
 
         // Front side
-        DrawClusterMeshes(node->children[side]);
+        DrawClusterMeshes(ent, node->children[side]);
 
         // Back side
-        DrawClusterMeshes(node->children[!side]);
+        DrawClusterMeshes(ent, node->children[!side]);
     }
 }
 
@@ -957,14 +864,11 @@ void R_DrawWorld (void)
 	if ( r_newrefdef.rdflags & RDF_NOWORLDMODEL )
 		return;
 
-	currentmodel = r_worldmodel;
-
 	VectorCopy (r_newrefdef.vieworg, modelorg);
 
 	// auto cycle the world frame for texture animation
 	memset (&ent, 0, sizeof(ent));
 	ent.frame = (int)(r_newrefdef.time*2);
-	currententity = &ent;
 
 	gl_state.currenttextures[0] = gl_state.currenttextures[1] = -1;
 
@@ -977,14 +881,14 @@ void R_DrawWorld (void)
     Material_SetWorldFromModel(g_lightmapped_material, g_identity_matrix);
 
     rmt_BeginCPUSample(MarkSurfacesAndUpdateLightmaps, 0);
-    MarkSurfacesAndUpdateLightmaps(r_worldmodel->nodes);
+    MarkSurfacesAndUpdateLightmaps(&ent, r_worldmodel->nodes);
 
     // Update brush entity lightmaps here too
     UpdateBrushEntityLightmaps();
     rmt_EndCPUSample();
 
     rmt_BeginCPUSample(DrawClusterMeshes, 0);
-    DrawClusterMeshes(r_worldmodel->nodes);
+    DrawClusterMeshes(&ent, r_worldmodel->nodes);
     rmt_EndCPUSample();
 
     qglBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -996,7 +900,7 @@ void R_DrawWorld (void)
     Material_SetViewFromWorld(g_unlit_material, gl_state.view_from_world);
     Material_SetWorldFromModel(g_unlit_material, g_identity_matrix);
     Material_SetDiffuseColor(g_unlit_material, gl_state.inverse_intensity, gl_state.inverse_intensity, gl_state.inverse_intensity, 1);
-	DrawTextureChains ();
+    DrawTextureChains(&ent);
 	
     Material_SetDiffuseColor(g_unlit_material, 1, 1, 1, 1);
 	R_DrawSkyBox ();
@@ -1210,17 +1114,16 @@ static qboolean LM_AllocBlock (lightmaptype_t type, int w, int h, int *x, int *y
 GL_BuildPolygonFromSurface
 ================
 */
-void GL_BuildPolygonFromSurface(msurface_t *fa)
+void GL_BuildPolygonFromSurface(medge_t const *pedges, int const *surfedges, mvertex_t const *vertexes, msurface_t *fa)
 {
 	int			i, lindex, lnumverts;
-	medge_t		*pedges, *r_pedge;
-	float		*vec;
+	medge_t		const *r_pedge;
+	float		const *vec;
 	float		s, t;
 	glpoly_t	*poly;
 	vec3_t		total;
 
 // reconstruct the polygon
-	pedges = currentmodel->edges;
 	lnumverts = fa->numedges;
 
 	VectorClear (total);
@@ -1235,17 +1138,17 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 
 	for (i=0 ; i<lnumverts ; i++)
 	{
-		lindex = currentmodel->surfedges[fa->firstedge + i];
+		lindex = surfedges[fa->firstedge + i];
 
 		if (lindex > 0)
 		{
 			r_pedge = &pedges[lindex];
-			vec = currentmodel->vertexes[r_pedge->v[0]].position;
+			vec = vertexes[r_pedge->v[0]].position;
 		}
 		else
 		{
 			r_pedge = &pedges[-lindex];
-			vec = currentmodel->vertexes[r_pedge->v[1]].position;
+			vec = vertexes[r_pedge->v[1]].position;
 		}
 		s = DotProduct (vec, fa->texinfo->vecs[0]) + fa->texinfo->vecs[0][3];
 		s /= fa->texinfo->image->width;

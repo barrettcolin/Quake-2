@@ -350,9 +350,7 @@ void R_LightPoint (vec3_t p, vec3_t color)
 	dl = r_newrefdef.dlights;
 	for (lnum=0 ; lnum<r_newrefdef.num_dlights ; lnum++, dl++)
 	{
-		VectorSubtract (currententity->origin,
-						dl->origin,
-						dist);
+		VectorSubtract (p, dl->origin, dist);
 		add = dl->intensity - VectorLength(dist);
 		add *= (1.0/256);
 		if (add > 0)
