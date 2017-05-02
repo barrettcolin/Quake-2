@@ -502,7 +502,7 @@ static void GL_UpdateLightmap(msurface_t *surf)
     int map;
     qboolean is_dynamic_style;
     qboolean is_dlight;
-    qboolean was_dlight;
+    qboolean is_dirty;
     int lightmap_dirty_bit = (1 << (s_currentLightmapBuffer + 16)); // 1 bit set per lightmap buffer in high 16bits of surf->flags
 
     if (!gl_dynamic->value)
@@ -521,9 +521,9 @@ static void GL_UpdateLightmap(msurface_t *surf)
     }
 
     is_dlight = (surf->dlightframe == r_framecount);
-    was_dlight = surf->flags & lightmap_dirty_bit;
+    is_dirty = surf->flags & lightmap_dirty_bit;
 
-    if (is_dynamic_style || is_dlight || was_dlight)
+    if (is_dynamic_style || is_dlight || is_dirty)
     {
         unsigned	temp[128 * 128];
         int			smax, tmax;
@@ -533,26 +533,29 @@ static void GL_UpdateLightmap(msurface_t *surf)
 
         R_BuildLightMap(surf, (void *)temp, smax * 4);
 
-        if ((surf->styles[map] >= 32 || surf->styles[map] == 0) && !is_dlight)
-        {
-            R_SetCacheState(surf);
-        }
-
-        // clear stale dlights
-        if (was_dlight && !is_dlight)
-        {
-            surf->flags &= ~lightmap_dirty_bit;
-        }
-        else if (is_dlight)
-        {
-            surf->flags |= lightmap_dirty_bit;
-        }
-
         GL_SelectTexture(GL_TEXTURE1);
         GL_Bind(GL_GetLightmapTextureName(surf->lightmaptexturenum));
 
         qglTexSubImage2D(
             GL_TEXTURE_2D, 0, surf->light_s, surf->light_t, smax, tmax, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE, temp);
+
+        if (is_dlight)
+        {
+            // Only need to mark this buffer as dirty, since dlights change every frame
+            surf->flags |= lightmap_dirty_bit;
+        }
+        else if (is_dynamic_style)
+        {
+            R_SetCacheState(surf);
+
+            // Dynamic style can persist for several frames, so mark all buffers dirty
+            surf->flags |= (((1 << NUM_LIGHTMAP_BUFFERS) - 1) << 16);
+        }
+        else
+        {
+            // No dlight or dynamic style this frame, so original state has been restored
+            surf->flags &= ~lightmap_dirty_bit;
+        }
     }
 }
 
