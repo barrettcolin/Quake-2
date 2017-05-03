@@ -69,7 +69,7 @@ static gllightmapstate_t gl_lms;
 
 
 static void		LM_InitBlock( lightmaptype_t type );
-static void		LM_UploadBlock( lightmaptype_t type, qboolean dynamic );
+static void LM_UploadBlock(lightmaptype_t type);
 static qboolean	LM_AllocBlock (lightmaptype_t type, int w, int h, int *x, int *y);
 
 extern void R_SetCacheState( msurface_t *surf );
@@ -140,9 +140,6 @@ static void GL_RenderMesh(entity_t const *ent, glmesh_t *mesh)
     for (i = 0; i < mesh->m_numMeshSections; ++i)
     {
         struct MapModelMeshSection const *section = &mesh->m_meshSections[i];
-        if (section->m_lightMap == 0)
-            continue;
-
         image_t *image = R_TextureAnimation(ent, section->m_texInfo);
         unsigned indicesOffset = section->m_firstStripIndex * sizeof(VertexIndex);
 
@@ -328,9 +325,7 @@ R_RenderBrushPoly
 */
 void R_RenderBrushPoly(entity_t const *ent, msurface_t *fa)
 {
-	int			maps;
 	image_t		*image;
-	qboolean is_dynamic = false;
 
 	c_brush_polys++;
 
@@ -352,65 +347,6 @@ void R_RenderBrushPoly(entity_t const *ent, msurface_t *fa)
 		DrawGLPoly (fa->polys);
 //PGM
 //======
-
-	/*
-	** check for lightmap modification
-	*/
-	for ( maps = 0; maps < MAXLIGHTMAPS && fa->styles[maps] != 255; maps++ )
-	{
-		if ( r_newrefdef.lightstyles[fa->styles[maps]].white != fa->cached_light[maps] )
-			goto dynamic;
-	}
-
-	// dynamic this frame or dynamic previously
-	if ( ( fa->dlightframe == r_framecount ) )
-	{
-dynamic:
-		if ( gl_dynamic->value )
-		{
-			if (!( fa->texinfo->flags & (SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP ) ) )
-			{
-				is_dynamic = true;
-			}
-		}
-	}
-
-	if ( is_dynamic )
-	{
-		if ( ( fa->styles[maps] >= 32 || fa->styles[maps] == 0 ) && ( fa->dlightframe != r_framecount ) )
-		{
-			unsigned	temp[34*34];
-			int			smax, tmax;
-
-			smax = (fa->extents[0]>>4)+1;
-			tmax = (fa->extents[1]>>4)+1;
-
-			R_BuildLightMap( fa, (void *)temp, smax*4 );
-			R_SetCacheState( fa );
-
-            GL_SelectTexture(GL_TEXTURE1);
-			GL_Bind(GL_GetLightmapTextureName(fa->lightmaptexturenum));
-
-            qglTexSubImage2D( GL_TEXTURE_2D, 0,
-							  fa->light_s, fa->light_t, 
-							  smax, tmax, 
-							  GL_LIGHTMAP_FORMAT, 
-							  GL_UNSIGNED_BYTE, temp );
-
-			fa->lightmapchain = gl_lms.lightmap_surfaces[fa->lightmaptexturenum];
-			gl_lms.lightmap_surfaces[fa->lightmaptexturenum] = fa;
-		}
-		else
-		{
-			fa->lightmapchain = gl_lms.lightmap_surfaces[0];
-			gl_lms.lightmap_surfaces[0] = fa;
-		}
-	}
-	else
-	{
-		fa->lightmapchain = gl_lms.lightmap_surfaces[fa->lightmaptexturenum];
-		gl_lms.lightmap_surfaces[fa->lightmaptexturenum] = fa;
-	}
 }
 
 
@@ -525,11 +461,12 @@ static void GL_UpdateLightmap(msurface_t *surf)
 
     if (is_dynamic_style || is_dlight || is_dirty)
     {
-        unsigned	temp[128 * 128];
+        unsigned	temp[17 * 17];
         int			smax, tmax;
 
         smax = (surf->extents[0] >> 4) + 1;
         tmax = (surf->extents[1] >> 4) + 1;
+        assert(smax <= 17 && tmax <= 17);
 
         R_BuildLightMap(surf, (void *)temp, smax * 4);
 
@@ -1015,67 +952,47 @@ static void LM_InitBlock( lightmaptype_t type )
 	memset( gl_lms.allocated[type], 0, sizeof( gl_lms.allocated[type] ) );
 }
 
-static void LM_UploadBlock( lightmaptype_t type, qboolean dynamic )
+static int GetNextLightmapTexture()
 {
+    if (gl_lms.current_lightmap_texture[lmt_static] > gl_lms.current_lightmap_texture[lmt_dynamic])
+        return gl_lms.current_lightmap_texture[lmt_static] + 1;
+    else
+        return gl_lms.current_lightmap_texture[lmt_dynamic] + 1;
+}
+
+static void LM_UploadBlock(lightmaptype_t type)
+{
+    int b;
+    int texture = gl_lms.current_lightmap_texture[type];
+    int next_texture = GetNextLightmapTexture();
+    assert(texture >= 0);
+
     GL_SelectTexture(GL_TEXTURE1);
 
-	if ( dynamic )
-	{
-		int i, height = 0;
+    for (b = 0; b < NUM_LIGHTMAP_BUFFERS; ++b)
+    {
+        if (gl_lms.lightmapTextureNames[b][texture] == 0)
+            qglGenTextures(1, &gl_lms.lightmapTextureNames[b][texture]);
 
-        GL_Bind(gl_lms.lightmapTextureNames[0][0]);
+        GL_Bind(gl_lms.lightmapTextureNames[b][texture]);
         qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-        for ( i = 0; i < BLOCK_WIDTH; i++ )
-		{
-			if ( gl_lms.allocated[type][i] > height )
-				height = gl_lms.allocated[type][i];
-		}
+        // write texture for current
+        qglTexImage2D(GL_TEXTURE_2D,
+            0,
+            gl_lms.internal_format,
+            BLOCK_WIDTH, BLOCK_HEIGHT,
+            0,
+            GL_LIGHTMAP_FORMAT,
+            GL_UNSIGNED_BYTE,
+            gl_lms.lightmap_buffer[type]);
+    }
 
-        qglTexSubImage2D( GL_TEXTURE_2D,
-						  0,
-						  0, 0,
-						  BLOCK_WIDTH, height,
-						  GL_LIGHTMAP_FORMAT,
-						  GL_UNSIGNED_BYTE,
-						  gl_lms.lightmap_buffer[type] );
-	}
-	else
-	{
-        int b = 0, 
-            texture = gl_lms.current_lightmap_texture[type], 
-            next_texture =
-                ((gl_lms.current_lightmap_texture[lmt_static] >
-                gl_lms.current_lightmap_texture[lmt_dynamic])
-                ? gl_lms.current_lightmap_texture[lmt_static]
-                  : gl_lms.current_lightmap_texture[lmt_dynamic]) + 1;
-
-        for (; b < NUM_LIGHTMAP_BUFFERS; ++b)
-        {
-            if (gl_lms.lightmapTextureNames[b][texture] == 0)
-                qglGenTextures(1, &gl_lms.lightmapTextureNames[b][texture]);
-
-            GL_Bind(gl_lms.lightmapTextureNames[b][texture]);
-            qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-            // write texture for current
-            qglTexImage2D(GL_TEXTURE_2D,
-                0,
-                gl_lms.internal_format,
-                BLOCK_WIDTH, BLOCK_HEIGHT,
-                0,
-                GL_LIGHTMAP_FORMAT,
-                GL_UNSIGNED_BYTE,
-                gl_lms.lightmap_buffer[type]);
-        }
-
-        if ( next_texture == MAX_LIGHTMAPS )
-			ri.Sys_Error( ERR_DROP, "LM_UploadBlock() - MAX_LIGHTMAPS exceeded\n" );
-        else
-            gl_lms.current_lightmap_texture[type] = next_texture;
-	}
+    if (next_texture == MAX_LIGHTMAPS)
+        ri.Sys_Error(ERR_DROP, "LM_UploadBlock() - MAX_LIGHTMAPS exceeded\n");
+    else
+        gl_lms.current_lightmap_texture[type] = next_texture;
 }
 
 // returns a texture number and the position inside it
@@ -1206,13 +1123,16 @@ void GL_CreateSurfaceLightmap (msurface_t *surf, qboolean is_dynamic)
 
 	if ( !LM_AllocBlock( type, smax, tmax, &surf->light_s, &surf->light_t ) )
 	{
-		LM_UploadBlock( type, false );
+        LM_UploadBlock(type);
 		LM_InitBlock(type);
 		if ( !LM_AllocBlock( type, smax, tmax, &surf->light_s, &surf->light_t ) )
 		{
 			ri.Sys_Error( ERR_FATAL, "Consecutive calls to LM_AllocBlock(%d,%d) failed\n", smax, tmax );
 		}
 	}
+
+    if (gl_lms.current_lightmap_texture[type] < 0)
+        gl_lms.current_lightmap_texture[type] = GetNextLightmapTexture();
 
 	surf->lightmaptexturenum = gl_lms.current_lightmap_texture[type];
 
@@ -1234,9 +1154,9 @@ void GL_BeginBuildingLightmaps (model_t *m)
 {
 	static lightstyle_t	lightstyles[MAX_LIGHTSTYLES];
 	int				i;
-	unsigned		dummy[128*128];
 
-	memset( gl_lms.allocated, 0, sizeof(gl_lms.allocated) );
+    LM_InitBlock(lmt_static);
+    LM_InitBlock(lmt_dynamic);
 
 	r_framecount = 1;		// no dlightcache
 
@@ -1253,8 +1173,8 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	}
 	r_newrefdef.lightstyles = lightstyles;
 
-	gl_lms.current_lightmap_texture[lmt_static] = 1;
-	gl_lms.current_lightmap_texture[lmt_dynamic] = 2;
+	gl_lms.current_lightmap_texture[lmt_static] = -1;
+	gl_lms.current_lightmap_texture[lmt_dynamic] = -1;
 
 	/*
 	** if mono lightmaps are enabled and we want to use alpha
@@ -1292,25 +1212,6 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	{
         gl_lms.internal_format = GL_RGBA;
 	}
-
-	/*
-	** initialize the dynamic lightmap texture
-	*/
-    for (i = 0; i < NUM_LIGHTMAP_BUFFERS; ++i)
-    {
-        qglGenTextures(1, &gl_lms.lightmapTextureNames[i][0]);
-        GL_MBind(GL_TEXTURE1, gl_lms.lightmapTextureNames[i][0]);
-        qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        qglTexImage2D(GL_TEXTURE_2D,
-            0,
-            gl_lms.internal_format,
-            BLOCK_WIDTH, BLOCK_HEIGHT,
-            0,
-            GL_LIGHTMAP_FORMAT,
-            GL_UNSIGNED_BYTE,
-            dummy);
-    }
 }
 
 /*
@@ -1320,8 +1221,8 @@ GL_EndBuildingLightmaps
 */
 void GL_EndBuildingLightmaps (void)
 {
-	LM_UploadBlock( lmt_static, false );
-	LM_UploadBlock( lmt_dynamic, false );
+    LM_UploadBlock(lmt_static);
+    LM_UploadBlock(lmt_dynamic);
 }
 
 static void UpdateBrushEntityLightmaps(void)

@@ -587,7 +587,6 @@ typedef struct
     int ofs_frames; // offset for first frame
     int ofs_tris; // offset for indexed tris (short, short, short)
     int ofs_xyz_from_st_indices; // byte offet to (num_st - num_xyz) indices mapping st to xyz
-    GLuint buffers[NUM_GLMDL_BUFFERS];
 } glmdl_t;
 
 typedef struct

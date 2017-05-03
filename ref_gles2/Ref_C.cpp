@@ -12,9 +12,9 @@ void ref_ClusterMeshBuilderDestroy(ClusterMeshBuilder *clusterMeshBuilder)
     delete clusterMeshBuilder;
 }
 
-void ref_ClusterMeshBuilderAddSurface(ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster, Surface *surface)
+void ref_ClusterMeshBuilderAddClusterSurface(ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster, Surface *surface)
 {
-    clusterMeshBuilder->AddSurface(cluster, surface);
+    clusterMeshBuilder->AddClusterSurface(cluster, surface);
 }
 
 unsigned ref_ClusterMeshBuilderGetNumSurfaces(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster)

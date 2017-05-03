@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cassert>
 
-void ClusterMeshBuilder::AddSurface(ClusterId cluster, Surface *surface)
+void ClusterMeshBuilder::AddClusterSurface(ClusterId cluster, Surface *surface)
 {
     if (m_surfaces.find(surface) != m_surfaces.end())
     {

@@ -11,7 +11,7 @@ struct ClusterMeshBuilder *ref_ClusterMeshBuilderCreate(void);
 
 void ref_ClusterMeshBuilderDestroy(struct ClusterMeshBuilder *clusterMeshBuilder);
 
-void ref_ClusterMeshBuilderAddSurface(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster, struct Surface *surface);
+void ref_ClusterMeshBuilderAddClusterSurface(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster, struct Surface *surface);
 
 unsigned ref_ClusterMeshBuilderGetNumSurfaces(struct ClusterMeshBuilder *clusterMeshBuilder, ClusterId cluster);
 

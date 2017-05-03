@@ -9,7 +9,7 @@
 struct ClusterMeshBuilder
 {
     // Methods
-    void AddSurface(ClusterId, Surface *surface);
+    void AddClusterSurface(ClusterId, Surface *surface);
 
     // Members
     std::unordered_set<Surface*> m_surfaces;
