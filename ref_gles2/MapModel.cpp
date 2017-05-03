@@ -44,6 +44,8 @@ ClusterMeshData::ClusterMeshData(const ClusterMeshBuilder& clusterMeshBuilder)
         for (const auto& lightmapSurfacesFromImage : surfacesFromImageFromLightmap)
         {
             int lightMapIndex = lightmapSurfacesFromImage.first;
+            if (lightMapIndex == -1)
+                continue;
 
             for (const auto& imageSurfaces : lightmapSurfacesFromImage.second)
             {

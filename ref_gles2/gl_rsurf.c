@@ -79,6 +79,7 @@ static int s_currentLightmapBuffer = 0;
 
 static GLuint GL_GetLightmapTextureName(int textureId)
 {
+    assert(textureId >= 0 && textureId < MAX_LIGHTMAPS);
     return gl_lms.lightmapTextureNames[s_currentLightmapBuffer][textureId];
 }
 

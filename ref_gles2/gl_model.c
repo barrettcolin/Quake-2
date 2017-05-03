@@ -607,6 +607,7 @@ void Mod_LoadFaces (lump_t *l)
 		if (ti < 0 || ti >= loadmodel->numtexinfo)
 			ri.Sys_Error (ERR_DROP, "MOD_LoadBmodel: bad texinfo number");
 		out->texinfo = loadmodel->texinfo + ti;
+        out->lightmaptexturenum = -1;
 
 		CalcSurfaceExtents (out);
 				
@@ -1436,9 +1437,6 @@ static void AddClusterMeshSurfaces(mnode_t const *node, struct ClusterMeshBuilde
         for (surfptr = leaf->firstmarksurface; nummarksurfaces; ++surfptr, --nummarksurfaces)
         {
             msurface_t *surf = *surfptr;
-            if ((surf->flags & SURF_DRAWTURB) || (surf->texinfo->flags & (SURF_SKY | SURF_TRANS33 | SURF_TRANS66)))
-                continue;
-
             ref_ClusterMeshBuilderAddClusterSurface(meshBuilder, leaf->cluster, surf);
         }
     }
