@@ -1222,8 +1222,11 @@ GL_EndBuildingLightmaps
 */
 void GL_EndBuildingLightmaps (void)
 {
-    LM_UploadBlock(lmt_static);
-    LM_UploadBlock(lmt_dynamic);
+    if (gl_lms.current_lightmap_texture[lmt_static] >= 0)
+        LM_UploadBlock(lmt_static);
+
+    if (gl_lms.current_lightmap_texture[lmt_dynamic] >= 0)
+        LM_UploadBlock(lmt_dynamic);
 }
 
 static void UpdateBrushEntityLightmaps(void)
