@@ -40,7 +40,7 @@ msurface_t	*r_alpha_surfaces;
 int		c_visible_lightmaps;
 int		c_visible_textures;
 
-#define GL_LIGHTMAP_FORMAT GL_RGBA
+#define GL_LIGHTMAP_FORMAT GL_BGRA_EXT
 
 typedef enum
 {
@@ -1211,7 +1211,7 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	}
 	else
 	{
-        gl_lms.internal_format = GL_RGBA;
+        gl_lms.internal_format = GL_BGRA_EXT;
 	}
 }
 
