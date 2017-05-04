@@ -16,7 +16,7 @@ varying vec2 vTexCoord1;
 void main()
 {
     vec4 diffuseColor = texture2D(sDiffuse, vTexCoord0);
-    vec4 lightmapColor = texture2D(sLightmap, vTexCoord1);
+    vec4 lightmapColor = vec4(texture2D(sLightmap, vTexCoord1).rgb, 1.0);
 #if defined DIFFUSE_COLOR
     gl_FragColor = diffuseColor * lightmapColor * vDiffuseColor;
 #else
