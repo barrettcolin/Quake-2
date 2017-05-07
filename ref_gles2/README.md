@@ -54,7 +54,7 @@ An OpenGL ES 2.0 refresh module for Quake 2. What's called a 'Material' below mi
       glDeleteBuffers // for mod_alias
      GL_FreeUnusedImages // except r_notexture, r_particletexture and it_pic
 
-### Render frame
+## Render frame
 
     R_BeginFrame
      GLimp_BeginFrame
@@ -131,3 +131,18 @@ An OpenGL ES 2.0 refresh module for Quake 2. What's called a 'Material' below mi
     GLimp_EndFrame
      SDL_GL_SwapWindow
 
+## Render command key
+
+Frame rendering writes a buffer of [key, cmd*] pairs, buffer is sorted by key then rendering commands are executed
+
+31                              0
+ vvbbdddddddddddllllllltttttttttt
+
+v Viewport layer (world, fullscreen effect, HUD)
+b Blend (opaque, alpha blended)
+d Depth (counter order for BSP surfaces (increasing from start for opaque, decreasing from end for translucent, then entities emitted in the remaining range)
+l Lightmap
+t Texture
+
+How to do sky? Must render after opaque world, before translucent world. Maybe reserve the first translucent depth value?
+Could collapse fullscreen effect (R_Flash) into HUD with another reserved depth value
