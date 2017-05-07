@@ -250,7 +250,6 @@ extern	cvar_t	*gl_log;
 extern	cvar_t	*gl_lightmap;
 extern	cvar_t	*gl_shadows;
 extern	cvar_t	*gl_dynamic;
-extern  cvar_t  *gl_monolightmap;
 extern	cvar_t	*gl_round_down;
 extern	cvar_t	*gl_picmip;
 extern	cvar_t	*gl_skymip;
@@ -427,6 +426,7 @@ typedef struct
 	const char *vendor_string;
 	const char *version_string;
 	const char *extensions_string;
+    GLenum lightmap_format;
 } glconfig_t;
 
 typedef struct

@@ -96,7 +96,6 @@ cvar_t	*gl_lightmap;
 cvar_t	*gl_shadows;
 cvar_t	*gl_mode;
 cvar_t	*gl_dynamic;
-cvar_t  *gl_monolightmap;
 cvar_t	*gl_modulate;
 cvar_t	*gl_round_down;
 cvar_t	*gl_picmip;
@@ -167,7 +166,7 @@ void R_DrawSpriteModel (entity_t *ent)
 {
 	float alpha = 1.0F;
 	vec3_t	point;
-	dsprframe_t	*frame;
+	dsprframe_t	const *frame;
 	float		*up, *right;
     dsprite_t const *psprite;
 
@@ -957,7 +956,6 @@ void R_Register( void )
 	gl_polyblend = ri.Cvar_Get ("gl_polyblend", "1", 0);
 	gl_flashblend = ri.Cvar_Get ("gl_flashblend", "0", 0);
 	gl_playermip = ri.Cvar_Get ("gl_playermip", "0", 0);
-	gl_monolightmap = ri.Cvar_Get( "gl_monolightmap", "0", 0 );
 	gl_driver = ri.Cvar_Get( "gl_driver", "opengl32", CVAR_ARCHIVE );
 	gl_texturemode = ri.Cvar_Get( "gl_texturemode", "GL_LINEAR_MIPMAP_NEAREST", CVAR_ARCHIVE );
 	gl_lockpvs = ri.Cvar_Get( "gl_lockpvs", "0", 0 );
@@ -1084,6 +1082,8 @@ qboolean R_Init( void *hinstance, void *hWnd )
 	/*
 	** get our various GL strings
 	*/
+    gl_config.renderer = GL_RENDERER_OTHER;
+
     gl_config.vendor_string = qglGetString (GL_VENDOR);
 	ri.Con_Printf (PRINT_ALL, "GL_VENDOR: %s\n", gl_config.vendor_string );
     gl_config.renderer_string = qglGetString (GL_RENDERER);
@@ -1093,35 +1093,15 @@ qboolean R_Init( void *hinstance, void *hWnd )
     gl_config.extensions_string = qglGetString (GL_EXTENSIONS);
 	ri.Con_Printf (PRINT_ALL, "GL_EXTENSIONS: %s\n", gl_config.extensions_string );
 
-    gl_config.renderer = GL_RENDERER_OTHER;
+    // Lightmap format
+    //<note.cb NV windows GL can create a 3.x context which doesn't expose BGRA8, so the fallback is used
+    {
+        const char *BGRA_ext = strstr(qglGetString(GL_EXTENSIONS), "GL_EXT_texture_format_BGRA8888");
+        gl_config.lightmap_format = BGRA_ext ? GL_BGRA_EXT : GL_RGBA;
+    }
 
-	if ( toupper( gl_monolightmap->string[1] ) != 'F' )
-	{
-		if ( gl_config.renderer == GL_RENDERER_PERMEDIA2 )
-		{
-			ri.Cvar_Set( "gl_monolightmap", "A" );
-			ri.Con_Printf( PRINT_ALL, "...using gl_monolightmap 'a'\n" );
-		}
-		else if ( gl_config.renderer & GL_RENDERER_POWERVR ) 
-		{
-            ri.Cvar_Set( "gl_monolightmap", "0" );
-		}
-		else
-		{
-			ri.Cvar_Set( "gl_monolightmap", "0" );
-		}
-	}
-
-	// power vr can't have anything stay in the framebuffer, so
-	// the screen needs to redraw the tiled background every frame
-	if ( gl_config.renderer & GL_RENDERER_POWERVR ) 
-	{
-		ri.Cvar_Set( "scr_drawall", "1" );
-	}
-	else
-	{
-		ri.Cvar_Set( "scr_drawall", "0" );
-	}
+    // Redraw the tiled background every frame
+    ri.Cvar_Set("scr_drawall", "1");
 
 	GL_SetDefaultState();
 

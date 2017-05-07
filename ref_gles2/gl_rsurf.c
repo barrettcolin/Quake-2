@@ -40,8 +40,6 @@ msurface_t	*r_alpha_surfaces;
 int		c_visible_lightmaps;
 int		c_visible_textures;
 
-#define GL_LIGHTMAP_FORMAT GL_BGRA_EXT
-
 typedef enum
 {
 	lmt_static,
@@ -52,7 +50,6 @@ typedef enum
 
 typedef struct
 {
-	int internal_format;
 	int	current_lightmap_texture[num_lightmaptypes];
 
 	msurface_t	*lightmap_surfaces[MAX_LIGHTMAPS];
@@ -73,7 +70,7 @@ static void LM_UploadBlock(lightmaptype_t type);
 static qboolean	LM_AllocBlock (lightmaptype_t type, int w, int h, int *x, int *y);
 
 extern void R_SetCacheState( msurface_t *surf );
-extern void R_BuildLightMap (msurface_t *surf, byte *dest, int stride);
+extern void R_BuildLightMap(msurface_t *surf, byte *dest, int stride, int BGRA_format);
 
 static int s_currentLightmapBuffer = 0;
 
@@ -469,13 +466,13 @@ static void GL_UpdateLightmap(msurface_t *surf)
         tmax = (surf->extents[1] >> 4) + 1;
         assert(smax <= 17 && tmax <= 17);
 
-        R_BuildLightMap(surf, (void *)temp, smax * 4);
+        R_BuildLightMap(surf, (void *)temp, smax * 4, (gl_config.lightmap_format == GL_BGRA_EXT) ? 1 : 0);
 
         GL_SelectTexture(GL_TEXTURE1);
         GL_Bind(GL_GetLightmapTextureName(surf->lightmaptexturenum));
 
         qglTexSubImage2D(
-            GL_TEXTURE_2D, 0, surf->light_s, surf->light_t, smax, tmax, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE, temp);
+            GL_TEXTURE_2D, 0, surf->light_s, surf->light_t, smax, tmax, gl_config.lightmap_format, GL_UNSIGNED_BYTE, temp);
 
         if (is_dlight)
         {
@@ -982,10 +979,10 @@ static void LM_UploadBlock(lightmaptype_t type)
         // write texture for current
         qglTexImage2D(GL_TEXTURE_2D,
             0,
-            gl_lms.internal_format,
+            gl_config.lightmap_format,
             BLOCK_WIDTH, BLOCK_HEIGHT,
             0,
-            GL_LIGHTMAP_FORMAT,
+            gl_config.lightmap_format,
             GL_UNSIGNED_BYTE,
             gl_lms.lightmap_buffer[type]);
     }
@@ -1141,7 +1138,7 @@ void GL_CreateSurfaceLightmap (msurface_t *surf, qboolean is_dynamic)
 	base += (surf->light_t * BLOCK_WIDTH + surf->light_s) * LIGHTMAP_BYTES;
 
 	R_SetCacheState( surf );
-	R_BuildLightMap (surf, base, BLOCK_WIDTH*LIGHTMAP_BYTES);
+    R_BuildLightMap(surf, base, BLOCK_WIDTH * LIGHTMAP_BYTES, (gl_config.lightmap_format == GL_BGRA_EXT) ? 1 : 0);
 }
 
 
@@ -1176,43 +1173,6 @@ void GL_BeginBuildingLightmaps (model_t *m)
 
 	gl_lms.current_lightmap_texture[lmt_static] = -1;
 	gl_lms.current_lightmap_texture[lmt_dynamic] = -1;
-
-	/*
-	** if mono lightmaps are enabled and we want to use alpha
-	** blending (a,1-a) then we're likely running on a 3DLabs
-	** Permedia2.  In a perfect world we'd use a GL_ALPHA lightmap
-	** in order to conserve space and maximize bandwidth, however 
-	** this isn't a perfect world.
-	**
-	** So we have to use alpha lightmaps, but stored in GL_RGBA format,
-	** which means we only get 1/16th the color resolution we should when
-	** using alpha lightmaps.  If we find another board that supports
-	** only alpha lightmaps but that can at least support the GL_ALPHA
-	** format then we should change this code to use real alpha maps.
-	*/
-	if ( toupper( gl_monolightmap->string[0] ) == 'A' )
-	{
-        gl_lms.internal_format = GL_RGBA;
-	}
-	/*
-	** try to do hacked colored lighting with a blended texture
-	*/
-	else if ( toupper( gl_monolightmap->string[0] ) == 'C' )
-	{
-        gl_lms.internal_format = GL_RGBA;
-	}
-	else if ( toupper( gl_monolightmap->string[0] ) == 'I' )
-	{
-        gl_lms.internal_format = GL_LUMINANCE;
-	}
-	else if ( toupper( gl_monolightmap->string[0] ) == 'L' ) 
-	{
-        gl_lms.internal_format = GL_LUMINANCE;
-	}
-	else
-	{
-        gl_lms.internal_format = GL_BGRA_EXT;
-	}
 }
 
 /*
