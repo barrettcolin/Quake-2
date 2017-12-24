@@ -109,12 +109,13 @@ void SpriteSystem::Destroy(SpriteInstance inst)
     m_indexFromEntity.erase(ent);
 }
 
-SpriteInstance Lookup(EntityId ent)
+SpriteInstance SpriteSystem::Lookup(EntityId ent)
 {
-    return 0;
+    std::unordered_map<EntityId, unsigned>::const_iterator it = m_indexFromEntity.find(ent);
+    return (it != m_indexFromEntity.end()) ? it->second : 0;
 }
 
-void SpriteSystem::SetTexture(SpriteInstance inst, SDL_Texture* tex)
+void SpriteSystem::SetTexture(SpriteInstance inst, std::shared_ptr<Texture> tex)
 {
     m_data[inst].m_texture = tex;
 }
@@ -140,7 +141,7 @@ void SpriteSystem::Render(SDL_Renderer *rend)
             InstanceData& data = m_data[i];
             if (m_context->GetEntitySystem().IsAlive(data.m_entity))
             {
-                SDL_RenderCopy(rend, data.m_texture, &data.m_srcRect, &data.m_dstRect);
+                SDL_RenderCopy(rend, data.m_texture->m_sdlTexture, &data.m_srcRect, &data.m_dstRect);
             }
             else
             {

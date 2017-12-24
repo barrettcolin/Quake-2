@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -35,6 +36,18 @@ private:
 
 typedef uint32_t SpriteInstance;
 
+struct Texture
+{
+    SDL_Texture* m_sdlTexture;
+
+    inline Texture();
+};
+
+inline Texture::Texture()
+    : m_sdlTexture()
+{
+}
+
 class SpriteSystem
 {
 public:
@@ -44,7 +57,7 @@ public:
     void Destroy(SpriteInstance inst);
 
     SpriteInstance Lookup(EntityId ent);
-    void SetTexture(SpriteInstance inst, SDL_Texture* tex);
+    void SetTexture(SpriteInstance inst, std::shared_ptr<Texture> tex);
     void SetSrcRect(SpriteInstance inst, const SDL_Rect& rect);
     void SetDstRect(SpriteInstance inst, const SDL_Rect& rect);
 
@@ -56,7 +69,7 @@ private:
     struct InstanceData
     {
         EntityId m_entity;
-        SDL_Texture* m_texture;
+        std::shared_ptr<Texture> m_texture;
         SDL_Rect m_srcRect;
         SDL_Rect m_dstRect;
     };
