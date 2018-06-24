@@ -1,5 +1,7 @@
 #include "SDL.h"
 
+#include "ott.h"
+
 #include "Engine.h"
 
 int main(int argc, char *argv[])
@@ -7,6 +9,9 @@ int main(int argc, char *argv[])
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *win = SDL_CreateWindow("sdlgame", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, 0);
     SDL_Renderer *rend = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+
+	ott_entity_system_init();
+	ott_entity_id ent0 = ott_entity_system_create_entity();
 
     Context ctx;
     EntityId ent = ctx.GetEntitySystem().Create();

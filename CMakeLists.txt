@@ -122,5 +122,5 @@ endif()
 #add_custom_command(TARGET Quake2 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETPATH)\" ${PROJECT_SOURCE_DIR})
 #add_custom_command(TARGET Quake2 POST_BUILD COMMAND ${CMAKE_COMMAND} ARGS -E copy_if_different \"$(TARGETDIR)$(TARGETNAME).pdb\" ${PROJECT_SOURCE_DIR})
 
-add_executable(sdlgame WIN32 sdlgame/Engine.cpp sdlgame/Engine.h sdlgame/sdlgame.cpp)
+add_executable(sdlgame WIN32 sdlgame/Engine.cpp sdlgame/Engine.h sdlgame/entity.c sdlgame/sdlgame.cpp)
 target_link_libraries(sdlgame ${SDL2_LIBRARIES})
