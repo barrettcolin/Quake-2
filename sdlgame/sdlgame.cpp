@@ -1,5 +1,6 @@
 #include "SDL.h"
 
+#include "mini.h"
 #include "ott.h"
 
 #include "Engine.h"
